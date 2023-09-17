@@ -1,0 +1,7 @@
+(include_subdirs qualified)
+
+(coq.theory
+ (name Core)
+ (theories bbv)
+ (modules PCodeSemantics PCodeSyntax CFGSyntax PCode2CFG)
+)
