@@ -27,8 +27,8 @@ let run_ghidra ifile tmp_path cwd port =
   Sys.set_signal Sys.sigint (Sys.Signal_handle (fun _ -> Unix.kill ghidra_pid Sys.sigterm; exit 0));
   ghidra_pid;;
 
-let instfunc (si: spaceinfo) (fd: Unix.file_descr) (addr: PCode.word): (Z.t * PCode.inst list) option =
-    let iaddr = word64ToInt64 addr in
+let instfunc (si: spaceinfo) (fd: Unix.file_descr) (addr: int64): (int * PCode.inst list) option =
+    let iaddr = addr in
     print_endline (Printf.sprintf "Sending %Lx" (iaddr));
     Bytes.set sendbuf 0 'i';
     Bytes.set_int64_le sendbuf 1 iaddr;
@@ -40,19 +40,14 @@ let instfunc (si: spaceinfo) (fd: Unix.file_descr) (addr: PCode.word): (Z.t * PC
       let pcodes = List.map (pcode_raw_to_pcode si) (get_pcode_list fd) in
       print_endline (Printf.sprintf "Received %d pcodes" (List.length pcodes));
       print_endline (String.concat "\n" (List.map string_of_pcode pcodes));
-      Some (Z.of_int32 inst_len, pcodes);;
+      Some (Int32.to_int inst_len, pcodes);;
   
-let initstate (si: spaceinfo) (fd: Unix.file_descr) (addr: PCode.word) =
-    let iaddr = word64ToInt64 addr in
+let initstate (si: spaceinfo) (fd: Unix.file_descr) (addr: int64) =
+    let iaddr = addr in
     Bytes.set sendbuf 0 's';
     Bytes.set_int64_le sendbuf 1 iaddr;
     let _ = Unix.send fd sendbuf 0 9 [] in
-    PCode.wzero8;;
-
-let rec run_loop (p: PCode.prog) (s: PCode.state): PCode.state =
-  match (PCode.step p s) with
-  | None -> s
-  | Some s -> run_loop p s;;
+    0;;
 
 let () =
   Arg.parse
@@ -96,11 +91,11 @@ let () =
     print_endline (Printf.sprintf "PC after step %s" (Z.to_string (PCode.word64ToN a.pc))); *)
     let x = PCode.follow_flow {
       ins_mem = instfunc spaceinfo fd;
-      entry_addr = int64ToWord64 main_addr
-    } (int64ToWord64 main_addr) in
+      entry_addr = main_addr
+    } (main_addr) in
     let stop_addrs = (fst x) in
     let contained_addrs = (snd x) in
-    print_endline (Printf.sprintf "Stop addrs %s" (String.concat ", " (List.map (fun x -> Printf.sprintf "%Lx" (word64ToInt64 (fst x))) stop_addrs)));
-    print_endline (Printf.sprintf "Contained addrs %s" (String.concat ", " (List.map (fun x -> Printf.sprintf "%Lx" (word64ToInt64 (fst x))) contained_addrs)));
+    print_endline (Printf.sprintf "Stop addrs %s" (String.concat ", " (List.map (fun x -> Printf.sprintf "%Lx" ((x))) stop_addrs)));
+    print_endline (Printf.sprintf "Contained addrs %s" (String.concat ", " (List.map (fun x -> Printf.sprintf "%Lx" ((x))) contained_addrs)));
     Unix.sleep 4;
     Unix.kill ghidra_pid Sys.sigterm

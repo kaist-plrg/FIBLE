@@ -22,9 +22,9 @@ type pcode_raw = {
 
 let string_of_varnode (v: varNode) =
   match v.varNode_node with
-  | Register n -> Printf.sprintf "$%Ld:%Ld" (Z.to_int64 n) (Z.to_int64 v.varNode_width)
-  | Unique n -> Printf.sprintf "#%Ld:%Ld" (Z.to_int64 n) (Z.to_int64 v.varNode_width)
-  | Const n -> Printf.sprintf "%Ld:%Ld" (Z.to_int64 (word64ToN n)) (Z.to_int64 v.varNode_width)
+  | Register n -> Printf.sprintf "$%Ld:%ld" n v.varNode_width
+  | Unique n -> Printf.sprintf "#%Ld:%ld" n v.varNode_width
+  | Const n -> Printf.sprintf "%Ld:%ld" n v.varNode_width
 ;;
 
 let string_of_assignable (a: assignable) =
@@ -149,17 +149,17 @@ let get_varnode_raw (fd: Unix.file_descr) : varnode_raw =
   {space; offset; size};;
 
 let tmpReg = {
-   varNode_node = Unique (Z.of_int 0);
-   varNode_width = Z.of_int 0
+   varNode_node = Unique 0L;
+   varNode_width = 0l
    };;
 
 let varnode_raw_to_varnode (si: spaceinfo) (v: varnode_raw) : varNode =
   if v.space = si.unique then
-    { varNode_node = Unique (Z.of_int64 v.offset);  varNode_width = Z.of_int32 v.size }
+    { varNode_node = Unique v.offset;  varNode_width = v.size }
   else if v.space = si.register then
-    { varNode_node = Register (Z.of_int64 v.offset); varNode_width = Z.of_int32 v.size }
+    { varNode_node = Register v.offset; varNode_width = v.size }
   else if v.space = si.const then
-    { varNode_node = Const (nToWord64 (Z.of_int64 v.offset)); varNode_width = Z.of_int32 v.size }
+    { varNode_node = Const v.offset; varNode_width = v.size }
   else
     failwith (Printf.sprintf "Unknown space %ld" v.space);;
 
@@ -259,14 +259,3 @@ let pcode_raw_to_pcode (si: spaceinfo) (p: pcode_raw) : inst =
   | 73l -> mkUop Ulzcount
   | _ -> Iunimplemented;;
 
-let rec word64ToInt64 (w: word): int64 =
-  match w with
-   | WO -> 0L
-   | WS (false, _, w') -> Int64.mul (word64ToInt64 w') 2L
-   | WS (true, _, w') -> Int64.succ (Int64.mul (word64ToInt64 w') 2L)
-;;
-
-let rec int64ToWord64 (i: int64): word =
-  if (Int64.equal i 0L) then wzero64 else
-  if (Int64.equal (Int64.rem i 2L) 0L) then (wmult64 wtwo64 (int64ToWord64 (Int64.div i 2L))) else
-  wplus64 wone64 (wmult64 wtwo64 (int64ToWord64 (Int64.div i 2L)))
