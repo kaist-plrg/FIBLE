@@ -1,0 +1,7 @@
+(executable
+ (flags -w -20-33-3)
+ (name main)
+ (public_name coq-pcode)
+ (package coq-pcode)
+ (libraries zarith unix)
+ (modules PCode Util main))
