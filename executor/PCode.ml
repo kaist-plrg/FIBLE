@@ -3,6 +3,7 @@ type varNodeI =
  | Unique of int64
  | Register of int64
  | Const of int64
+ | Ram of int64
 
 
 type varNode = {
@@ -52,6 +53,7 @@ type inst =
  | Ijump_ind of (jiannotation * varNode)
  | Icbranch of (varNode * varNode)
  | Iassignment of (assignable * varNode)
+ | INop
 
 
 type addr = int64
@@ -63,5 +65,12 @@ type prog = {
     entry_addr: addr
 }
 
+let get_ins (p: prog) (loc: loc): inst option =
+    match p.ins_mem (fst loc) with
+    | None -> None
+    | Some (_, ins_list) ->
+        if (snd loc) < (List.length ins_list) then
+            Some (List.nth ins_list (snd loc))
+        else
+            None
 
-let follow_flow (p: prog) (e: addr): (addr list * addr list) = ([], [])

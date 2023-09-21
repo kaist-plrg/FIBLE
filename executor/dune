@@ -4,4 +4,4 @@
  (public_name coq-pcode)
  (package coq-pcode)
  (libraries zarith unix)
- (modules PCode Util main))
+ (modules PCode DS Domain AbsVal AbsState CFA Util main))

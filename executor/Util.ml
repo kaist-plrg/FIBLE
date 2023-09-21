@@ -1,10 +1,10 @@
 open PCode;;
 
-
 type spaceinfo = {
   unique: int32;
   register: int32;
-  const: int32
+  const: int32;
+  ram: int32;
 };;
 
 type varnode_raw = {
@@ -19,12 +19,12 @@ type pcode_raw = {
   output: varnode_raw option;
 };;
 
-
 let string_of_varnode (v: varNode) =
   match v.varNode_node with
   | Register n -> Printf.sprintf "$%Ld:%ld" n v.varNode_width
   | Unique n -> Printf.sprintf "#%Ld:%ld" n v.varNode_width
   | Const n -> Printf.sprintf "%Ld:%ld" n v.varNode_width
+  | Ram n -> Printf.sprintf "*%Ld:%ld" n v.varNode_width
 ;;
 
 let string_of_assignable (a: assignable) =
@@ -102,32 +102,68 @@ let string_of_pcode (p: inst) =
   )
   | Icbranch (i0, i1) -> Printf.sprintf "if %s goto %s;" (string_of_varnode i1) (string_of_varnode i0)
   | Iassignment (i, o) -> Printf.sprintf "%s = %s;" (string_of_varnode o) (string_of_assignable i)
+  | INop -> "nop;"
   | Iunimplemented -> "unimplemented"
 ;;
 
 
-let recvbuf = Bytes.create 1024;;
-let sendbuf = Bytes.create 9;;
+let recvbuf = Bytes.create 2048;;
+let sendbuf = Bytes.create 2048;;
+let send_offset = ref 0;;
 
-(* little endian *)
+let get_char (fd: Unix.file_descr): char =
+  let recv_num = Unix.recv fd recvbuf 0 1 [] in
+  assert (recv_num = 1);
+  Bytes.get recvbuf 0;;
+
+(* big endian *)
 let get_int (fd: Unix.file_descr): int32 =
   let recv_num = Unix.recv fd recvbuf 0 4 [] in
   assert (recv_num = 4);
   let s = Bytes.sub_string recvbuf 0 4 in
   let i = ref 0l in
   for j = 0 to 3 do
-    i := Int32.logor !i (Int32.shift_left (Int32.of_int (Char.code s.[j])) (j * 8))
+    i := Int32.logor !i (Int32.shift_left (Int32.of_int (Char.code s.[j])) (8 * (3 - j)));
   done;
   !i;;
-  
+
 let get_long (fd: Unix.file_descr): int64 =
   let _ = Unix.recv fd recvbuf 0 8 [] in
   let s = Bytes.sub_string recvbuf 0 8 in
   let i = ref 0L in
   for j = 0 to 7 do
-    i := Int64.logor !i (Int64.shift_left (Int64.of_int (Char.code s.[j])) (j * 8))
+    i := Int64.logor !i (Int64.shift_left (Int64.of_int (Char.code s.[j])) (8 * (7 - j)));
   done;
   !i;;
+
+let put_char (c: char) =
+  Bytes.set sendbuf !send_offset c;
+  send_offset := !send_offset + 1;;
+
+let put_int (i: int32) =
+  for j = 0 to 3 do
+  Bytes.set sendbuf (!send_offset + j) (Char.chr (Int32.to_int (Int32.logand (Int32.shift_right_logical i (8 * (3 - j))) 0xffl)));
+  done;
+  send_offset := !send_offset + 4;;
+
+let put_long (i: int64) =
+  for j = 0 to 7 do
+  Bytes.set sendbuf (!send_offset + j) (Char.chr (Int64.to_int (Int64.logand (Int64.shift_right_logical i (8 * (7 - j))) 0xffL)));
+  done;
+  send_offset := !send_offset + 8;;
+
+let put_string (s: string) =
+  let len = String.length s in
+  put_int (Int32.of_int len);
+  for i = 0 to len - 1 do
+    Bytes.set sendbuf (!send_offset + i) s.[i];
+  done;
+  send_offset := !send_offset + len;;
+
+let flush (fd: Unix.file_descr) =
+  let send_num = Unix.send fd sendbuf 0 !send_offset [] in
+  assert (send_num = !send_offset);
+  send_offset := 0;;
 
 let string_of_spaceinfo (s: spaceinfo) =
   Printf.sprintf "{unique=%ld; register=%ld; const=%ld}" s.unique s.register s.const;;
@@ -136,7 +172,15 @@ let get_stateinfo (fd: Unix.file_descr) : spaceinfo =
   let unique = get_int fd in
   let register = get_int fd in
   let const = get_int fd in
-  {unique; register; const};;
+  let ram = get_int fd in
+  {unique; register; const; ram};;
+
+
+let get_func_addr (fd: Unix.file_descr) (x: string): int64 =
+  put_char 'f';
+  put_string x;
+  flush fd;
+  get_long fd;;
 
 
 let string_of_varnode_raw (v: varnode_raw) =
@@ -160,6 +204,8 @@ let varnode_raw_to_varnode (si: spaceinfo) (v: varnode_raw) : varNode =
     { varNode_node = Register v.offset; varNode_width = v.size }
   else if v.space = si.const then
     { varNode_node = Const v.offset; varNode_width = v.size }
+  else if v.space = si.ram then
+    { varNode_node = Ram v.offset; varNode_width = v.size }
   else
     failwith (Printf.sprintf "Unknown space %ld" v.space);;
 
@@ -180,10 +226,13 @@ let get_pcode_list (fd: Unix.file_descr) : pcode_raw list =
   print_endline "Getting pcode list";
   let num_pcodes = get_int fd in
   print_endline (Printf.sprintf "Number of pcodes: %ld" num_pcodes);
-  let rec loop acc = function
-    | 0 -> acc
-    | n -> loop ((get_pcode_raw fd)::acc) (n - 1) in
-  List.rev (loop [] (Int32.to_int num_pcodes));;
+  if num_pcodes = 0l then
+    [{ opcode = 999l; inputs = [||]; output = None }]
+  else
+    let rec loop acc = function
+      | 0 -> acc
+      | n -> loop ((get_pcode_raw fd)::acc) (n - 1) in
+    List.rev (loop [] (Int32.to_int num_pcodes));;
 
 
 let pcode_raw_to_pcode (si: spaceinfo) (p: pcode_raw) : inst =
@@ -200,7 +249,7 @@ let pcode_raw_to_pcode (si: spaceinfo) (p: pcode_raw) : inst =
   | 2l -> Iload (inputs 0, inputs 1, output ())
   | 3l -> Istore (inputs 0, inputs 1, inputs 2)
   | 4l -> mkJump Jbranch
-  | 5l -> Icbranch (inputs 0, inputs 1)
+  | 5l -> Icbranch (inputs 1, inputs 0)
   | 6l -> mkJIump JIbranch
   | 7l -> mkJump Jcall
   | 8l -> mkJIump JIcall
@@ -257,5 +306,6 @@ let pcode_raw_to_pcode (si: spaceinfo) (p: pcode_raw) : inst =
   | 63l -> mkBop Bsubpiece
   | 72l -> mkUop Upopcount
   | 73l -> mkUop Ulzcount
+  | 999l -> INop
   | _ -> Iunimplemented;;
 

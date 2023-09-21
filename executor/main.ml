@@ -1,13 +1,20 @@
 open Util;;
 
+Random.self_init ();;
+
 let usage_msg = "pcert -i <ifile> -g <ghidra_path> -p <ghidra_port>";;
 
 let ghidra_path = ref "";;
 let ifile = ref "";;
 
+let dump_cfa_path = ref "";;
+let func_path = ref "";;
+
 let speclist = [
   ("-i", Arg.String (fun x -> ifile := x), ": input file");
   ("-g", Arg.String (fun x -> ghidra_path := x), ": ghidra path");
+  ("-dump-cfa-path", Arg.String (fun x -> dump_cfa_path := x), ": dump cfa path");
+  ("-func-path", Arg.String (fun x -> func_path := x), ": target funcs path");
 ];;
 
 let create_server _ =
@@ -20,34 +27,48 @@ let create_server _ =
     | _ -> failwith "impossible" in
   (fd, port);;
 
+let gen_random_name (fname: string) =
+  let rand = Random.int 1000000000 in
+  let fname = Filename.basename fname in
+  let fname = Filename.remove_extension fname in
+  let fname = "PEx" ^ fname ^ (string_of_int rand) in
+  fname;;
+
+
 let run_ghidra ifile tmp_path cwd port =
   let ghidra_headless_path = Filename.concat !ghidra_path "support/analyzeHeadless" in
-  let ghidra_pid = Unix.create_process ghidra_headless_path [|ghidra_headless_path; tmp_path; "PcodeExtractor"; "-import"; ifile; "-postScript"; "PCert.java"; string_of_int port; "-scriptPath"; cwd; "-deleteProject" |] Unix.stdin Unix.stdout Unix.stderr in
+  let ghidra_pid = Unix.create_process ghidra_headless_path [|ghidra_headless_path; tmp_path; gen_random_name ifile; "-import"; ifile; "-postScript"; "PCert.java"; string_of_int port; "-scriptPath"; cwd; "-deleteProject" |] Unix.stdin Unix.stdout Unix.stderr in
     print_endline (Printf.sprintf "Running ghidra at pid %d" ghidra_pid);
   Sys.set_signal Sys.sigint (Sys.Signal_handle (fun _ -> Unix.kill ghidra_pid Sys.sigterm; exit 0));
   ghidra_pid;;
 
+
+let instHash: (int * PCode.inst list) DS.Int64Hashtbl.t = DS.Int64Hashtbl.create 1000;;
 let instfunc (si: spaceinfo) (fd: Unix.file_descr) (addr: int64): (int * PCode.inst list) option =
-    let iaddr = addr in
-    print_endline (Printf.sprintf "Sending %Lx" (iaddr));
-    Bytes.set sendbuf 0 'i';
-    Bytes.set_int64_le sendbuf 1 iaddr;
-    let _ = Unix.send fd sendbuf 0 9 [] in
-    let inst_len = get_int fd in
-    if inst_len = 0l then
-      None
+    if DS.Int64Hashtbl.mem instHash addr then
+      Some (DS.Int64Hashtbl.find instHash addr)
     else
-      let pcodes = List.map (pcode_raw_to_pcode si) (get_pcode_list fd) in
-      print_endline (Printf.sprintf "Received %d pcodes" (List.length pcodes));
-      print_endline (String.concat "\n" (List.map string_of_pcode pcodes));
-      Some (Int32.to_int inst_len, pcodes);;
+      let iaddr = addr in
+      print_endline (Printf.sprintf "Sending %Lx" (iaddr));
+      put_char 'i';
+      put_long iaddr;
+      flush fd;
+      let inst_len = get_int fd in
+      if inst_len = 0l then
+        None
+      else
+        let pcodes = List.map (pcode_raw_to_pcode si) (get_pcode_list fd) in
+        print_endline (Printf.sprintf "Received %d pcodes" (List.length pcodes));
+        print_endline (String.concat "\n" (List.map string_of_pcode pcodes));
+        DS.Int64Hashtbl.add instHash addr (Int32.to_int inst_len, pcodes);
+        Some (Int32.to_int inst_len, pcodes);;
   
 let initstate (si: spaceinfo) (fd: Unix.file_descr) (addr: int64) =
     let iaddr = addr in
-    Bytes.set sendbuf 0 's';
-    Bytes.set_int64_le sendbuf 1 iaddr;
-    let _ = Unix.send fd sendbuf 0 9 [] in
-    0;;
+    put_char 's';
+    put_long iaddr;
+    flush fd;
+    get_long fd;;
 
 let () =
   Arg.parse
@@ -59,6 +80,22 @@ let () =
   else if !ghidra_path = "" then
     raise (Arg.Bad "No ghidra path")
   else
+    let target_funcs = if !func_path <> "" then
+      let ic = open_in !func_path in
+      let rec read_lines acc =
+        try
+          let line = input_line ic in
+          if line <> "" then
+            read_lines (line :: acc)
+          else
+            read_lines acc
+        with
+          End_of_file -> acc in
+      let lines = read_lines [] in
+      close_in ic;
+      lines
+    else
+      ["main"] in
     let cwd = Sys.getcwd () in
     let tmp_path = Filename.concat cwd "tmp" in
     print_endline (Printf.sprintf "Input file is %s" !ifile);
@@ -68,13 +105,11 @@ let () =
     
     let (fd, _) = Unix.accept sfd in
     print_endline (Printf.sprintf "Accepted connection");
-    let main_addr_buf = Bytes.create 8 in
-    print_endline (Printf.sprintf "Receiving main addr");
-    let _ = Unix.recv fd main_addr_buf 0 8 [] in
-    let main_addr = Bytes.get_int64_le main_addr_buf 0 in
-    print_endline (Printf.sprintf "Main addr is %Lx" main_addr);
     let spaceinfo = get_stateinfo fd in
     print_endline (Printf.sprintf "Got stateinfo %ld %ld %ld" spaceinfo.unique spaceinfo.register spaceinfo.const);
+    List.iter (fun x -> print_endline (Printf.sprintf "func %s" x)) target_funcs;
+    let func_with_addrs = List.map (fun x -> (x, get_func_addr fd x)) target_funcs in
+
     (*
     let a = run_loop {
       ins_mem = instfunc spaceinfo fd;
@@ -89,13 +124,22 @@ let () =
       seqnum = O
     } in
     print_endline (Printf.sprintf "PC after step %s" (Z.to_string (PCode.word64ToN a.pc))); *)
-    let x = PCode.follow_flow {
+    
+    List.iter (fun (fname, y) ->
+    let x = CFA.follow_flow {
       ins_mem = instfunc spaceinfo fd;
-      entry_addr = main_addr
-    } (main_addr) in
-    let stop_addrs = (fst x) in
-    let contained_addrs = (snd x) in
-    print_endline (Printf.sprintf "Stop addrs %s" (String.concat ", " (List.map (fun x -> Printf.sprintf "%Lx" ((x))) stop_addrs)));
-    print_endline (Printf.sprintf "Contained addrs %s" (String.concat ", " (List.map (fun x -> Printf.sprintf "%Lx" ((x))) contained_addrs)));
+      entry_addr = y
+    } (y) in
+    let stop_addrs = (snd x.analysis_contour.basic_block) in
+    let contained_addrs = (x.abs_state) in
+    print_endline (Printf.sprintf "Stop addrs %s" (String.concat ", " (List.map (fun x -> Printf.sprintf "%Lx" ((fst x))) (List.of_seq (DS.LocSet.to_seq stop_addrs)))));
+    print_endline (Printf.sprintf "Contained addrs %s" (String.concat ", " (List.map (fun x -> Printf.sprintf "%Lx" ((fst (fst x)))) (DS.LocBotMap.to_seq contained_addrs |> Seq.filter (fun x -> snd (fst x) == 0) |> List.of_seq))));
+    if !dump_cfa_path <> "" then
+      let dump_cfa_path = Filename.concat !dump_cfa_path (fname ^ ".boundary") in
+      let oc = open_out dump_cfa_path in
+      let sorted_fboundary = DS.LocBotMap.to_seq contained_addrs |> Seq.filter (fun x -> snd (fst x) == 0) |> Seq.map (fun x -> fst (fst x)) |> List.of_seq |> List.sort compare in
+      List.iter (fun x -> Printf.fprintf oc "%Lx\n" x) sorted_fboundary;
+      close_out oc;
+    ) func_with_addrs;
     Unix.sleep 4;
     Unix.kill ghidra_pid Sys.sigterm
