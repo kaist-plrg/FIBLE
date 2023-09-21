@@ -1,3 +1,6 @@
+import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -13,125 +16,105 @@ import ghidra.app.script.GhidraScript;
 
 public class PCert extends GhidraScript {
 
-    public void send_main_address(Socket connected) throws IOException {
-        // Get main address
-        Address main_address = null;
-        for (Symbol sym: currentProgram.getSymbolTable().getSymbols("add"))  {
-            main_address = sym.getAddress();
-        }
-        if (main_address != null) {
-            // Write to socket
-            byte [] buffer = new byte[8];
-            long main_offset = main_address.getOffset();
-            for (int i = 0; i < 8; i++) {
-                buffer[i] = (byte) (main_offset >> (i * 8));
-            }
-            println("Main address: " + main_address.toString());
-            connected.getOutputStream().write(buffer, 0, 8);
-            println("Sent main address");
-        } else {
-            println("Could not find main address");
-            return;
-        }
-
-    }
-
-    public void send_address_space(Socket connected) throws IOException {
+    public void send_address_space(DataOutputStream out) throws IOException {
         // Get address space
-        byte [] buffer = new byte[12];
-        ByteBuffer byteBuffer = ByteBuffer.wrap(buffer).order(java.nio.ByteOrder.LITTLE_ENDIAN);
         AddressFactory af = currentProgram.getAddressFactory();
-        byteBuffer.putInt(af.getUniqueSpace().getSpaceID());
-        byteBuffer.putInt(af.getRegisterSpace().getSpaceID());
-        byteBuffer.putInt(af.getConstantSpace().getSpaceID());
+        out.writeInt(af.getUniqueSpace().getSpaceID());
+        out.writeInt(af.getRegisterSpace().getSpaceID());
+        out.writeInt(af.getConstantSpace().getSpaceID());
+        out.writeInt(af.getDefaultAddressSpace().getSpaceID());
         // Write to socket
-        connected.getOutputStream().write(byteBuffer.array(), byteBuffer.arrayOffset(), byteBuffer.position());
         println("Sent address space");
     }
     
 
-    public void putVarNode(ByteBuffer buffer, Varnode vn) {
-        buffer.putInt(vn.getSpace());
-        buffer.putLong(vn.getOffset());
-        buffer.putInt(vn.getSize());
+    public void putVarNode(DataOutputStream out, Varnode vn) throws IOException {
+        out.writeInt(vn.getSpace());
+        out.writeLong(vn.getOffset());
+        out.writeInt(vn.getSize());
     }
 
-    public void putPcode(ByteBuffer buffer, PcodeOp op) {
-        buffer.putInt(op.getOpcode());
+    public void putPcode(DataOutputStream out, PcodeOp op) throws IOException {
+        out.writeInt(op.getOpcode());
         int numInputs = op.getNumInputs();
-        buffer.putInt(numInputs);
+        out.writeInt(numInputs);
         for (int i = 0; i < numInputs; i++) {
             Varnode vn = op.getInput(i);
-            putVarNode(buffer, vn);
+            putVarNode(out, vn);
         }
         if (op.getOutput() == null) {
-            buffer.putInt(0);
+            out.writeInt(0);
         } else {
-            buffer.putInt(1);
-            putVarNode(buffer, op.getOutput());
+            out.writeInt(1);
+            putVarNode(out, op.getOutput());
         }
     }
 
-    public void send_instruction_at(Socket connected, long address, byte[] sendBuffer) throws IOException {
+    public void send_instruction_at(DataOutputStream out, long address) throws IOException {
         // Get instruction at address
         Address addr = currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(address);
-        ByteBuffer buffer = ByteBuffer.wrap(sendBuffer).order(java.nio.ByteOrder.LITTLE_ENDIAN);
         Instruction instruction = currentProgram.getListing().getInstructionAt(addr);
         if (instruction == null) {
-            buffer.putInt(0);
+            out.writeInt(0);
         }
         else {
             PcodeOp[] pcode = instruction.getPcode();
             int instruction_length = instruction.getLength();
-            buffer.putInt(instruction_length);
-            buffer.putInt(pcode.length);
+            out.writeInt(instruction_length);
+            out.writeInt(pcode.length);
             for (int i = 0; i < pcode.length; i++) {
-                putPcode(buffer, pcode[i]);
+                putPcode(out, pcode[i]);
                 println(pcode[i].toString());
             }
         }
-        // Write to socket
-        connected.getOutputStream().write(buffer.array(), buffer.arrayOffset(), buffer.position());
     }
 
-    public void send_data_at(Socket connected, long address, byte[] sendBuffer) throws IOException {
-        // Get data at address
-        byte [] buffer = new byte[1024];
+    public void send_data_at(DataOutputStream out, long address) throws IOException {
         // Write to socket
-        connected.getOutputStream().write(buffer, 0, 9);
+        out.writeLong(address);
+    }
+
+    public void send_function_addr(DataOutputStream out, String name) throws IOException {
+        Address func_address = null;
+        for (Symbol sym: currentProgram.getSymbolTable().getSymbols(name))  {
+            func_address = sym.getAddress();
+        }
+        if (func_address != null) {
+            out.writeLong(func_address.getOffset());
+        } else {
+            out.writeLong(-1);
+        }
     }
 
     public void loop_program(Socket connected) throws IOException {
-        byte[] sendBuffer = new byte[1024];
-        send_main_address(connected);
-        send_address_space(connected);
+        DataInputStream in = new DataInputStream(connected.getInputStream());
+        DataOutputStream out = new DataOutputStream(new BufferedOutputStream(connected.getOutputStream()));
+        send_address_space(out);
+        out.flush();
         // Loop until connection is closed
+        // Read from socket
         while (true) {
-            // Read from socket
-            byte[] recvBuffer = new byte[9];
-            int read = connected.getInputStream().read(recvBuffer, 0, 9);
-            if (read == -1) {
-                break;
-            }
-            switch (recvBuffer[0]) {
+            switch (in.readByte()) {
                 case 'i': // print instruction
                     // Get address
-                    long address = 0;
-                    for (int i = 0; i < 8; i++) {
-                        address |= (long) (recvBuffer[i + 1] & 0xff) << (i * 8);
-                    }
-                    send_instruction_at(connected, address, sendBuffer);
+                    long address = in.readLong();
+                    send_instruction_at(out, address);
                     break;
                 case 's': // print data
                     // Get address
-                    address = 0;
-                    for (int i = 0; i < 8; i++) {
-                        address |= (long) (recvBuffer[i + 1] & 0xff) << (i * 8);
-                    }
-                    send_data_at(connected, address, sendBuffer);
+                    address = in.readLong();
+                    send_data_at(out, address);
                     break;
-
+                case 'f': // get function address
+                    println("Getting function address");
+                    int size = in.readInt();
+                    byte[] nameBuffer = new byte[size];
+                    in.read(nameBuffer, 0, size);
+                    String name = new String(nameBuffer);
+                    send_function_addr(out, name);
+                    break;
             }
+            out.flush();
         }
     }
 

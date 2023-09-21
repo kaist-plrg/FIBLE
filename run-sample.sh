@@ -1,2 +1,2 @@
 #!/bin/bash
-./_build/default/executor/main.exe -i /Users/jiheepark/Documents/research/PCodeCert/sample/add -g ~/Documents/research/Lifting/ghidra_10.3_PUBLIC/
+./_build/default/executor/main.exe -i /Users/jiheepark/Documents/research/PCodeCert/sample/add -func-path "/Users/jiheepark/Documents/research/PCodeCert/sample/add.funcs" -dump-cfa-path "/Users/jiheepark/Documents/research/PCodeCert/sample/" -g ~/Documents/research/Lifting/ghidra_10.3_PUBLIC/
