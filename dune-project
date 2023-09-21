@@ -4,7 +4,7 @@
 (package
   (name coq-pcode)
   (synopsis "A Coq description for pcode")
-  (depends (coq-ext-lib (>= 0.11.1)) zarith)
+  (depends zarith)
   (authors
     "Jihee Park")
 )
