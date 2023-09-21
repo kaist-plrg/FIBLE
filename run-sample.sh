@@ -1,2 +1,17 @@
 #!/bin/bash
-./_build/default/executor/main.exe -i /Users/jiheepark/Documents/research/PCodeCert/sample/add -func-path "/Users/jiheepark/Documents/research/PCodeCert/sample/add.funcs" -dump-cfa-path "/Users/jiheepark/Documents/research/PCodeCert/sample/" -g ~/Documents/research/Lifting/ghidra_10.3_PUBLIC/
+
+# check $GHIDRA_PATH exists
+if [ -z "$GHIDRA_PATH" ]; then
+    echo "GHIDRA_PATH is not set"
+    exit 1
+fi
+
+# check sample directory exists
+if [ ! -d "sample" ]; then
+    echo "sample directory does not exist"
+    exit 1
+fi
+
+CWD=$(pwd)
+
+./_build/default/executor/main.exe -i $CWD/sample/add -func-path "$CWD/sample/add.funcs" -dump-cfa-path "$CWD/sample/" -g $GHIDRA_PATH
