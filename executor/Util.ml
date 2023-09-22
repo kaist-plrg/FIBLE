@@ -100,7 +100,7 @@ let string_of_pcode (p: inst) =
     | JIcall -> Printf.sprintf "call *%s;" (string_of_varnode i)
     | JIret -> Printf.sprintf "return %s;" (string_of_varnode i)
   )
-  | Icbranch (i0, i1) -> Printf.sprintf "if %s goto %s;" (string_of_varnode i1) (string_of_varnode i0)
+  | Icbranch (i0, i1) -> Printf.sprintf "if %s goto %s;" (string_of_varnode i0) (string_of_varnode i1)
   | Iassignment (i, o) -> Printf.sprintf "%s = %s;" (string_of_varnode o) (string_of_assignable i)
   | INop -> "nop;"
   | Iunimplemented -> "unimplemented"

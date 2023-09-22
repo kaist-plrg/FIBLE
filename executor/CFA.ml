@@ -95,8 +95,6 @@ let gen_contour (p: prog) (a: AbsState.t LocBotMap.t): (LocSetOption.t LocBotMap
   ) a in
   (u, b, j)
 
-let post_contour_single (p: prog) (ls: loc) (lf: loc) (a: AbsState.t) (i: inst): AbsState.t = a
-
 
 let post_contour_fs (p: prog) (c: ContourD.t) (sj: LocSet.t LocBotMap.t) (a: AbsState.t LocBotMap.t): AbsState.t LocBotMap.t =
   let locHash = LocHashtbl.create 100 in
@@ -105,8 +103,8 @@ let post_contour_fs (p: prog) (c: ContourD.t) (sj: LocSet.t LocBotMap.t) (a: Abs
     | (Some ins, Some ae) ->
       LocSet.iter (fun lf ->
       LocHashtbl.update locHash lf (fun v -> match v with
-        | Some af -> Some (AbsState.join af (post_contour_single p ls lf ae ins))
-        | None -> Some (post_contour_single p ls lf ae ins)
+        | Some af -> Some (AbsState.join af (AbsState.post_contour_single p ls lf ae ins))
+        | None -> Some (AbsState.post_contour_single p ls lf ae ins)
       )
     ) s
     | _ -> ()

@@ -87,3 +87,27 @@ module Int64Hashtbl = struct
     | Some v -> f (Some v) |> Option.iter (fun v -> replace h k v)
     | None -> f None |> Option.iter (fun v -> add h k v)
 end
+
+module MemRefTopMap = struct
+  module Inner = Map.Make(struct
+  type t = MemRef.t
+  let compare = compare
+  end)
+  include Inner
+
+  let mapjoin (join: 'a -> 'a -> 'a) (a: 'a t) (b: 'a t) = merge (fun _ a b -> match a,b with
+  | Some a, Some b -> Some (join a b)
+  | _, _ -> None
+  ) a b
+  let top = empty
+
+  let mapole (ole: 'a -> 'a -> bool) (etop: 'a) (m1: 'a t) (m2: 'a t): bool =
+  fold (fun k v2 acc -> match find_opt k m1 with
+   | Some v1 -> acc && (ole v1 v2)
+   | None -> acc && (ole etop v2)
+    ) m2 true
+  
+  let pp (pp_v: Format.formatter -> 'a -> unit) (fmt: Format.formatter) (m: 'a t): unit =
+    let pp_pair fmt (k, v) = Format.fprintf fmt "%a -> %a" MemRef.pp k pp_v v in
+    Format.fprintf fmt "{%a}" (Format.pp_print_list pp_pair) (bindings m)
+end
