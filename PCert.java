@@ -70,8 +70,16 @@ public class PCert extends GhidraScript {
     }
 
     public void send_data_at(DataOutputStream out, long address) throws IOException {
+        byte [] data = new byte[8];
+        try {
+            currentProgram.getMemory().getBytes(currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(address), data);
+        } catch (Exception e) {
+            out.writeLong(-1);
+            return;
+        }
+        long data_long = ByteBuffer.wrap(data).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong();
         // Write to socket
-        out.writeLong(address);
+        out.writeLong(data_long);
     }
 
     public void send_function_addr(DataOutputStream out, String name) throws IOException {

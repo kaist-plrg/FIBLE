@@ -68,7 +68,10 @@ let flow_heuristic_simple (p: prog) (l: loc) (a: AbsState.t) (i: inst): heuristi
 )
 | Ijump_ind (JIret, vn) -> HrExit
 | Ijump_ind (JIcall, vn) -> HrFallthrough
-| Ijump_ind (_, vn) -> HrUnsound (LocSet.empty)
+| Ijump_ind (_, vn) -> (match AbsState.try_concretize_vn a vn 20 with
+  | Some a -> HrSound (LocSet.of_seq ((Int64Set.to_seq a) |> Seq.map (fun a -> (a, 0))))
+  | None -> HrUnsound (LocSet.empty)
+  )
 | Icbranch (cn, jn) -> (match jn with
   |  {
     varNode_node = Ram a ;

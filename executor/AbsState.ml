@@ -40,7 +40,7 @@ let ole a b = (NonRelStateD.ole a.value_nonrel b.value_nonrel) && (OctagonD.ole 
 
 
 let post_contour_single (p: PCode.prog) (ls: PCode.loc) (lf: PCode.loc) (a: t)(i: PCode.inst): t = 
-  if (lf = (0x10073cL, 0)) then Format.printf "astate: %a\n" pp a else ();
+  if (ls = (0x100753L, 0)) then Format.printf "astate: %a inst: %s\n" pp a (Util.string_of_pcode i) else ();
   match i with
   | PCode.Iassignment (asn, outputv) -> {
     value_nonrel = NonRelStateD.process_assignment a.value_nonrel a.value_octagon asn outputv;
@@ -48,8 +48,8 @@ let post_contour_single (p: PCode.prog) (ls: PCode.loc) (lf: PCode.loc) (a: t)(i
     value_boolpower = BoolPowerD.process_assignment a.value_boolpower a.value_octagon asn outputv;
   }
   | PCode.Iload (spacev, pointerv, outputv) -> {
-    value_nonrel = NonRelStateD.process_load a.value_nonrel a.value_octagon pointerv outputv;
-    value_octagon = OctagonD.process_load a.value_octagon pointerv outputv;
+    value_nonrel = NonRelStateD.process_load p a.value_nonrel a.value_octagon pointerv outputv;
+    value_octagon = OctagonD.process_load p a.value_octagon pointerv outputv;
     value_boolpower = a.value_boolpower;
   }
   | PCode.Istore (spacev, pointerv, valuev) -> {
@@ -83,3 +83,13 @@ let post_contour_single (p: PCode.prog) (ls: PCode.loc) (lf: PCode.loc) (a: t)(i
   | PCode.Ijump_ind (jia, locv) -> a
   | PCode.INop -> a
   | PCode.Iunimplemented -> a
+
+let try_concretize_vn (a: t) (vn: PCode.varNode) (limit: int): DS.Int64Set.t option = 
+  match vn.varNode_node with
+  | Unique i -> (match (MemRefTopMap.find_opt (MemRef.UniqueR i) a.value_nonrel) with
+    | Some a -> AbsVal.try_concretize a limit
+    | None -> None)
+  | Register r -> (match (MemRefTopMap.find_opt (MemRef.RegisterR r) a.value_nonrel) with
+    | Some a -> AbsVal.try_concretize a limit
+    | None -> None)
+  | _ -> None

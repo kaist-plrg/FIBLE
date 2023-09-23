@@ -72,6 +72,14 @@ module Int64Map = struct
 end
 
 
+module Int64Set = struct
+  module Inner = Set.Make(struct
+  type t = int64
+  let compare = compare
+  end)
+  include Inner
+end
+
 module Int64Hash =
   struct
     type t = int64

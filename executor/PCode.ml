@@ -55,13 +55,13 @@ type inst =
  | Iassignment of (assignable * varNode)
  | INop
 
-
 type addr = int64
 
 type loc = addr * int
 
 type prog = {
     ins_mem: addr -> (int * (inst list)) option;
+    rom: addr -> int64;
     entry_addr: addr
 }
 
@@ -74,3 +74,16 @@ let get_ins (p: prog) (loc: loc): inst option =
         else
             None
 
+
+let cut_width (v: int64) (width: int32): int64 =
+    if width > 7l then v else
+    Int64.logand v (Int64.lognot (Int64.shift_left (-1L) ((Int32.to_int width) * 8)))
+
+let get_rom (p: prog) (addr: int64) (width: int32): int64 =
+    let v_full = p.rom addr in
+    cut_width v_full width
+
+let sext (v: int64) (in_width: int32) (out_width: int32): int64 =
+    let x = Int64.shift_left v (64 - (Int32.to_int in_width) * 8) in
+    let x = Int64.shift_right x (64 - (Int32.to_int in_width) * 8) in
+    cut_width x out_width

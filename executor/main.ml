@@ -128,6 +128,7 @@ let () =
     List.iter (fun (fname, y) ->
     let x = CFA.follow_flow {
       ins_mem = instfunc spaceinfo fd;
+      rom = initstate spaceinfo fd;
       entry_addr = y
     } (y) in
     let stop_addrs = (snd x.analysis_contour.basic_block) in

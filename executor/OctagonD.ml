@@ -113,15 +113,17 @@ let find_interval_shallow (a: t) (mr: MemRef.t) =
     (minv, maxv)
 
 let request_interval (a: t) (mr: MemRef.t) = match mr with
- | MemRef.UOffsetR (_, _) ->
+ | MemRef.UniqueR (v) ->
+    let mmr = MemRef.UOffsetR(v, 0L) in
     let equiv_mr = MemRefZeroTopMapT.filter_map (fun (k1, k2) v -> match k1, k2 with
-    | Kmr (mr1), Kmr (mr2) -> if (v = I64D.I64 0L && (compare mr mr1 = 0) && MemRefZeroTopMapT.find_opt (Kmr mr2, Kmr mr1) a = Some (I64D.I64 0L)) then Some (mr2) else None | _ -> None) a |>
+    | Kmr (mr1), Kmr (mr2) -> if (v = I64D.I64 0L && (compare mmr mr1 = 0) && MemRefZeroTopMapT.find_opt (Kmr mr2, Kmr mr1) a = Some (I64D.I64 0L)) then Some (mr2) else None | _ -> None) a |>
     MemRefZeroTopMapT.to_seq |> Seq.map (fun ((k1, k2), v) -> v) in
-    let interval = find_interval_shallow a mr in
-    Seq.fold_left (fun acc mr -> let (minv, maxv) = find_interval_shallow a mr in (IntervalD.meet_et_low minv (fst acc), IntervalD.meet_et_high maxv (snd acc))) interval equiv_mr
+    let equiv_intervals = Seq.map (fun mr -> find_interval_shallow a mr) equiv_mr in
+    let interval = find_interval_shallow a mmr in
+    Seq.fold_left (fun acc (minv, maxv) ->(IntervalD.meet_et_low minv (fst acc), IntervalD.meet_et_high maxv (snd acc))) interval equiv_intervals
  | _ -> (IntervalD.ETop, IntervalD.ETop)
 
-let process_load (a: t) (pointerv: PCode.varNode) (outv: PCode.varNode) =
+let process_load (p: PCode.prog) (a: t) (pointerv: PCode.varNode) (outv: PCode.varNode) =
   match pointerv.varNode_node, MemRef.convert_varnode outv with
   | Unique u, Some outmr -> (match (
 MemRefZeroTopMapT.find_opt (Kmr outmr, Kmr (MemRef.UOffsetR (u, 0L))) a,MemRefZeroTopMapT.find_opt (Kmr (MemRef.UOffsetR (u, 0L)), Kmr outmr) a
