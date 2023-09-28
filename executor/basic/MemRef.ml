@@ -4,10 +4,10 @@ type t =
  | UOffsetR of (int64 * int64)
  | ROffsetR of (int64 * int64)
 
- let convert_varnode (v: PCode.varNode): t option = 
+ let convert_varnode (v: VarNode.t): t option = 
   match v.varNode_node with
-  | PCode.Unique (u) -> Some (UniqueR (u))
-  | PCode.Register (r) -> Some (RegisterR (r))
+  | Unique (u) -> Some (UniqueR (u))
+  | Register (r) -> Some (RegisterR (r))
   | _ -> None
 
 let pp fmt = function 
@@ -15,3 +15,5 @@ let pp fmt = function
   | RegisterR (r) -> Format.fprintf fmt "RegisterR $%Lx" r
   | UOffsetR (u, o) -> Format.fprintf fmt "UOffsetR ($%Lx, %Ld)" u o
   | ROffsetR (r, o) -> Format.fprintf fmt "ROffsetR ($%Lx, %Ld)" r o
+
+let compare = compare

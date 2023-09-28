@@ -1,11 +1,16 @@
+open Basic;;
+open Basic_domain;;
+open Value_domain;;
+
+module Key = struct
 type key =
  | Kmr of MemRef.t
  | KZero
 
-module MemRefZeroTopMapT = Map.Make(struct
-  type t = (key * key)
-  let compare = compare
-end)
+type t = key * key
+
+let compare = compare
+end
 
 module I64D =
 struct
@@ -15,7 +20,7 @@ struct
   | Bot
   let compare = compare
   let top = Top
-  let widen a b = match a,b with
+  let join a b = match a,b with
   | Bot, _ -> b
   | _, Bot -> a
   | I64 a, I64 b -> if a = b then I64 a else if (Int64.max a b > 10L) then Top else I64 (Int64.max a b)
@@ -27,7 +32,7 @@ struct
   | I64 a, I64 b -> if a = b then I64 a else if (Int64.min a b < -10L) then Bot else I64 (Int64.min a b)
   | _, _ -> Bot
 
-  let ole a b = match a,b with
+  let le a b = match a,b with
   | Bot , _ -> true
   | _, Bot -> false
   | I64 a, I64 b -> a <= b
@@ -40,21 +45,15 @@ struct
   | Bot -> Format.fprintf fmt "Bot"
 end
 
-type t = I64D.t MemRefZeroTopMapT.t
 
-let join (a: t) (b: t) = MemRefZeroTopMapT.merge (fun _ a b -> match a,b with
-| Some a, Some b -> Some (I64D.widen a b)
-| _, _ -> None
-) a b
-let top = MemRefZeroTopMapT.empty
+module MemRefZeroTopMapT = TopMapD.MakeLatticeWithTop(Key)(I64D)
 
-let meet (a: t) (b: t) = MemRefZeroTopMapT.merge (fun _ a b -> match a,b with
-| Some a, Some b -> Some (I64D.meet a b)
-| Some a, None -> Some a
-| None, Some b -> Some b
-| _, _ -> None
-) a b
+type t = MemRefZeroTopMapT.t
 
+let join = MemRefZeroTopMapT.join;;
+let le = MemRefZeroTopMapT.le;;
+let top = MemRefZeroTopMapT.top;;
+let meet = MemRefZeroTopMapT.meet;;
 let refine_consts (a: t) =
   let consts = MemRefZeroTopMapT.filter_map (fun (k1, k2) v -> match k2 with
   | KZero -> (match (MemRefZeroTopMapT.find_opt (KZero, k1) a) with
@@ -65,8 +64,8 @@ let refine_consts (a: t) =
   | _ -> None
   ) a in
   MemRefZeroTopMapT.to_seq a |> Seq.filter_map (fun ((k1, k2), v) -> (match (k1, k2, MemRefZeroTopMapT.find_opt (k1, KZero) consts, MemRefZeroTopMapT.find_opt (k2, KZero) consts, v) with
-  | (Kmr _, _, None, Some j, I64D.I64 vi) -> Some ((k1, KZero), Int64.add vi j)
-  | (_, Kmr _, Some i, None, I64D.I64 vi) -> Some ((KZero, k2), Int64.sub vi i)
+  | (Kmr _, _, None, Some j, I64D.I64 vi) -> Some ((k1, Key.KZero), Int64.add vi j)
+  | (_, Kmr _, Some i, None, I64D.I64 vi) -> Some ((Key.KZero, k2), Int64.sub vi i)
   | _ -> None
     )) |> Seq.fold_left (fun acc (k, v) -> MemRefZeroTopMapT.update k (fun o -> match o with
      | Some o -> Some (I64D.meet o (I64D.I64 v))
@@ -76,8 +75,8 @@ let refine_consts (a: t) =
 
 let ole (m1: t) (m2: t): bool =
   MemRefZeroTopMapT.fold (fun k v2 acc -> match MemRefZeroTopMapT.find_opt k m1 with
- | Some v1 -> acc && (I64D.ole v1 v2)
- | None -> acc && (I64D.ole I64D.top v2)
+ | Some v1 -> acc && (I64D.le v1 v2)
+ | None -> acc && (I64D.le I64D.top v2)
   ) m2 true
 
 
@@ -96,7 +95,7 @@ let clear_memref a = MemRefZeroTopMapT.filter (fun k _ -> match k with
  | _ -> true
 ) a
 
-let clear_mr a (mr: MemRef.t) = MemRefZeroTopMapT.filter (fun (k1, k2) v -> (compare k1 (Kmr mr) <> 0) && (compare k2 (Kmr mr) <> 0)) a
+let clear_mr a (mr: MemRef.t) = MemRefZeroTopMapT.filter (fun (k1, k2) _ -> (compare k1 (Kmr mr) <> 0) && (compare k2 (Kmr mr) <> 0)) a
 
 let gen_single_lt (a: t) (mr: MemRef.t) (c: int64) = 
   a |> MemRefZeroTopMapT.add (Kmr mr, KZero) (I64D.I64 (Int64.pred c))
@@ -117,13 +116,13 @@ let request_interval (a: t) (mr: MemRef.t) = match mr with
     let mmr = MemRef.UOffsetR(v, 0L) in
     let equiv_mr = MemRefZeroTopMapT.filter_map (fun (k1, k2) v -> match k1, k2 with
     | Kmr (mr1), Kmr (mr2) -> if (v = I64D.I64 0L && (compare mmr mr1 = 0) && MemRefZeroTopMapT.find_opt (Kmr mr2, Kmr mr1) a = Some (I64D.I64 0L)) then Some (mr2) else None | _ -> None) a |>
-    MemRefZeroTopMapT.to_seq |> Seq.map (fun ((k1, k2), v) -> v) in
+    MemRefZeroTopMapT.to_seq |> Seq.map (fun (_, v) -> v) in
     let equiv_intervals = Seq.map (fun mr -> find_interval_shallow a mr) equiv_mr in
     let interval = find_interval_shallow a mmr in
     Seq.fold_left (fun acc (minv, maxv) ->(IntervalD.meet_et_low minv (fst acc), IntervalD.meet_et_high maxv (snd acc))) interval equiv_intervals
  | _ -> (IntervalD.ETop, IntervalD.ETop)
 
-let process_load (p: PCode.prog) (a: t) (pointerv: PCode.varNode) (outv: PCode.varNode) =
+let process_load (_: Prog.t) (a: t) (pointerv: VarNode.t) (outv: VarNode.t) =
   match pointerv.varNode_node, MemRef.convert_varnode outv with
   | Unique u, Some outmr -> (match (
 MemRefZeroTopMapT.find_opt (Kmr outmr, Kmr (MemRef.UOffsetR (u, 0L))) a,MemRefZeroTopMapT.find_opt (Kmr (MemRef.UOffsetR (u, 0L)), Kmr outmr) a
@@ -134,35 +133,35 @@ MemRefZeroTopMapT.find_opt (Kmr outmr, Kmr (MemRef.UOffsetR (u, 0L))) a,MemRefZe
   
 
 
-let process_assignment (a: t) (asn: PCode.assignable) (outv: PCode.varNode) =   match MemRef.convert_varnode outv with
+let process_assignment (a: t) (asn: Assignable.t) (outv: VarNode.t) =   match MemRef.convert_varnode outv with
 | None -> a
 | Some outmr -> 
   let na = clear_mr a outmr in
   (match asn with
-  | PCode.Avar vn -> (match MemRef.convert_varnode vn with
+  | Avar vn -> (match MemRef.convert_varnode vn with
     | Some amr -> na |> MemRefZeroTopMapT.add (Kmr outmr, Kmr amr) (I64D.I64 0L) |> MemRefZeroTopMapT.add (Kmr amr, Kmr outmr) (I64D.I64 0L)
     | _ -> na
   )
-| PCode.Abop (PCode.Bint_add, op1v, op2v) -> (
+| Abop (Bint_add, op1v, op2v) -> (
   match (op1v.varNode_node, op2v.varNode_node) with
-   | (PCode.Unique u, PCode.Const c) -> na |> MemRefZeroTopMapT.add (Kmr outmr, Kmr (MemRef.UniqueR u)) (I64D.I64 c) |> MemRefZeroTopMapT.add (Kmr (MemRef.UniqueR u), Kmr outmr) (I64D.I64 (Int64.neg c))
-   | (PCode.Register r, PCode.Const c) -> (match (MemRefZeroTopMapT.find_opt (Kmr outmr, Kmr (MemRef.RegisterR r)) a, MemRefZeroTopMapT.find_opt (Kmr (MemRef.RegisterR r), Kmr outmr) a) with
+   | (Unique u, Const c) -> na |> MemRefZeroTopMapT.add (Kmr outmr, Kmr (MemRef.UniqueR u)) (I64D.I64 c) |> MemRefZeroTopMapT.add (Kmr (MemRef.UniqueR u), Kmr outmr) (I64D.I64 (Int64.neg c))
+   | (Register r, Const c) -> (match (MemRefZeroTopMapT.find_opt (Kmr outmr, Kmr (MemRef.RegisterR r)) a, MemRefZeroTopMapT.find_opt (Kmr (MemRef.RegisterR r), Kmr outmr) a) with
     | (Some (I64D.I64 i1), Some (I64D.I64 i2)) -> if (c = i1 && c = (Int64.neg i2)) then a else na |> MemRefZeroTopMapT.add (Kmr outmr, Kmr (MemRef.RegisterR r)) (I64D.I64 c) |> MemRefZeroTopMapT.add (Kmr (MemRef.RegisterR r), Kmr outmr) (I64D.I64 (Int64.neg c))
     | _ -> na |> MemRefZeroTopMapT.add (Kmr outmr, Kmr (MemRef.RegisterR r)) (I64D.I64 c) |> MemRefZeroTopMapT.add (Kmr (MemRef.RegisterR r), Kmr outmr) (I64D.I64 (Int64.neg c))
     )
    | _ -> na)
-| PCode.Abop (PCode.Bint_sub, op1v, op2v) -> (
+| Abop (Bint_sub, op1v, op2v) -> (
   match (op1v.varNode_node, op2v.varNode_node) with
-   | (PCode.Unique u, PCode.Const c) -> na |> MemRefZeroTopMapT.add (Kmr outmr, Kmr (MemRef.UniqueR u)) (I64D.I64 (Int64.neg c)) |> MemRefZeroTopMapT.add (Kmr (MemRef.UniqueR u), Kmr outmr) (I64D.I64 c)
+   | (Unique u, Const c) -> na |> MemRefZeroTopMapT.add (Kmr outmr, Kmr (MemRef.UniqueR u)) (I64D.I64 (Int64.neg c)) |> MemRefZeroTopMapT.add (Kmr (MemRef.UniqueR u), Kmr outmr) (I64D.I64 c)
    | _ -> na)
-| PCode.Abop (_, _, _) -> na
-| PCode.Auop (PCode.Uint_zext, vn) -> (match MemRef.convert_varnode vn with
+| Abop (_, _, _) -> na
+| Auop (Uint_zext, vn) -> (match MemRef.convert_varnode vn with
 | Some amr -> na |> MemRefZeroTopMapT.add (Kmr outmr, Kmr amr) (I64D.I64 0L) |> MemRefZeroTopMapT.add (Kmr amr, Kmr outmr) (I64D.I64 0L)
 | _ -> na
 )
-| PCode.Auop (PCode.Uint_sext, vn) -> (match MemRef.convert_varnode vn with
+| Auop (Uint_sext, vn) -> (match MemRef.convert_varnode vn with
 | Some amr -> na |> MemRefZeroTopMapT.add (Kmr outmr, Kmr amr) (I64D.I64 0L) |> MemRefZeroTopMapT.add (Kmr amr, Kmr outmr) (I64D.I64 0L)
 | _ -> na
 )
-| PCode.Auop (_, _) -> na
+| Auop (_, _) -> na
 )

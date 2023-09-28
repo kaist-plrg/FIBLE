@@ -1,3 +1,8 @@
+open StdlibExt;;
+open Basic;;
+open Basic_domain;;
+open Value_domain;;
+open State_domain;;
 open Util;;
 
 Random.self_init ();;
@@ -43,10 +48,10 @@ let run_ghidra ifile tmp_path cwd port =
   ghidra_pid;;
 
 
-let instHash: (int * PCode.inst list) DS.Int64Hashtbl.t = DS.Int64Hashtbl.create 1000;;
-let instfunc (si: spaceinfo) (fd: Unix.file_descr) (addr: int64): (int * PCode.inst list) option =
-    if DS.Int64Hashtbl.mem instHash addr then
-      Some (DS.Int64Hashtbl.find instHash addr)
+let instHash: (int * Inst.t list) Int64Hashtbl.t = Int64Hashtbl.create 1000;;
+let instfunc (si: spaceinfo) (fd: Unix.file_descr) (addr: int64): (int * Inst.t list) option =
+    if Int64Hashtbl.mem instHash addr then
+      Some (Int64Hashtbl.find instHash addr)
     else
       let iaddr = addr in
       print_endline (Printf.sprintf "Sending %Lx" (iaddr));
@@ -59,8 +64,8 @@ let instfunc (si: spaceinfo) (fd: Unix.file_descr) (addr: int64): (int * PCode.i
       else
         let pcodes = List.map (pcode_raw_to_pcode si) (get_pcode_list fd) in
         print_endline (Printf.sprintf "Received %d pcodes" (List.length pcodes));
-        print_endline (String.concat "\n" (List.map string_of_pcode pcodes));
-        DS.Int64Hashtbl.add instHash addr (Int32.to_int inst_len, pcodes);
+        List.iter (fun x -> Format.printf "%a\n" Inst.pp x) pcodes;
+        Int64Hashtbl.add instHash addr (Int32.to_int inst_len, pcodes);
         Some (Int32.to_int inst_len, pcodes);;
   
 let initstate (si: spaceinfo) (fd: Unix.file_descr) (addr: int64) =
@@ -131,14 +136,14 @@ let () =
       rom = initstate spaceinfo fd;
       entry_addr = y
     } (y) in
-    let stop_addrs = (snd x.analysis_contour.basic_block) in
+    let stop_addrs = (snd x.analysis_contour.boundary_point) in
     let contained_addrs = (x.abs_state) in
-    print_endline (Printf.sprintf "Stop addrs %s" (String.concat ", " (List.map (fun x -> Printf.sprintf "%Lx" ((fst x))) (List.of_seq (DS.LocSet.to_seq stop_addrs)))));
-    print_endline (Printf.sprintf "Contained addrs %s" (String.concat ", " (List.map (fun x -> Printf.sprintf "%Lx" ((fst (fst x)))) (DS.LocBotMap.to_seq contained_addrs |> Seq.filter (fun x -> snd (fst x) == 0) |> List.of_seq))));
+    print_endline (Printf.sprintf "Stop addrs %s" (String.concat ", " (List.map (fun x -> Printf.sprintf "%Lx" ((fst x))) (List.of_seq (LocSetD.to_seq stop_addrs)))));
+    print_endline (Printf.sprintf "Contained addrs %s" (String.concat ", " (List.map (fun x -> Printf.sprintf "%Lx" ((fst (fst x)))) (FSAbsD.to_seq contained_addrs |> Seq.filter (fun x -> snd (fst x) == 0) |> List.of_seq))));
     if !dump_cfa_path <> "" then
       let dump_cfa_path = Filename.concat !dump_cfa_path (fname ^ ".boundary") in
       let oc = open_out dump_cfa_path in
-      let sorted_fboundary = DS.LocBotMap.to_seq contained_addrs |> Seq.filter (fun x -> snd (fst x) == 0) |> Seq.map (fun x -> fst (fst x)) |> List.of_seq |> List.sort compare in
+      let sorted_fboundary = FSAbsD.to_seq contained_addrs |> Seq.filter (fun x -> snd (fst x) == 0) |> Seq.map (fun x -> fst (fst x)) |> List.of_seq |> List.sort compare in
       List.iter (fun x -> Printf.fprintf oc "%Lx\n" x) sorted_fboundary;
       close_out oc;
     ) func_with_addrs;

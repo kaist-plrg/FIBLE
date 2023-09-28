@@ -1,4 +1,4 @@
-open PCode;;
+open Basic;;
 
 type spaceinfo = {
   unique: int32;
@@ -18,93 +18,6 @@ type pcode_raw = {
   inputs: varnode_raw array;
   output: varnode_raw option;
 };;
-
-let string_of_varnode (v: varNode) =
-  match v.varNode_node with
-  | Register n -> Printf.sprintf "$%Ld:%ld" n v.varNode_width
-  | Unique n -> Printf.sprintf "#%Ld:%ld" n v.varNode_width
-  | Const n -> Printf.sprintf "%Ld:%ld" n v.varNode_width
-  | Ram n -> Printf.sprintf "*%Ld:%ld" n v.varNode_width
-;;
-
-let string_of_assignable (a: assignable) =
-  match a with
-   | Avar (vn) -> string_of_varnode vn
-   | Auop (op, vn) -> (match op with
-    | Upopcount -> Printf.sprintf "popcount(%s)" (string_of_varnode vn)
-    | Ulzcount -> Printf.sprintf "lzcount(%s)" (string_of_varnode vn)
-    | Uint_zext -> Printf.sprintf "zext(%s)" (string_of_varnode vn)
-    | Uint_sext -> Printf.sprintf "sext(%s)" (string_of_varnode vn)
-    | Uint_2comp -> Printf.sprintf "-%s" (string_of_varnode vn)
-    | Uint_negate -> Printf.sprintf "~%s" (string_of_varnode vn)
-    | Ubool_negate -> Printf.sprintf "!%s" (string_of_varnode vn)
-    | Ufloat_neg -> Printf.sprintf "f-%s" (string_of_varnode vn)
-    | Ufloat_abs -> Printf.sprintf "abs(%s)" (string_of_varnode vn)
-    | Ufloat_sqrt -> Printf.sprintf "sqrt(%s)" (string_of_varnode vn)
-    | Ufloat_ceil -> Printf.sprintf "ceil(%s)" (string_of_varnode vn)
-    | Ufloat_floor -> Printf.sprintf "floor(%s)" (string_of_varnode vn)
-    | Ufloat_round -> Printf.sprintf "round(%s)" (string_of_varnode vn)
-    | Ufloat_nan -> Printf.sprintf "nan(%s)" (string_of_varnode vn)
-    | Uint2float -> Printf.sprintf "int2float(%s)" (string_of_varnode vn)
-    | Ufloat2float -> Printf.sprintf "float2float(%s)" (string_of_varnode vn)
-    | Utrunc -> Printf.sprintf "trunc(%s)" (string_of_varnode vn)
-   )
-   | Abop (op, vn1, vn2) -> (match op with
-    | Bpiece -> Printf.sprintf "%s::%s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bsubpiece -> Printf.sprintf "%s:%s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_equal -> Printf.sprintf "%s == %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_notequal -> Printf.sprintf "%s != %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_less -> Printf.sprintf "%s < %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_sless -> Printf.sprintf "%s s< %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_lessequal -> Printf.sprintf "%s <= %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_slessequal -> Printf.sprintf "%s s<= %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_add -> Printf.sprintf "%s + %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_sub -> Printf.sprintf "%s - %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_carry -> Printf.sprintf "carry(%s, %s)" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_scarry -> Printf.sprintf "scarry(%s, %s)" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_sborrow -> Printf.sprintf "sborrow(%s, %s)" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_xor -> Printf.sprintf "%s ^ %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_and -> Printf.sprintf "%s & %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_or -> Printf.sprintf "%s | %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_left -> Printf.sprintf "%s << %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_right -> Printf.sprintf "%s >> %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_sright -> Printf.sprintf "%s s>> %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_mult -> Printf.sprintf "%s * %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_div -> Printf.sprintf "%s / %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_rem -> Printf.sprintf "%s %% %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_sdiv -> Printf.sprintf "%s s/ %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bint_srem -> Printf.sprintf "%s s%% %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bbool_xor -> Printf.sprintf "%s ^^ %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bbool_and -> Printf.sprintf "%s && %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bbool_or -> Printf.sprintf "%s || %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bfloat_equal -> Printf.sprintf "%s f== %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bfloat_notequal -> Printf.sprintf "%s f!= %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bfloat_less -> Printf.sprintf "%s f< %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bfloat_lessequal -> Printf.sprintf "%s f<= %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bfloat_add -> Printf.sprintf "%s f+ %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bfloat_sub -> Printf.sprintf "%s f- %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bfloat_mult -> Printf.sprintf "%s f* %s" (string_of_varnode vn1) (string_of_varnode vn2)
-    | Bfloat_div -> Printf.sprintf "%s f/ %s" (string_of_varnode vn1) (string_of_varnode vn2)
-   )
-
-let string_of_pcode (p: inst) =
-  match p with
-  | Iload (i0, i1, o) -> Printf.sprintf "%s = *[%s]%s;" (string_of_varnode o) (string_of_varnode i0) (string_of_varnode i1)
-  | Istore (i0, i1, i2) -> Printf.sprintf "*[%s]%s = %s;" (string_of_varnode i0) (string_of_varnode i1) (string_of_varnode i2)
-  | Ijump (a, i) -> (match a with
-    | Jbranch -> Printf.sprintf "goto %s;" (string_of_varnode i)
-    | Jcall -> Printf.sprintf "call %s;" (string_of_varnode i)
-  )
-  | Ijump_ind (a, i) -> (match a with
-    | JIbranch -> Printf.sprintf "goto *%s;" (string_of_varnode i)
-    | JIcall -> Printf.sprintf "call *%s;" (string_of_varnode i)
-    | JIret -> Printf.sprintf "return %s;" (string_of_varnode i)
-  )
-  | Icbranch (i0, i1) -> Printf.sprintf "if %s goto %s;" (string_of_varnode i0) (string_of_varnode i1)
-  | Iassignment (i, o) -> Printf.sprintf "%s = %s;" (string_of_varnode o) (string_of_assignable i)
-  | INop -> "nop;"
-  | Iunimplemented -> "unimplemented"
-;;
 
 
 let recvbuf = Bytes.create 2048;;
@@ -192,12 +105,12 @@ let get_varnode_raw (fd: Unix.file_descr) : varnode_raw =
   let size = get_int fd in
   {space; offset; size};;
 
-let tmpReg = {
+let tmpReg: VarNode.t = {
    varNode_node = Unique 0L;
    varNode_width = 0l
    };;
 
-let varnode_raw_to_varnode (si: spaceinfo) (v: varnode_raw) : varNode =
+let varnode_raw_to_varnode (si: spaceinfo) (v: varnode_raw) : VarNode.t =
   if v.space = si.unique then
     { varNode_node = Unique v.offset;  varNode_width = v.size }
   else if v.space = si.register then
@@ -235,14 +148,14 @@ let get_pcode_list (fd: Unix.file_descr) : pcode_raw list =
     List.rev (loop [] (Int32.to_int num_pcodes));;
 
 
-let pcode_raw_to_pcode (si: spaceinfo) (p: pcode_raw) : inst =
+let pcode_raw_to_pcode (si: spaceinfo) (p: pcode_raw) : Inst.t =
   print_endline (Printf.sprintf "Converting %s" (string_of_pcode_raw p));
   let inputs i = varnode_raw_to_varnode si p.inputs.(i) in
   let output _ = varnode_raw_to_varnode si (Option.get p.output) in
-  let mkJump a = Ijump (a, inputs 0) in
-  let mkJIump a = Ijump_ind (a, inputs 0) in  
-  let mkUop op = Iassignment (Auop (op, inputs 0), output ()) in
-  let mkBop op = Iassignment (Abop (op, inputs 0, inputs 1), output ()) in
+  let mkJump a = Inst.Ijump (a, inputs 0) in
+  let mkJIump a = Inst.Ijump_ind (a, inputs 0) in  
+  let mkUop op = Inst.Iassignment (Auop (op, inputs 0), output ()) in
+  let mkBop op = Inst.Iassignment (Abop (op, inputs 0, inputs 1), output ()) in
   match p.opcode with
   | 0l -> Iunimplemented
   | 1l -> Iassignment (Avar (inputs 0), output ())

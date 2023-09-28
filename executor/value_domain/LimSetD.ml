@@ -1,4 +1,4 @@
-open DS;;
+open StdlibExt;;
 
 type t =
  | Top
@@ -39,7 +39,7 @@ let mul (a: t) (b: t) (width: int32): t = match (a, b) with
   | _, Top -> Top
   | LimSet a, LimSet b -> Int64Set.of_seq (
     Seq.flat_map (fun x ->
-        Seq.map (fun y -> PCode.cut_width (Int64.mul x y) width) (Int64Set.to_seq b)
+        Seq.map (fun y -> Int64Ext.cut_width (Int64.mul x y) width) (Int64Set.to_seq b)
     ) (Int64Set.to_seq a)
 ) |> lift_set
 
@@ -48,14 +48,14 @@ let add (a: t) (b: t) (width: int32): t = match (a, b) with
 | _, Top -> Top
 | LimSet a, LimSet b -> Int64Set.of_seq (
     Seq.flat_map (fun x ->
-        Seq.map (fun y -> PCode.cut_width (Int64.add x y) width) (Int64Set.to_seq b)
+        Seq.map (fun y -> Int64Ext.cut_width (Int64.add x y) width) (Int64Set.to_seq b)
     ) (Int64Set.to_seq a)
 ) |> lift_set
 
 let sext (a: t) (in_width: int32) (out_width: int32): t = match a with
   | Top -> Top
   | LimSet a -> Int64Set.of_seq (
-    Seq.map (fun x -> PCode.sext x in_width out_width) (Int64Set.to_seq a)
+    Seq.map (fun x -> Int64Ext.sext x in_width out_width) (Int64Set.to_seq a)
   ) |> lift_set
 
 

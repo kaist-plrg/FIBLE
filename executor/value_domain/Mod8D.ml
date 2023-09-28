@@ -1,4 +1,4 @@
-open DS;;
+open StdlibExt;;
 
 type t = Int64Set.t
 

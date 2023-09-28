@@ -1,3 +1,5 @@
+open StdlibExt;;
+
 type et =
  | EInt of int64
  | ETop
@@ -56,13 +58,13 @@ let ole (x : t) (y : t) : bool =
   | (xlow, xhigh), (ylow, yhigh) ->
     let ole_low = (match xlow, ylow with
     | EInt x, EInt y -> y <= x
-    | EInt x, ETop -> true
-    | ETop, EInt x -> false
+    | EInt _, ETop -> true
+    | ETop, EInt _ -> false
     | _ -> true) in
     let ole_high = (match xhigh, yhigh with
     | EInt x, EInt y -> x <= y
-    | EInt x, ETop -> true
-    | ETop, EInt x -> false
+    | EInt _, ETop -> true
+    | ETop, EInt _ -> false
     | _ -> true) in
     ole_low && ole_high
 
@@ -84,16 +86,16 @@ let add (x : t) (y : t) : t =
   | (EInt xlow, EInt xhigh), (EInt ylow, EInt yhigh) -> (EInt (Int64.add xlow ylow), EInt (Int64.add xhigh yhigh))
   |  _ -> top
 
-let sext (x: t) (in_width: int32) (out_width: int32) =
+let sext (x: t) (_: int32) (out_width: int32) =
   match x with
   | (EInt xlow, EInt xhigh) -> if xlow >= (Int64.shift_left 1L (Int32.to_int (Int32.sub out_width 1l))) then top else
     if xhigh >= (Int64.shift_left 1L (Int32.to_int (Int32.sub out_width 1l))) then top else
       (EInt xlow, EInt xhigh)
   | _ -> top
 
-let try_concretize (x: t) (limit: int): DS.Int64Set.t option = match x with
+let try_concretize (x: t) (limit: int): Int64Set.t option = match x with
   | (EInt xlow, EInt xhigh) ->
     if Int64.sub xhigh xlow > Int64.of_int limit then None
     else
-      DS.Int64Set.of_list (List.init (Int64.to_int (Int64.sub xhigh xlow) + 1) (fun i -> Int64.add xlow (Int64.of_int i))) |> Option.some
+      Int64Set.of_list (List.init (Int64.to_int (Int64.sub xhigh xlow) + 1) (fun i -> Int64.add xlow (Int64.of_int i))) |> Option.some
   | _ -> None
