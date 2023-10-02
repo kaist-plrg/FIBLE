@@ -1,5 +1,5 @@
 (library
   (name stdlibExt)
   (flags -w -20-33-3)
-  (modules Int64Ext HashtblExt Int64Map Int64Set Int64Hashtbl)
+  (modules Int64Ext HashtblExt Int64Map Int64Set Int64Hashtbl MutMap MutSet)
 )
