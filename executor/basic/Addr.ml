@@ -1,3 +1,3 @@
-open StdlibExt;;
+open StdlibExt
 
-type t = Int64Ext.t;;
+type t = Int64Ext.t

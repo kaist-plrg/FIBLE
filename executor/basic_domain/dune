@@ -1,5 +1,16 @@
 (library
-  (name basic_domain)
-  (libraries basic)
-  (modules DomainSpec BotMapD TopMapD SetD TupleD TripleD LocBotMapD LocSetD LocSetD_Mut LocSetOptionD LocSetOptionD_Mut MemRefTopMapD)
-)
+ (name basic_domain)
+ (libraries basic)
+ (modules
+  DomainSpec
+  BotMapD
+  TopMapD
+  SetD
+  TupleD
+  TripleD
+  LocBotMapD
+  LocSetD
+  LocSetD_Mut
+  LocSetOptionD
+  LocSetOptionD_Mut
+  MemRefTopMapD))

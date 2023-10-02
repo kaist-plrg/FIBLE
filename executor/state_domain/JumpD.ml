@@ -1,3 +1,2 @@
-open Basic_domain;;
-
-include LocBotMapD.Make(LocSetD)
+open Basic_domain
+include LocBotMapD.Make (LocSetD)

@@ -1,4 +1,1 @@
- type t =
- | JIbranch
- | JIcall
- | JIret
+type t = JIbranch | JIcall | JIret

@@ -1,3 +1,1 @@
-type t =
-| Jbranch
-| Jcall
+type t = Jbranch | Jcall

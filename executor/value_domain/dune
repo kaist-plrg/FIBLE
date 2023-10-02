@@ -1,5 +1,4 @@
 (library
-  (name value_domain)
-  (libraries basic basic_domain)
-  (modules LimSetD Mod8D IntervalD AbsVal)
-)
+ (name value_domain)
+ (libraries basic basic_domain)
+ (modules LimSetD Mod8D IntervalD AbsVal))
