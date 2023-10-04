@@ -197,5 +197,4 @@ let () =
           List.iter (fun x -> Printf.fprintf oc "%Lx\n" x) sorted_fboundary;
           close_out oc))
       func_with_addrs;
-    Unix.sleep 4;
     Unix.kill ghidra_pid Sys.sigterm
