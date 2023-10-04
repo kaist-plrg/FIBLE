@@ -126,7 +126,7 @@ let () =
     print_endline (Printf.sprintf "Listening on port %d" port);
     let ghidra_pid = run_ghidra !ifile tmp_path cwd port in
 
-    let (x, _, _) = Unix.select [ sfd ] [] [] (10.0) in
+    let (x, _, _) = Unix.select [ sfd ] [] [] (30.0) in
     if x = [] then
       (Unix.kill ghidra_pid Sys.sigterm;
       failwith "No connection")
