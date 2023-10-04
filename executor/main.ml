@@ -126,9 +126,9 @@ let () =
     print_endline (Printf.sprintf "Listening on port %d" port);
     let ghidra_pid = run_ghidra !ifile tmp_path cwd port in
 
-    let (x, _, _) = Unix.select [ sfd ] [] [] (30.0) in
-    if x = [] then
-      (Unix.kill ghidra_pid Sys.sigterm;
+    let x, _, _ = Unix.select [ sfd ] [] [] 30.0 in
+    if x = [] then (
+      Unix.kill ghidra_pid Sys.sigterm;
       failwith "No connection")
     else ();
     let fd, _ = Unix.accept sfd in
@@ -159,7 +159,7 @@ let () =
     List.iter
       (fun (fname, y) ->
         let x =
-          CFA.Mutable.follow_flow
+          CFA.Immutable.follow_flow
             {
               ins_mem = instfunc spaceinfo fd;
               rom = initstate spaceinfo fd;
@@ -174,13 +174,13 @@ let () =
              (String.concat ", "
                 (List.map
                    (fun x -> Printf.sprintf "%Lx" (fst x))
-                   (List.of_seq (LocSetD_Mut.to_seq stop_addrs)))));
+                   (List.of_seq (LocSetD.to_seq stop_addrs)))));
         print_endline
           (Printf.sprintf "Contained addrs %s"
              (String.concat ", "
                 (List.map
                    (fun x -> Printf.sprintf "%Lx" (fst (fst x)))
-                   (FSAbsD_Mut.AbsLocMapD.to_seq contained_addrs
+                   (FSAbsD.AbsLocMapD.to_seq contained_addrs
                    |> Seq.filter (fun x -> snd (fst x) == 0)
                    |> List.of_seq))));
         if !dump_cfa_path <> "" then (
@@ -189,7 +189,7 @@ let () =
           in
           let oc = open_out dump_cfa_path in
           let sorted_fboundary =
-            FSAbsD_Mut.AbsLocMapD.to_seq contained_addrs
+            FSAbsD.AbsLocMapD.to_seq contained_addrs
             |> Seq.filter (fun x -> snd (fst x) == 0)
             |> Seq.map (fun x -> fst (fst x))
             |> List.of_seq |> List.sort compare

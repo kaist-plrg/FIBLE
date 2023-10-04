@@ -152,28 +152,40 @@ module Immutable = struct
                     match v with
                     | Some (af, lss) ->
                         Some
-                          (AbsState.join af
-                             (AbsState.filter_single p ls lf ae ins), LocSetD.add ls lss)
-                    | None -> Some (AbsState.filter_single p ls lf ae ins, LocSetD.singleton ls)))
+                          ( AbsState.join af
+                              (AbsState.filter_single p ls lf ae ins),
+                            LocSetD.add ls lss )
+                    | None ->
+                        Some
+                          ( AbsState.filter_single p ls lf ae ins,
+                            LocSetD.singleton ls )))
               s
         | _ -> ())
       sj;
     LocSetD.iter
-      (fun l -> LocHashtbl.update locHash l (fun v -> Some (AbsState.top, LocSetD.empty)))
+      (fun l ->
+        LocHashtbl.update locHash l (fun v ->
+            Some (AbsState.top, LocSetD.empty)))
       (fst c.boundary_point);
 
-    let newLocSeq = LocHashtbl.to_seq locHash |> Seq.filter_map (
-        fun (l, (sa, lss)) -> if FSAbsD.AbsLocMapD.mem l a.pre_state then None else Some (l, sa)
-      )  in
-    
-    let newPre = FSAbsD.AbsLocMapD.add_seq newLocSeq (FSAbsD.AbsLocMapD.mapi
-      (fun ls s -> match LocHashtbl.find_opt locHash ls with
-        | Some (sa, lss) -> if LocSetD.exists (fun l -> fst ls < fst l) lss then
-            AbsState.widen s sa
-          else
-            AbsState.join s sa
-        | None -> s)
-      a.pre_state) in
+    let newLocSeq =
+      LocHashtbl.to_seq locHash
+      |> Seq.filter_map (fun (l, (sa, lss)) ->
+             if FSAbsD.AbsLocMapD.mem l a.pre_state then None else Some (l, sa))
+    in
+
+    let newPre =
+      FSAbsD.AbsLocMapD.add_seq newLocSeq
+        (FSAbsD.AbsLocMapD.mapi
+           (fun ls s ->
+             match LocHashtbl.find_opt locHash ls with
+             | Some (sa, lss) ->
+                 if LocSetD.exists (fun l -> fst ls < fst l) lss then
+                   AbsState.widen s sa
+                 else AbsState.join s sa
+             | None -> s)
+           a.pre_state)
+    in
 
     { pre_state = newPre; post_state = newPost }
 
@@ -211,7 +223,107 @@ module Immutable = struct
     let nc = join c (post p c) in
     if le nc c then c else a_fixpoint p nc
 
-  let follow_flow (p : Prog.t) (e : Addr.t) : t = a_fixpoint p (init p (e, 0))
+  let update_contour_single (p : Prog.t) (ca : t) (l : Loc.t) :
+      ContourD.t * JumpD.t * Loc.t List.t =
+    match
+      (Prog.get_ins p l, FSAbsD.AbsLocMapD.find_opt l ca.abs_state.post_state)
+    with
+    | Some i, Some a ->
+        let nuj =
+          UJumpD.join_single_loc ca.analysis_contour.unsound_jump l
+            (gen_ujump_single flow_heuristic_simple p l a i)
+        in
+        let eno, exo = gen_bb_single flow_heuristic_simple p l a i in
+        let nb =
+          Option.map
+            (fun l ->
+              BoundaryPointD.add_entry ca.analysis_contour.boundary_point l)
+            eno
+          |> Option.value ~default:ca.analysis_contour.boundary_point
+        in
+        let nb =
+          Option.map (fun l -> BoundaryPointD.add_exit nb l) exo
+          |> Option.value ~default:nb
+        in
+        let nj =
+          JumpD.join_single_loc ca.sound_jump l
+            (gen_jump_single flow_heuristic_simple p l a i)
+        in
+
+        let ulist =
+          JumpD.find_opt l nj
+          |> Option.value ~default:LocSetD.empty
+          |> LocSetD.to_seq |> List.of_seq
+        in
+        ({ unsound_jump = nuj; boundary_point = nb }, nj, ulist)
+    | _ -> (ca.analysis_contour, ca.sound_jump, [])
+
+  let post_contour_single (p : Prog.t) (ca : t) (l : Loc.t) : FSAbsD.t * bool =
+    let i = Prog.get_ins p l |> Option.get in
+    let sj = ca.sound_jump in
+    let preds = JumpD.get_preds sj l in
+    let na =
+      List.filter_map
+        (fun l ->
+          FSAbsD.AbsLocMapD.find_opt l ca.abs_state.pre_state
+          |> Option.map (fun a -> (l, a)))
+        preds
+      |> List.fold_left
+           (fun a (l, b) ->
+             match a with
+             | None -> Some (LocSetD.singleton l, b)
+             | Some (lss, a) -> Some (LocSetD.add l lss, AbsState.join a b))
+           Option.none
+    in
+    let na_pre =
+      match (na, FSAbsD.AbsLocMapD.find_opt l ca.abs_state.pre_state) with
+      | Some (lss, a), Some b ->
+          if LocSetD.exists (fun ls -> fst l < fst ls) lss then
+            AbsState.widen b a
+          else AbsState.join b a
+      | Some (lss, a), None -> a
+      | None, Some a -> a
+      | None, None -> raise (Failure "Assertion failed: find_opt")
+    in
+    let abs_1 : FSAbsD.t =
+      {
+        pre_state = FSAbsD.AbsLocMapD.add l na_pre ca.abs_state.pre_state;
+        post_state = ca.abs_state.post_state;
+      }
+    in
+    let np = AbsState.post_single p l na_pre i in
+    match FSAbsD.AbsLocMapD.find_opt l ca.abs_state.post_state with
+    | Some a ->
+        if AbsState.le a np then (abs_1, false)
+        else (FSAbsD.join_single_post abs_1 l np, true)
+    | None -> (FSAbsD.join_single_post abs_1 l np, true)
+
+  let post_worklist (p : Prog.t) (c : t) (l : Loc.t) : t * Loc.t List.t =
+    let na, propagated = post_contour_single p c l in
+    let nac, nsj, newList =
+      if propagated then
+        update_contour_single p
+          {
+            analysis_contour = c.analysis_contour;
+            sound_jump = c.sound_jump;
+            abs_state = na;
+          }
+          l
+      else (c.analysis_contour, c.sound_jump, [])
+    in
+    let nc = { analysis_contour = nac; sound_jump = nsj; abs_state = na } in
+    (nc, newList)
+
+  let rec a_fixpoint_worklist (p : Prog.t) (c : t) (ls : Loc.t List.t) : t =
+    match ls with
+    | [] -> c
+    | l :: ls ->
+        let nc, newLs = post_worklist p c l in
+        a_fixpoint_worklist p nc
+          (ls @ List.filter (fun l -> not (List.mem l ls)) newLs)
+
+  let follow_flow (p : Prog.t) (e : Addr.t) : t =
+    a_fixpoint_worklist p (init p (e, 0)) ((e, 0) :: [])
 end
 
 module Mutable = struct
