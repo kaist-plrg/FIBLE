@@ -142,9 +142,6 @@ module Immutable = struct
         a.pre_state
     in
     let locHash = LocHashtbl.create 100 in
-    FSAbsD.AbsLocMapD.iter
-      (fun ls s -> LocHashtbl.replace locHash ls s)
-      a.pre_state;
     JumpD.iter
       (fun ls s ->
         match (Prog.get_ins p ls, FSAbsD.AbsLocMapD.find_opt ls newPost) with
@@ -153,18 +150,31 @@ module Immutable = struct
               (fun lf ->
                 LocHashtbl.update locHash lf (fun v ->
                     match v with
-                    | Some af ->
+                    | Some (af, lss) ->
                         Some
                           (AbsState.join af
-                             (AbsState.filter_single p ls lf ae ins))
-                    | None -> Some (AbsState.filter_single p ls lf ae ins)))
+                             (AbsState.filter_single p ls lf ae ins), LocSetD.add ls lss)
+                    | None -> Some (AbsState.filter_single p ls lf ae ins, LocSetD.singleton ls)))
               s
         | _ -> ())
       sj;
     LocSetD.iter
-      (fun l -> LocHashtbl.update locHash l (fun v -> Some AbsState.top))
+      (fun l -> LocHashtbl.update locHash l (fun v -> Some (AbsState.top, LocSetD.empty)))
       (fst c.boundary_point);
-    let newPre = LocHashtbl.to_seq locHash |> FSAbsD.AbsLocMapD.of_seq in
+
+    let newLocSeq = LocHashtbl.to_seq locHash |> Seq.filter_map (
+        fun (l, (sa, lss)) -> if FSAbsD.AbsLocMapD.mem l a.pre_state then None else Some (l, sa)
+      )  in
+    
+    let newPre = FSAbsD.AbsLocMapD.add_seq newLocSeq (FSAbsD.AbsLocMapD.mapi
+      (fun ls s -> match LocHashtbl.find_opt locHash ls with
+        | Some (sa, lss) -> if LocSetD.exists (fun l -> fst ls < fst l) lss then
+            AbsState.widen s sa
+          else
+            AbsState.join s sa
+        | None -> s)
+      a.pre_state) in
+
     { pre_state = newPre; post_state = newPost }
 
   let post (p : Prog.t) (c : t) : t =

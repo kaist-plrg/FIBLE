@@ -23,6 +23,8 @@ include
         { value_nonrel = a; value_octagon = b; value_boolpower = c }
     end)
 
+let widen _ _ = top
+
 let pp fmt (a : t) =
   Format.fprintf fmt "NonRelState: %a\nOctagon: %a\nBoolPower: %a\n"
     NonRelStateD.pp a.value_nonrel OctagonD.pp a.value_octagon BoolPowerD.pp
