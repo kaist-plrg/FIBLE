@@ -276,14 +276,15 @@ module Immutable = struct
            Option.none
     in
     let na_pre =
-      match (na, FSAbsD.AbsLocMapD.find_opt l ca.abs_state.pre_state) with
-      | Some (lss, a), Some b ->
+      match (na, FSAbsD.AbsLocMapD.find_opt l ca.abs_state.pre_state, LocSetD.mem l (fst ca.analysis_contour.boundary_point)) with
+      | _, _, true -> AbsState.top
+      | Some (lss, a), Some b, _ ->
           if LocSetD.exists (fun ls -> fst l < fst ls) lss then
             AbsState.widen b a
           else AbsState.join b a
-      | Some (lss, a), None -> a
-      | None, Some a -> a
-      | None, None -> raise (Failure "Assertion failed: find_opt")
+      | Some (lss, a), None, _ -> a
+      | None, Some a, _ -> a
+      | None, None, false -> raise (Failure "Assertion failed: find_opt")
     in
     let abs_1 : FSAbsD.t =
       {
