@@ -28,8 +28,7 @@ let pp fmt (a : t) =
     NonRelStateD.pp a.value_nonrel OctagonD.pp a.value_octagon BoolPowerD.pp
     a.value_boolpower
 
-let post_contour_single (p : Prog.t) (ls : Loc.t) (lf : Loc.t) (a : t)
-    (i : Inst.t) : t =
+let post_single (p : Prog.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
   if ls = (0x100753L, 0) then
     Format.printf "astate: %a inst: %a\n" pp a Inst.pp i
   else ();
@@ -58,6 +57,15 @@ let post_contour_single (p : Prog.t) (ls : Loc.t) (lf : Loc.t) (a : t)
         value_octagon = OctagonD.clear_memref a.value_octagon;
         value_boolpower = BoolPowerD.clear_memref a.value_boolpower;
       }
+  | Icbranch (_, _) -> a
+  | Ijump (_, _) -> a
+  | Ijump_ind (_, _) -> a
+  | INop -> a
+  | Iunimplemented -> a
+
+let filter_single (_ : Prog.t) (_ : Loc.t) (lf : Loc.t) (a : t) (i : Inst.t) : t
+    =
+  match i with
   | Icbranch (condv, truelocv) -> (
       match truelocv with
       | { varNode_node = Ram trueloc; varNode_width = _ } -> (
@@ -82,10 +90,7 @@ let post_contour_single (p : Prog.t) (ls : Loc.t) (lf : Loc.t) (a : t)
               | _ -> a)
           | _ -> a)
       | _ -> a)
-  | Ijump (_, _) -> a
-  | Ijump_ind (_, _) -> a
-  | INop -> a
-  | Iunimplemented -> a
+  | _ -> a
 
 let try_concretize_vn (a : t) (vn : VarNode.t) (limit : int) : Int64Set.t option
     =

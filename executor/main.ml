@@ -163,7 +163,7 @@ let () =
             y
         in
         let stop_addrs = snd x.analysis_contour.boundary_point in
-        let contained_addrs = x.abs_state in
+        let contained_addrs = x.abs_state.pre_state in
         print_endline
           (Printf.sprintf "Stop addrs %s"
              (String.concat ", "
@@ -175,7 +175,7 @@ let () =
              (String.concat ", "
                 (List.map
                    (fun x -> Printf.sprintf "%Lx" (fst (fst x)))
-                   (FSAbsD.to_seq contained_addrs
+                   (FSAbsD.AbsLocMapD.to_seq contained_addrs
                    |> Seq.filter (fun x -> snd (fst x) == 0)
                    |> List.of_seq))));
         if !dump_cfa_path <> "" then (
@@ -184,7 +184,7 @@ let () =
           in
           let oc = open_out dump_cfa_path in
           let sorted_fboundary =
-            FSAbsD.to_seq contained_addrs
+            FSAbsD.AbsLocMapD.to_seq contained_addrs
             |> Seq.filter (fun x -> snd (fst x) == 0)
             |> Seq.map (fun x -> fst (fst x))
             |> List.of_seq |> List.sort compare

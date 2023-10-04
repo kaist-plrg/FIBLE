@@ -78,3 +78,27 @@ struct
 
   let top : t = R.make T1.top T2.top T3.top
 end
+
+module MakeJoinSemiLattice_Mut_Record
+    (T1 : DomainSpec.JoinSemiLatitce_Mut)
+    (T2 : DomainSpec.JoinSemiLatitce_Mut)
+    (T3 : DomainSpec.JoinSemiLatitce_Mut) (R : sig
+      type t
+
+      val get_fst : t -> T1.t
+      val get_snd : t -> T2.t
+      val get_trd : t -> T3.t
+    end) =
+struct
+  type t = R.t
+
+  let join (l1 : t) (l2 : t) : unit =
+    T1.join (R.get_fst l1) (R.get_fst l2);
+    T2.join (R.get_snd l1) (R.get_snd l2);
+    T3.join (R.get_trd l1) (R.get_trd l2)
+
+  let le (l1 : t) (l2 : t) : bool =
+    T1.le (R.get_fst l1) (R.get_fst l2)
+    && T2.le (R.get_snd l1) (R.get_snd l2)
+    && T3.le (R.get_trd l1) (R.get_trd l2)
+end

@@ -96,15 +96,15 @@ module Immutable = struct
   let gen_contour (p : Prog.t) (a : FSAbsD.t) :
       UJumpD.t * BoundaryPointD.t * JumpD.t =
     let u =
-      FSAbsD.mapi
+      FSAbsD.AbsLocMapD.mapi
         (fun l a ->
           match Prog.get_ins p l with
           | Some i -> gen_ujump_single flow_heuristic_simple p l a i
           | None -> None)
-        a
+        a.post_state
     in
     let b =
-      FSAbsD.fold
+      FSAbsD.AbsLocMapD.fold
         (fun l a (bens, bexs) ->
           let ins = Prog.get_ins p l in
           match ins with
@@ -114,25 +114,40 @@ module Immutable = struct
                 Option.fold ~none:bexs ~some:(fun l -> LocSetD.add l bexs) exo
               )
           | None -> (bens, bexs))
-        a
+        a.post_state
         (LocSetD.empty, LocSetD.empty)
     in
     let j =
-      FSAbsD.mapi
+      FSAbsD.AbsLocMapD.mapi
         (fun l a ->
           match Prog.get_ins p l with
           | Some i -> gen_jump_single flow_heuristic_simple p l a i
           | None -> LocSetD.empty)
-        a
+        a.post_state
     in
     (u, b, j)
 
   let post_contour_fs (p : Prog.t) (c : ContourD.t) (sj : JumpD.t)
       (a : FSAbsD.t) : FSAbsD.t =
+    let newPost =
+      FSAbsD.AbsLocMapD.filter_map
+        (fun ls sa ->
+          match Prog.get_ins p ls with
+          | Some i ->
+              let np = AbsState.post_single p ls sa i in
+              FSAbsD.AbsLocMapD.find_opt ls a.post_state
+              |> Option.map (fun a -> AbsState.join a np)
+              |> Option.value ~default:np |> Option.some
+          | None -> None)
+        a.pre_state
+    in
     let locHash = LocHashtbl.create 100 in
-    FSAbsD.iter
+    FSAbsD.AbsLocMapD.iter
+      (fun ls s -> LocHashtbl.replace locHash ls s)
+      a.pre_state;
+    JumpD.iter
       (fun ls s ->
-        match (Prog.get_ins p ls, FSAbsD.find_opt ls a) with
+        match (Prog.get_ins p ls, FSAbsD.AbsLocMapD.find_opt ls newPost) with
         | Some ins, Some ae ->
             LocSetD.iter
               (fun lf ->
@@ -141,15 +156,16 @@ module Immutable = struct
                     | Some af ->
                         Some
                           (AbsState.join af
-                             (AbsState.post_contour_single p ls lf ae ins))
-                    | None -> Some (AbsState.post_contour_single p ls lf ae ins)))
+                             (AbsState.filter_single p ls lf ae ins))
+                    | None -> Some (AbsState.filter_single p ls lf ae ins)))
               s
         | _ -> ())
       sj;
     LocSetD.iter
       (fun l -> LocHashtbl.update locHash l (fun v -> Some AbsState.top))
       (fst c.boundary_point);
-    LocHashtbl.to_seq locHash |> FSAbsD.of_seq
+    let newPre = LocHashtbl.to_seq locHash |> FSAbsD.AbsLocMapD.of_seq in
+    { pre_state = newPre; post_state = newPost }
 
   let post (p : Prog.t) (c : t) : t =
     let u, b, j = gen_contour p c.abs_state in
@@ -174,7 +190,11 @@ module Immutable = struct
           boundary_point = (LocSetD.singleton l, LocSetD.empty);
         };
       sound_jump = JumpD.empty;
-      abs_state = FSAbsD.singleton l AbsState.top;
+      abs_state =
+        {
+          pre_state = FSAbsD.AbsLocMapD.singleton l AbsState.top;
+          post_state = FSAbsD.AbsLocMapD.empty;
+        };
     }
 
   let rec a_fixpoint (p : Prog.t) (c : t) : t =
@@ -182,4 +202,100 @@ module Immutable = struct
     if le nc c then c else a_fixpoint p nc
 
   let follow_flow (p : Prog.t) (e : Addr.t) : t = a_fixpoint p (init p (e, 0))
+end
+
+module Mutable = struct
+  type __ = {
+    analysis_contour : ContourD_Mut.t;
+    sound_jump : JumpD_Mut.t;
+    abs_state : FSAbsD_Mut.t;
+  }
+
+  include
+    TripleD.MakeJoinSemiLattice_Mut_Record (ContourD_Mut) (JumpD_Mut)
+      (FSAbsD_Mut)
+      (struct
+        type t = __
+
+        let get_fst x = x.analysis_contour
+        let get_snd x = x.sound_jump
+        let get_trd x = x.abs_state
+      end)
+
+  let update_contour (p : Prog.t) (ca : t) (l : Loc.t) : Loc.t List.t =
+    match
+      ( Prog.get_ins p l,
+        FSAbsD_Mut.AbsLocMapD.find_opt l ca.abs_state.post_state )
+    with
+    | Some i, Some a ->
+        UJumpD_Mut.join_single_loc ca.analysis_contour.unsound_jump l
+          (gen_ujump_single flow_heuristic_simple p l a i);
+        let eno, exo = gen_bb_single flow_heuristic_simple p l a i in
+        Option.iter
+          (fun l ->
+            BoundaryPointD_Mut.add_entry ca.analysis_contour.boundary_point l)
+          eno;
+        Option.iter
+          (fun l ->
+            BoundaryPointD_Mut.add_exit ca.analysis_contour.boundary_point l)
+          exo;
+        JumpD_Mut.join_single_loc ca.sound_jump l
+          (gen_jump_single flow_heuristic_simple p l a i);
+        JumpD_Mut.find_opt l ca.sound_jump
+        |> Option.value ~default:LocSetD.empty
+        |> LocSetD.to_seq |> List.of_seq
+    | _ -> []
+
+  let post_contour_fs (p : Prog.t) (ca : t) (l : Loc.t) : bool =
+    let sj = ca.sound_jump in
+    let preds = JumpD_Mut.get_preds sj l in
+    List.filter_map
+      (fun l -> FSAbsD_Mut.AbsLocMapD.find_opt l ca.abs_state.pre_state)
+      preds
+    |> List.iter (fun a -> FSAbsD_Mut.join_single_pre ca.abs_state l a);
+    match
+      (FSAbsD_Mut.AbsLocMapD.find_opt l ca.abs_state.pre_state, Prog.get_ins p l)
+    with
+    | Some a, Some i -> (
+        let np = AbsState.post_single p l a i in
+        match FSAbsD_Mut.AbsLocMapD.find_opt l ca.abs_state.post_state with
+        | Some a ->
+            if AbsState.le a np then false
+            else (
+              FSAbsD_Mut.join_single_post ca.abs_state l np;
+              true)
+        | None ->
+            FSAbsD_Mut.join_single_post ca.abs_state l np;
+            true)
+    | _ -> raise (Failure "Assertion failed: find_opt")
+
+  let post (p : Prog.t) (c : t) (l : Loc.t) : Loc.t List.t =
+    let propagate = post_contour_fs p c l in
+    let newList = update_contour p c l in
+    if propagate then newList else []
+
+  let init (p : Prog.t) (l : Loc.t) : t =
+    {
+      analysis_contour =
+        {
+          unsound_jump = UJumpD_Mut.create_empty ();
+          boundary_point = (LocSetD_Mut.singleton l, LocSetD_Mut.create_empty ());
+        };
+      sound_jump = JumpD_Mut.create_empty ();
+      abs_state =
+        {
+          pre_state = FSAbsD_Mut.AbsLocMapD.singleton l AbsState.top;
+          post_state = FSAbsD_Mut.AbsLocMapD.create_empty ();
+        };
+    }
+
+  let rec a_fixpoint (p : Prog.t) (c : t) (ls : Loc.t List.t) : t =
+    match ls with
+    | [] -> c
+    | l :: ls ->
+        let newLs = post p c l in
+        a_fixpoint p c (ls @ List.filter (fun l -> not (List.mem l ls)) newLs)
+
+  let follow_flow (p : Prog.t) (e : Addr.t) : t =
+    a_fixpoint p (init p (e, 0)) ((e, 0) :: [])
 end
