@@ -253,8 +253,8 @@ module Immutable = struct
         let ulist =
           JumpD.find_opt l nj
           |> Option.value ~default:LocSetD.empty
-          |> LocSetD.to_seq |> List.of_seq
         in
+        let ulist = Option.map (fun s -> LocSetD.add s ulist) eno |> Option.value ~default:ulist |> LocSetD.to_seq |> List.of_seq in
         ({ unsound_jump = nuj; boundary_point = nb }, nj, ulist)
     | _ -> (ca.analysis_contour, ca.sound_jump, [])
 
