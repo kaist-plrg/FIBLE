@@ -126,6 +126,9 @@ let () =
     print_endline (Printf.sprintf "Listening on port %d" port);
     let ghidra_pid = run_ghidra !ifile tmp_path cwd port in
 
+    let (x, _, _) = Unix.select [ sfd ] [] [] (10.0) in
+    if x = [] then failwith "No connection"
+    else ();
     let fd, _ = Unix.accept sfd in
     print_endline (Printf.sprintf "Accepted connection");
     let spaceinfo = get_stateinfo fd in
