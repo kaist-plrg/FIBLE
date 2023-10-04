@@ -6,6 +6,8 @@ authors: ["Jihee Park"]
 depends: [
   "dune" {>= "3.7"}
   "zarith"
+  "ocaml-lsp-server"
+  "ocamlformat"
   "odoc" {with-doc}
 ]
 build: [

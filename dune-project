@@ -4,7 +4,7 @@
 (package
   (name coq-pcode)
   (synopsis "A Coq description for pcode")
-  (depends zarith)
+  (depends zarith ocaml-lsp-server ocamlformat)
   (authors
     "Jihee Park")
 )
