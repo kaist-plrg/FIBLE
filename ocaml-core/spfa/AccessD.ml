@@ -3,7 +3,7 @@ open Basic_domain
 open Value_domain
 module FinSet = Int64SetD
 
-let cardinal_limit = 100
+let cardinal_limit = 1000
 
 type t = Top | Fin of FinSet.t
 
