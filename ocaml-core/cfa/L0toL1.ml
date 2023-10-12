@@ -72,7 +72,7 @@ let translate_func (p0 : L0.Prog.t) (nameo: String.t option) (entry : Addr.t) (c
     |> Seq.map (fun e -> translate_block p0 e cf entries)
     |> List.of_seq
   in
-  { nameo; entry = (entry, 0); boundaries = entries; blocks }
+  { nameo; entry = (entry, 0); boundaries = boundary_entries; blocks }
 
 let translate_prog (p0 : L0.Prog.t) (entries : Addr.t list) : L1.Prog.t =
   let funcs =

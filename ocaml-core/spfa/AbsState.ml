@@ -36,4 +36,4 @@ let post_single_block (b : L1.Block.t) (c : t) (sp_num : int64) : AccessD.t * t
     (AccessD.bottom, c) b
   |> fun (ac, c) -> (ac, post_single_jmp b.jmp c sp_num)
 
-let widen a b = top
+let widen = join

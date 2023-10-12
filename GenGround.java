@@ -92,12 +92,13 @@ public class GenGround extends GhidraScript {
         }
 
     }
+
     public void gen_stack_boundary(Set<Pair<String, Address>> func_addresses, String outputPath) throws Exception {
 
         for (Pair<String, Address> pair : func_addresses) {
             Function main = currentProgram.getFunctionManager().getFunctionAt(pair.second);
             int x = 0;
-            for (Variable local: main.getStackFrame().getLocals()) {
+            for (Variable local : main.getStackFrame().getLocals()) {
                 x = Math.min(x, local.getStackOffset());
             }
             // open filepath ^ "main_boundary"
@@ -113,49 +114,28 @@ public class GenGround extends GhidraScript {
     public void gen_basic_block(Set<Pair<String, Address>> func_addresses, String outputPath) throws Exception {
 
         for (Pair<String, Address> pair : func_addresses) {
-            Set<Long> boundary = new HashSet<Long>();
             Function main = currentProgram.getFunctionManager().getFunctionAt(pair.second);
-            Map<Address, Set<Address>> graph = new HashMap<Address, Set<Address>>();
             BasicBlockModel bbm = new BasicBlockModel(currentProgram);
 
             AddressSetView body = main.getBody();
+            List<Address> bb_entries = new ArrayList<Address>();
             CodeBlockIterator it = bbm.getCodeBlocksContaining(body, monitor);
             while (it.hasNext()) {
                 CodeBlock block = it.next();
-                CodeBlockReferenceIterator cri = block.getDestinations(monitor);
-                while (cri.hasNext()) {
-                    CodeBlockReference cbr = cri.next();
-                    Address source = cbr.getSourceAddress();
-                    Address destination = cbr.getDestinationAddress();
-                    if (graph.containsKey(source)) {
-                        graph.get(source).add(destination);
-                    } else {
-                        Set<Address> set = new HashSet<Address>();
-                        set.add(destination);
-                        graph.put(source, set);
-                    }
-                }
+                Address source = block.getMinAddress();
+                if (!bb_entries.contains(source))
+                    bb_entries.add(source);
             }
 
-            
+
             // open filepath ^ "main_boundary"
             File file = new File(outputPath + "/" + pair.first + ".bb");
             PrintWriter writer = new PrintWriter(file);
 
             // sort and print hex offset
-            List<Address> keySorted = new ArrayList<Address>(graph.keySet());
-            keySorted.sort((a, b) -> Long.compare(a.getOffset(),b.getOffset()));
-            for (Address source : keySorted) {
-                List<Address> valueSorted = new ArrayList<Address>(graph.get(source));
-                writer.println(String.format("Block: %x", source.getOffset()));
-
-                valueSorted.sort((a, b) -> Long.compare(a.getOffset(),b.getOffset()));
-                writer.print("Successors:");
-                // print with space , remove last space
-                for (Address destination : valueSorted) {
-                    writer.print(String.format(" %x", destination.getOffset()));
-                }
-                writer.println();
+            bb_entries.sort((a, b) -> Long.compare(a.getOffset(), b.getOffset()));
+            for (Address source : bb_entries) {
+                writer.println(String.format("%x", source.getOffset()));
             }
             writer.close();
         }
