@@ -24,6 +24,7 @@ import ghidra.program.model.block.graph.CodeBlockEdge;
 import ghidra.program.model.block.graph.CodeBlockVertex;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
+import ghidra.program.model.listing.Variable;
 import ghidra.program.model.symbol.Symbol;
 
 public class GenGround extends GhidraScript {
@@ -95,17 +96,16 @@ public class GenGround extends GhidraScript {
 
         for (Pair<String, Address> pair : func_addresses) {
             Function main = currentProgram.getFunctionManager().getFunctionAt(pair.second);
-            int x = main.getStackFrame().getLocalSize();
-            int y = main.getCalledFunctions(monitor).size();
-            if (y > 0) {
-                x = x + 8;
+            int x = 0;
+            for (Variable local: main.getStackFrame().getLocals()) {
+                x = Math.min(x, local.getStackOffset());
             }
             // open filepath ^ "main_boundary"
             File file = new File(outputPath + "/" + pair.first + ".stack_boundary");
             PrintWriter writer = new PrintWriter(file);
 
             // sort and print hex offset
-            writer.println(String.format("%d", -x));
+            writer.println(String.format("%d", x));
             writer.close();
         }
     }
