@@ -25,5 +25,5 @@ let succ { jmp; _ } =
 
   let pp_summary fmt { loc; body; jmp } =
     Format.fprintf fmt "Block: %Lx\n" (Loc.to_addr loc);
-    Format.fprintf fmt "Successors: %a\n" (Format.pp_print_list Int64Ext.pp ~pp_sep:(fun fmt _ -> Format.fprintf fmt " ")) (succ { loc; body; jmp } |> List.map Loc.to_addr)
+    Format.fprintf fmt "Successors: %a\n" (Format.pp_print_list Int64Ext.pp ~pp_sep:(fun fmt _ -> Format.fprintf fmt " ")) (succ { loc; body; jmp } |> List.map Loc.to_addr |> List.sort Int64.compare);
   
