@@ -97,12 +97,9 @@ public class GenGround extends GhidraScript {
 
         for (Pair<String, Address> pair : func_addresses) {
             Function main = currentProgram.getFunctionManager().getFunctionAt(pair.second);
-            int x = -8; // RBP
+            int x = 0;
             for (Variable local : main.getStackFrame().getLocals()) {
                 x = Math.min(x, local.getStackOffset());
-            }
-            if (!main.getCalledFunctions(monitor).isEmpty()) {
-                x -= 8; // return address
             }
             // open filepath ^ "main_boundary"
             File file = new File(outputPath + "/" + pair.first + ".stack_boundary");
