@@ -16,6 +16,14 @@ import ghidra.app.script.GhidraScript;
 
 public class PCert extends GhidraScript {
 
+    public boolean debug = false;
+
+    public void println(String s) {
+        if (debug) {
+            super.println(s);
+        }
+    }
+
     public void send_address_space(DataOutputStream out) throws IOException {
         // Get address space
         AddressFactory af = currentProgram.getAddressFactory();
@@ -114,7 +122,7 @@ public class PCert extends GhidraScript {
                     send_data_at(out, address);
                     break;
                 case 'f': // get function address
-                    println("Getting function address");
+                    // println("Getting function address");
                     int size = in.readInt();
                     byte[] nameBuffer = new byte[size];
                     in.read(nameBuffer, 0, size);

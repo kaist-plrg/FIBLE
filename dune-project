@@ -2,8 +2,8 @@
 (using coq 0.7)
 (maintainers "Jihee Park <jiheepark@kaist.ac.kr>")
 (package
-  (name coq-pcode)
-  (synopsis "A Coq description for pcode")
+  (name pcode-decomp)
+  (synopsis "Cerfitied decompilation for PCode")
   (depends zarith ocaml-lsp-server ocamlformat)
   (authors
     "Jihee Park")

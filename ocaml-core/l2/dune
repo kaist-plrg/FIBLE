@@ -1,0 +1,5 @@
+(library
+ (name l2)
+ (flags -w -20-33-3)
+ (libraries stdlibExt basic basic_domain l1)
+ (modules Block Func Inst Jmp Prog))

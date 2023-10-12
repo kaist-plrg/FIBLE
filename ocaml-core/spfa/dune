@@ -1,0 +1,5 @@
+(library
+ (name spfa)
+ (flags -w -20-33-3)
+ (libraries basic basic_domain l1 value_domain l2)
+ (modules NonRelStateD AccessD AbsState FSAbsD SPFA L1toL2))

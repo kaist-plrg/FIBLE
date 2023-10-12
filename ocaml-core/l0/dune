@@ -1,0 +1,5 @@
+(library
+ (name l0)
+ (flags -w -20-33-3)
+ (libraries stdlibExt basic basic_domain)
+ (modules Inst Prog))

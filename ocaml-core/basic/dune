@@ -1,0 +1,16 @@
+(library
+ (name basic)
+ (flags -w -20-33-3)
+ (libraries stdlibExt)
+ (modules
+  Addr
+  Loc
+  LocHashtbl
+  Bop
+  Uop
+  Jannotation
+  Jiannotation
+  VarNode
+  MemRef
+  Assignable
+  PrettySpec))
