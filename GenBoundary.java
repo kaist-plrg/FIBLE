@@ -46,6 +46,7 @@ public class GenBoundary extends GhidraScript {
             }
         }
 
+
         for (Pair<String, Address> pair : func_addresses) {
             Set<Long> boundary = new HashSet<Long>();
             Function main = currentProgram.getFunctionManager().getFunctionAt(pair.second);

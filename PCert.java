@@ -42,7 +42,13 @@ public class PCert extends GhidraScript {
         out.writeInt(vn.getSize());
     }
 
-    public void putPcode(DataOutputStream out, PcodeOp op) throws IOException {
+    public void writeString(DataOutputStream out, String s) throws IOException {
+        out.writeInt(s.length());
+        out.writeBytes(s);
+    }
+
+    public void putPcode(DataOutputStream out, String mnem, PcodeOp op) throws IOException {
+        writeString(out, mnem);
         out.writeInt(op.getOpcode());
         int numInputs = op.getNumInputs();
         out.writeInt(numInputs);
@@ -71,7 +77,7 @@ public class PCert extends GhidraScript {
             out.writeInt(instruction_length);
             out.writeInt(pcode.length);
             for (int i = 0; i < pcode.length; i++) {
-                putPcode(out, pcode[i]);
+                putPcode(out, instruction.getMnemonicString(), pcode[i]);
                 println(pcode[i].toString());
             }
         }

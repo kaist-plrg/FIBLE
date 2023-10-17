@@ -14,7 +14,7 @@ fi
 
 CWD=$(pwd)
 
-./_build/default/ocaml-core/main.exe -i $CWD/sample/add -func-path "$CWD/sample/add.funcs" -dump-path "$CWD/sample/" -dump-cfa -dump-spfa -dump-l1 -dump-basic-block -dump-l2 -g $GHIDRA_PATH
+./_build/default/ocaml-core/src/main.exe -i $CWD/sample/add -func-path "$CWD/sample/add.funcs" -dump-path "$CWD/sample/" -dump-cfa -dump-spfa -dump-l1 -dump-basic-block -dump-l2
 
 
 # $GHIDRA_PATH/support/analyzeHeadless $CWD/tmp tmptmptmp -import $CWD/sample/add -postScript "GenGround.java" "$CWD/sample/add.funcs" "$CWD/sample" -scriptPath $CWD -deleteProject
