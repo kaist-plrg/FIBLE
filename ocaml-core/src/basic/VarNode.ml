@@ -1,16 +1,9 @@
-type varNodeI =
-  | Unique of int64
-  | Register of int64
-  | Const of int64
-  | Ram of int64
-
-type t = { varNode_node : varNodeI; varNode_width : int32 }
+type t = Register of RegId.t | Const of Const.t
 
 let pp (fmt : Format.formatter) (v : t) =
-  match v.varNode_node with
-  | Register n -> Format.fprintf fmt "$%Ld:%ld" n v.varNode_width
-  | Unique n -> Format.fprintf fmt "#%Ld:%ld" n v.varNode_width
-  | Const n -> Format.fprintf fmt "%Ld:%ld" n v.varNode_width
-  | Ram n -> Format.fprintf fmt "*%Ld:%ld" n v.varNode_width
+  match v with
+  | Register n -> Format.fprintf fmt "%a" RegId.pp n
+  | Const n -> Format.fprintf fmt "%a" Const.pp n
 
 let compare = compare
+let width = function Register n -> n.width | Const n -> n.width

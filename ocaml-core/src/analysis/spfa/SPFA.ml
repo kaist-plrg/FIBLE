@@ -22,10 +22,7 @@ module Immutable = struct
           pre_state =
             FSAbsD.AbsLocMapD.singleton f.entry
               (NonRelStateD.singleton
-                 {
-                   VarNode.varNode_node = VarNode.Register sp_num;
-                   varNode_width = 8l;
-                 }
+                 { RegId.id = Register sp_num; width = 8l }
                  {
                    SPVal.have_sp = FlatBoolD.Flat true;
                    SPVal.offset = FlatInt64D.Flat 0L;

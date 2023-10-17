@@ -9,6 +9,8 @@
   LocHashtbl
   Bop
   Uop
+  Const
+  RegId
   VarNode
   MemRef
   Assignable

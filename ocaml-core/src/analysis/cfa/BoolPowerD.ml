@@ -11,21 +11,14 @@ end
 include MemRefTopMapD.Make (A)
 
 let clear_memref a =
-  filter
-    (fun k _ ->
-      match k with
-      | MemRef.RegisterR _ -> true
-      | MemRef.UniqueR _ -> true
-      | _ -> false)
-    a
+  filter (fun k _ -> match k with MemRef.R _ -> true | _ -> false) a
 
 let clear_mr a (mr : MemRef.t) = filter (fun k _ -> Stdlib.compare k mr <> 0) a
 
 let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
-    (outv : VarNode.t) =
-  match MemRef.convert_varnode outv with
-  | None -> a
-  | Some outmr -> (
+    (outv : RegId.t) =
+  match MemRef.convert_regid outv with
+  | outmr -> (
       let na = clear_mr a outmr in
       match asn with
       | Avar vn ->
@@ -33,32 +26,32 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
           |> Option.map (fun v -> add outmr v na)
           |> Option.value ~default:na
       | Abop (Bint_less, op1v, op2v) -> (
-          match (op1v.varNode_node, op2v.varNode_node) with
-          | Unique u, Const c ->
+          match (op1v, op2v) with
+          | Register ({ id = RegId.Unique _; _ } as u), Const { value = c; _ }
+            ->
               (add outmr
                  ( OctagonD.gen_single_lt
-                     (OctagonD.gen_single_ge OctagonD.top (MemRef.UniqueR u) 0L)
-                     (MemRef.UniqueR u) c,
-                   OctagonD.gen_single_ge OctagonD.top (MemRef.UniqueR u) c ))
+                     (OctagonD.gen_single_ge OctagonD.top (MemRef.R u) 0L)
+                     (MemRef.R u) c,
+                   OctagonD.gen_single_ge OctagonD.top (MemRef.R u) c ))
                 na
           | _ -> na)
       | Abop (Bint_equal, op1v, op2v) -> (
-          match (op1v.varNode_node, op2v.varNode_node) with
-          | Unique u, Const _ ->
+          match (op1v, op2v) with
+          | Register ({ id = RegId.Unique _; _ } as u), Const { value = c; _ }
+            ->
               (add outmr
-                 ( OctagonD.gen_single_eq OctagonD.top (MemRef.UniqueR u) 0L,
+                 ( OctagonD.gen_single_eq OctagonD.top (MemRef.R u) c,
                    OctagonD.top ))
                 na
           | _ -> na)
       | Abop (Bint_sless, _, _) -> na
       | Abop (Bint_slessequal, _, _) -> na
       | Abop (Bbool_or, op1v, op2v) -> (
-          match (op1v.varNode_node, op2v.varNode_node) with
-          | Register r1, Register r2 -> (
-              match
-                ( find_opt (MemRef.RegisterR r1) na,
-                  find_opt (MemRef.RegisterR r2) na )
-              with
+          match (op1v, op2v) with
+          | ( Register ({ id = RegId.Register _; _ } as r1),
+              Register ({ id = RegId.Register _; _ } as r2) ) -> (
+              match (find_opt (MemRef.R r1) na, find_opt (MemRef.R r2) na) with
               | Some (dt, df), Some (dt2, df2) ->
                   add outmr
                     ( OctagonD.join
@@ -70,9 +63,9 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
           | _ -> na)
       | Abop (_, _, _) -> na
       | Auop (Ubool_negate, opv) -> (
-          match opv.varNode_node with
-          | Unique u -> (
-              match find_opt (MemRef.UniqueR u) na with
+          match opv with
+          | Register ({ id = RegId.Unique _; _ } as u) -> (
+              match find_opt (MemRef.R u) na with
               | Some (d1, d2) -> add outmr (d2, d1) na
               | _ -> na)
           | _ -> na)

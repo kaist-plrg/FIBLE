@@ -5,11 +5,11 @@ module Make (A : sig
   include PrettySpec.PrettyPrint with type t := t
 end) =
 struct
-  include TopMapD.Make (Basic.VarNode) (A)
+  include TopMapD.Make (Basic.RegId) (A)
 
   let pp (fmt : Format.formatter) (m : t) : unit =
     let pp_pair fmt (k, v) =
-      Format.fprintf fmt "%a -> %a" Basic.VarNode.pp k A.pp v
+      Format.fprintf fmt "%a -> %a" Basic.RegId.pp k A.pp v
     in
     Format.fprintf fmt "{%a}" (Format.pp_print_list pp_pair) (bindings m)
 end
@@ -19,11 +19,11 @@ module Make_Mut (A : sig
   include PrettySpec.PrettyPrint with type t := t
 end) =
 struct
-  include TopMapD.Make_Mut (Basic.VarNode) (A)
+  include TopMapD.Make_Mut (Basic.RegId) (A)
 
   let pp (fmt : Format.formatter) (m : t) : unit =
     let pp_pair fmt (k, v) =
-      Format.fprintf fmt "%a -> %a" Basic.VarNode.pp k A.pp v
+      Format.fprintf fmt "%a -> %a" Basic.RegId.pp k A.pp v
     in
     Format.fprintf fmt "{%a}" (Format.pp_print_list pp_pair) (bindings m)
 end
@@ -33,11 +33,11 @@ module MakeLatticeWithTop (A : sig
   include PrettySpec.PrettyPrint with type t := t
 end) =
 struct
-  include TopMapD.MakeLatticeWithTop (Basic.VarNode) (A)
+  include TopMapD.MakeLatticeWithTop (Basic.RegId) (A)
 
   let pp (fmt : Format.formatter) (m : t) : unit =
     let pp_pair fmt (k, v) =
-      Format.fprintf fmt "%a -> %a" Basic.VarNode.pp k A.pp v
+      Format.fprintf fmt "%a -> %a" Basic.RegId.pp k A.pp v
     in
     Format.fprintf fmt "{%a}" (Format.pp_print_list pp_pair) (bindings m)
 end

@@ -125,10 +125,8 @@ let clear_memref a =
   MemRefZeroTopMapT.filter
     (fun k _ ->
       match k with
-      | Kmr (MemRef.ROffsetR _), _ -> false
-      | _, Kmr (MemRef.ROffsetR _) -> false
-      | Kmr (MemRef.UOffsetR _), _ -> false
-      | _, Kmr (MemRef.UOffsetR _) -> false
+      | Kmr (MemRef.ROffset _), _ -> false
+      | _, Kmr (MemRef.ROffset _) -> false
       | _ -> true)
     a
 
@@ -165,8 +163,8 @@ let find_interval_shallow (a : t) (mr : MemRef.t) =
 
 let request_interval (a : t) (mr : MemRef.t) =
   match mr with
-  | MemRef.UniqueR v ->
-      let mmr = MemRef.UOffsetR (v, 0L) in
+  | MemRef.R ({ id = RegId.Unique v; _ } as reg) ->
+      let mmr = MemRef.ROffset (reg, 0L) in
       let equiv_mr =
         MemRefZeroTopMapT.filter_map
           (fun (k1, k2) v ->
@@ -195,31 +193,29 @@ let request_interval (a : t) (mr : MemRef.t) =
         interval equiv_intervals
   | _ -> (IntervalD.ETop, IntervalD.ETop)
 
-let process_load (_ : L0.Prog.t) (a : t) (pointerv : VarNode.t)
-    (outv : VarNode.t) =
-  match (pointerv.varNode_node, MemRef.convert_varnode outv) with
-  | Unique u, Some outmr -> (
+let process_load (_ : L0.Prog.t) (a : t) (pointerv : VarNode.t) (outv : RegId.t)
+    =
+  match (pointerv, MemRef.convert_regid outv) with
+  | Register ({ id = RegId.Unique _; _ } as u), outmr -> (
       match
-        ( MemRefZeroTopMapT.find_opt (Kmr outmr, Kmr (MemRef.UOffsetR (u, 0L))) a,
-          MemRefZeroTopMapT.find_opt
-            (Kmr (MemRef.UOffsetR (u, 0L)), Kmr outmr)
-            a )
+        ( MemRefZeroTopMapT.find_opt (Kmr outmr, Kmr (MemRef.ROffset (u, 0L))) a,
+          MemRefZeroTopMapT.find_opt (Kmr (MemRef.ROffset (u, 0L)), Kmr outmr) a
+        )
       with
       | Some (I64D.I64 0L), Some (I64D.I64 0L) -> a
       | _ ->
           clear_mr a outmr
           |> MemRefZeroTopMapT.add
-               (Kmr outmr, Kmr (MemRef.UOffsetR (u, 0L)))
+               (Kmr outmr, Kmr (MemRef.ROffset (u, 0L)))
                (I64D.I64 0L)
           |> MemRefZeroTopMapT.add
-               (Kmr (MemRef.UOffsetR (u, 0L)), Kmr outmr)
+               (Kmr (MemRef.ROffset (u, 0L)), Kmr outmr)
                (I64D.I64 0L))
   | _, _ -> a
 
-let process_assignment (a : t) (asn : Assignable.t) (outv : VarNode.t) =
-  match MemRef.convert_varnode outv with
-  | None -> a
-  | Some outmr -> (
+let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t) =
+  match MemRef.convert_regid outv with
+  | outmr -> (
       let na = clear_mr a outmr in
       match asn with
       | Avar vn -> (
@@ -230,52 +226,50 @@ let process_assignment (a : t) (asn : Assignable.t) (outv : VarNode.t) =
               |> MemRefZeroTopMapT.add (Kmr amr, Kmr outmr) (I64D.I64 0L)
           | _ -> na)
       | Abop (Bint_add, op1v, op2v) -> (
-          match (op1v.varNode_node, op2v.varNode_node) with
-          | Unique u, Const c ->
+          match (op1v, op2v) with
+          | Register ({ id = RegId.Unique _; _ } as u), Const { value = c; _ }
+            ->
               na
               |> MemRefZeroTopMapT.add
-                   (Kmr outmr, Kmr (MemRef.UniqueR u))
+                   (Kmr outmr, Kmr (MemRef.R u))
                    (I64D.I64 c)
               |> MemRefZeroTopMapT.add
-                   (Kmr (MemRef.UniqueR u), Kmr outmr)
+                   (Kmr (MemRef.R u), Kmr outmr)
                    (I64D.I64 (Int64.neg c))
-          | Register r, Const c -> (
+          | Register r, Const { value = c; _ } -> (
               match
-                ( MemRefZeroTopMapT.find_opt
-                    (Kmr outmr, Kmr (MemRef.RegisterR r))
-                    a,
-                  MemRefZeroTopMapT.find_opt
-                    (Kmr (MemRef.RegisterR r), Kmr outmr)
-                    a )
+                ( MemRefZeroTopMapT.find_opt (Kmr outmr, Kmr (MemRef.R r)) a,
+                  MemRefZeroTopMapT.find_opt (Kmr (MemRef.R r), Kmr outmr) a )
               with
               | Some (I64D.I64 i1), Some (I64D.I64 i2) ->
                   if c = i1 && c = Int64.neg i2 then a
                   else
                     na
                     |> MemRefZeroTopMapT.add
-                         (Kmr outmr, Kmr (MemRef.RegisterR r))
+                         (Kmr outmr, Kmr (MemRef.R r))
                          (I64D.I64 c)
                     |> MemRefZeroTopMapT.add
-                         (Kmr (MemRef.RegisterR r), Kmr outmr)
+                         (Kmr (MemRef.R r), Kmr outmr)
                          (I64D.I64 (Int64.neg c))
               | _ ->
                   na
                   |> MemRefZeroTopMapT.add
-                       (Kmr outmr, Kmr (MemRef.RegisterR r))
+                       (Kmr outmr, Kmr (MemRef.R r))
                        (I64D.I64 c)
                   |> MemRefZeroTopMapT.add
-                       (Kmr (MemRef.RegisterR r), Kmr outmr)
+                       (Kmr (MemRef.R r), Kmr outmr)
                        (I64D.I64 (Int64.neg c)))
           | _ -> na)
       | Abop (Bint_sub, op1v, op2v) -> (
-          match (op1v.varNode_node, op2v.varNode_node) with
-          | Unique u, Const c ->
+          match (op1v, op2v) with
+          | Register ({ id = RegId.Unique _; _ } as u), Const { value = c; _ }
+            ->
               na
               |> MemRefZeroTopMapT.add
-                   (Kmr outmr, Kmr (MemRef.UniqueR u))
+                   (Kmr outmr, Kmr (MemRef.R u))
                    (I64D.I64 (Int64.neg c))
               |> MemRefZeroTopMapT.add
-                   (Kmr (MemRef.UniqueR u), Kmr outmr)
+                   (Kmr (MemRef.R u), Kmr outmr)
                    (I64D.I64 c)
           | _ -> na)
       | Abop (_, _, _) -> na

@@ -22,13 +22,10 @@ let post_single_jmp (i : L1.Jmp.t) (c : t) (sp_num : int64) : t =
   match i with
   | L1.Jmp.Jcall _ | L1.Jmp.Jcall_ind _ ->
       add
-        { VarNode.varNode_node = VarNode.Register sp_num; varNode_width = 8l }
+        { id = RegId.Register sp_num; width = 8l }
         (SPVal.add
            (eval_varnode c
-              {
-                VarNode.varNode_node = VarNode.Register sp_num;
-                varNode_width = 8l;
-              })
+              (VarNode.Register { id = RegId.Register sp_num; width = 8l }))
            (SPVal.of_const 8L) 8L)
         c
   | _ -> c

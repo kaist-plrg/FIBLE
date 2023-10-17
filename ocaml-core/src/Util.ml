@@ -85,27 +85,28 @@ let get_pcode_list (fd : Unix.file_descr) : PCode_Raw.t list =
     in
     List.rev (loop [] (Int32.to_int num_pcodes))
 
-let tmpReg : VarNode.t = { varNode_node = Unique 0L; varNode_width = 0l }
+let tmpReg : RegId.t = { id = Unique 0L; width = 0l }
 
 let varnode_raw_to_varnode (si : SpaceInfo.t) (v : VarNode_Raw.t) : VarNode.t =
-  if v.space = si.unique then
-    { varNode_node = Unique v.offset; varNode_width = v.size }
+  if v.space = si.unique then Register { id = Unique v.offset; width = v.size }
   else if v.space = si.register then
-    { varNode_node = Register v.offset; varNode_width = v.size }
-  else if v.space = si.const then
-    { varNode_node = Const v.offset; varNode_width = v.size }
-  else if v.space = si.ram then
-    { varNode_node = Ram v.offset; varNode_width = v.size }
+    Register { id = Register v.offset; width = v.size }
+  else if v.space = si.const then Const { value = v.offset; width = v.size }
+  else if v.space = si.ram then Const { value = v.offset; width = v.size }
   else failwith (Format.sprintf "Unknown space %ld" v.space)
 
 let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : L0.Inst.t_full =
   print_endline (Format.asprintf "Converting %a" PCode_Raw.pp p);
   let inputs i = varnode_raw_to_varnode si p.inputs.(i) in
-  let output _ = varnode_raw_to_varnode si (Option.get p.output) in
+  let output _ =
+    match varnode_raw_to_varnode si (Option.get p.output) with
+    | Register r -> r
+    | _ -> raise (Invalid_argument "Output is not a register")
+  in
   let mkJump _ =
     L0.Inst.Ijump
       (match inputs 0 with
-      | { varNode_node = Ram a; _ } -> (a, 0)
+      | Const { value = a; _ } -> (a, 0)
       | _ -> failwith "Jump target is not a constant")
   in
   let mkJIump _ = L0.Inst.Ijump_ind (inputs 0) in
@@ -124,7 +125,7 @@ let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : L0.Inst.t_full =
         Icbranch
           ( inputs 1,
             match inputs 0 with
-            | { varNode_node = Ram a; _ } -> (a, 0)
+            | Const { value = a; _ } -> (a, 0)
             | _ -> failwith "Jump target is not a constant" )
     | 6l -> mkJIump ()
     | 7l -> mkJump ()
