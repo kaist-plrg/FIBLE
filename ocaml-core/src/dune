@@ -1,8 +1,8 @@
 (executable
  (flags -w -20-33-3)
  (name main)
- (public_name pcode-decomp)
- (package pcode-decomp)
+ (public_name multi-step-decomp)
+ (package multi-step-decomp)
  (libraries
   zarith
   unix
