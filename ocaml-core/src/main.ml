@@ -261,4 +261,9 @@ let () =
           L2.Prog.dump_prog l2 !dump_path
             (Filename.basename !ifile |> Filename.remove_extension)
         else ();
+        if !(dump_flag.run) then
+          match L0.Interp.interp l0 (L0.Init.from_signature (List.find (fun x -> fst x = "main") func_with_addrs |> snd)) with
+          | Ok s -> Format.printf "%a%!\n" L0.State.pp s
+          | Error e -> Format.printf "Error: %s%!" e
+        else ();
         Unix.kill ghidra_pid Sys.sigterm

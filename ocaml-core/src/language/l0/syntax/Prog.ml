@@ -1,6 +1,6 @@
 open StdlibExt
 open Basic
-open Basic_domain
+open Basic_collection
 
 type t = {
   ins_mem : Addr.t -> (int * Inst.t_full list) option;
@@ -32,9 +32,8 @@ let reposition_sn (vs : int * Inst.t_full list) (s : Loc.t) : Loc.t =
       if snd s < List.length is then s
       else (Int64.add (fst s) (Int64.of_int v), 0)
 
-let reposition_sn_set (vs : int * Inst.t_full list) (s : LocSetD.t) : LocSetD.t
-    =
-  LocSetD.map (reposition_sn vs) s
+let reposition_sn_set (vs : int * Inst.t_full list) (s : LocSet.t) : LocSet.t =
+  LocSet.map (reposition_sn vs) s
 
 let fallthru (p : t) (l : Loc.t) : Loc.t =
   let nl = (fst l, succ (snd l)) in
