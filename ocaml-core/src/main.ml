@@ -72,6 +72,8 @@ let run_ghidra ifile tmp_path cwd port =
   let ghidra_headless_path =
     Filename.concat !ghidra_path "support/analyzeHeadless"
   in
+  let devnull = Unix.openfile "/dev/null" [ Unix.O_RDWR ] 0o666 in
+  (* ignore stdin/stdout *)
   let ghidra_pid =
     Unix.create_process ghidra_headless_path
       [|
@@ -87,7 +89,7 @@ let run_ghidra ifile tmp_path cwd port =
         cwd;
         "-deleteProject";
       |]
-      Unix.stdin Unix.stdout Unix.stderr
+      devnull devnull devnull
   in
   print_endline (Format.sprintf "Running ghidra at pid %d" ghidra_pid);
   Sys.set_signal Sys.sigint
