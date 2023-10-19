@@ -5,7 +5,15 @@
   (run clang -o example1.bin -O0 example1.c)))
 
 (rule
- (alias runtest)
  (deps example1.bin)
+ (targets example1.output)
  (action
-  (run ../src/main.exe -i example1.bin -run-sim -project-cwd ../../../../)))
+  (with-stdout-to
+   example1.output
+   (run ../src/main.exe -i example1.bin -run-sim -project-cwd ../../../../))))
+
+(rule
+ (alias runtest)
+ (deps example1.expected example1.output)
+ (action
+  (diff example1.expected example1.output)))
