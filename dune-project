@@ -1,5 +1,4 @@
 (lang dune 3.7)
-(using coq 0.7)
 (maintainers "Jihee Park <jiheepark@kaist.ac.kr>")
 (package
   (name multi-step-decomp)
