@@ -8,4 +8,4 @@
  (alias runtest)
  (deps example1.bin)
  (action
-  (run ../src/main.exe -i example1.bin -run-sim -project-cwd ../../../../ 2&>/dev/null )))
+  (run ../src/main.exe -i example1.bin -run-sim -project-cwd ../../../../)))
