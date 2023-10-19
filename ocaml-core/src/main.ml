@@ -33,6 +33,8 @@ let dump_flag =
     run = ref false;
   }
 
+let cwd = ref ""
+
 let speclist =
   [
     ("-i", Arg.Set_string ifile, ": input file");
@@ -44,6 +46,7 @@ let speclist =
     ("-dump-l2", Arg.Set dump_flag.l2, ": dump l2");
     ("-func-path", Arg.Set_string func_path, ": target funcs path");
     ("-run-sim", Arg.Set dump_flag.run, ": run simulator and dump result");
+    ("-project-cwd", Arg.Set_string cwd, ": set cwd")
   ]
 
 let create_server _ =
@@ -197,7 +200,7 @@ let () =
             lines)
           else [ "main" ]
         in
-        let cwd = Sys.getcwd () in
+        let cwd = if (String.equal !cwd "") then Sys.getcwd () else !cwd in
         let tmp_path = Filename.concat cwd "tmp" in
         print_endline (Format.sprintf "Input file is %s" !ifile);
         let sfd, port = create_server () in
