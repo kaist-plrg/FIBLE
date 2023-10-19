@@ -17,8 +17,7 @@ let pp (fmt : Format.formatter) (p : t) =
   | Istore (i0, i1, i2) ->
       Format.fprintf fmt "*[%a]%a = %a;" VarNode.pp i0 VarNode.pp i1 VarNode.pp
         i2
-  | Isload (i, o) ->
-      Format.fprintf fmt "%a = stack[%a];" RegId.pp o Const.pp i
+  | Isload (i, o) -> Format.fprintf fmt "%a = stack[%a];" RegId.pp o Const.pp i
   | Isstore (i, o) ->
       Format.fprintf fmt "stack[%a] = %a;" VarNode.pp o Const.pp i
   | Iassignment (i, o) ->

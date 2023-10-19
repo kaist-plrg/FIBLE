@@ -4,4 +4,11 @@
  (name common_language)
  (flags -w -20-33-3)
  (libraries stdlibExt basic basic_collection)
- (modules NumericValue RegFile NumericMemory Block))
+ (modules
+  NumericValue
+  RegFileF
+  NumericMemory
+  FailableMemory
+  NumericBop
+  NumericUop
+  Block))

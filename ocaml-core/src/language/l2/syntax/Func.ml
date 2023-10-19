@@ -6,15 +6,17 @@ type t = {
   entry : Loc.t;
   boundaries : LocSet.t;
   sp_boundary : int64 * int64;
+  sp_diff: int64;
   blocks : Block.t list;
 }
 
-let pp fmt { nameo; entry; boundaries; sp_boundary; blocks } =
+let pp fmt { nameo; entry; boundaries; sp_boundary; sp_diff; blocks } =
   Format.fprintf fmt
     "@[<v 2>name: %a@,\
      entry: %a@,\
      boundaries: %a@,\
     \ sp_boundary: %a@,\
+      sp_diff: %Ld@,
     \ blocks: %a@]"
     (Format.pp_print_option Format.pp_print_string)
     nameo Loc.pp entry
@@ -22,6 +24,7 @@ let pp fmt { nameo; entry; boundaries; sp_boundary; blocks } =
     (LocSet.elements boundaries)
     (fun fmt (x, y) -> Format.fprintf fmt "(%Ld, %Ld)" x y)
     sp_boundary
+    sp_diff
     (Format.pp_print_list Block.pp)
     blocks
 

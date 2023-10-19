@@ -15,5 +15,6 @@
   cfa
   l2
   spfa
-  translation)
+  translation
+  simulation)
  (modules Util main))

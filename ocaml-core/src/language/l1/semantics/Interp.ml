@@ -13,9 +13,9 @@ let eval_assignment (a : Assignable.t) (s : Store.t) (outwidth : Int32.t) :
     (Value.t, String.t) Result.t =
   match a with
   | Avar vn -> Ok (eval_vn vn s)
-  | Auop (u, vn) -> Interp_Uop.eval_uop u (eval_vn vn s) outwidth
+  | Auop (u, vn) -> Common_language.NumericUop.eval u (eval_vn vn s) outwidth
   | Abop (b, lv, rv) ->
-      Interp_Bop.eval_bop b (eval_vn lv s) (eval_vn rv s) outwidth
+      Common_language.NumericBop.eval b (eval_vn lv s) (eval_vn rv s) outwidth
 
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
     (Store.t, String.t) Result.t =

@@ -3,5 +3,21 @@
 (library
  (name l2)
  (flags -w -20-33-3)
- (libraries stdlibExt basic basic_domain l1)
- (modules Block Func Inst Jmp Prog))
+ (libraries stdlibExt basic basic_domain l1 common_language)
+ (modules
+  Block
+  Func
+  Inst
+  Jmp
+  Prog
+  SPVal
+  Value
+  Cont
+  Stack
+  RegFile
+  Memory
+  LocalMemory
+  Store
+  State
+  Init
+  Interp))

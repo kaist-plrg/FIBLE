@@ -18,6 +18,4 @@
   Store
   State
   Init
-  Interp_Bop
-  Interp_Uop
   Interp))

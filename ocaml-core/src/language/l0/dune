@@ -4,14 +4,4 @@
  (name l0)
  (flags -w -20-33-3)
  (libraries stdlibExt basic basic_collection common_language)
- (modules
-  Inst
-  Prog
-  Value
-  RegFile
-  Memory
-  State
-  Init
-  Interp_Bop
-  Interp_Uop
-  Interp))
+ (modules Inst Prog Value RegFile Memory State Init Interp))
