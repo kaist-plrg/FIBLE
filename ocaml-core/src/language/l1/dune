@@ -3,7 +3,7 @@
 (library
  (name l1)
  (flags -w -20-33-3)
- (libraries stdlibExt basic basic_domain l0)
+ (libraries stdlibExt basic basic_domain l0 common_language)
  (modules
   Inst
   Jmp

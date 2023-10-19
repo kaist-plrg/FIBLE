@@ -3,7 +3,7 @@
 (library
  (name l0)
  (flags -w -20-33-3)
- (libraries stdlibExt basic basic_collection)
+ (libraries stdlibExt basic basic_collection common_language)
  (modules
   Inst
   Prog

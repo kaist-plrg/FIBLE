@@ -32,5 +32,18 @@ let pp fmt (a : t) =
       Format.fprintf fmt "call *%a; -> %a" VarNode.pp t Loc.pp f
   | Jret i -> Format.fprintf fmt "return %a;" VarNode.pp i
 
+let succ jmp =
+  match jmp with
+  | Jcall (_, n) -> [ n ]
+  | Jcall_ind (_, n) -> [ n ]
+  | Jcbranch (_, n, m) -> [ n; m ]
+  | Jfallthrough n -> [ n ]
+  | Jjump n -> [ n ]
+  | Jjump_ind (_, s) -> LocSet.to_seq s |> List.of_seq
+  | Jret _ -> []
+  | Junimplemented -> []
+
+let succ_full jmp = succ jmp.jmp
+
 let pp_full fmt (a : t_full) =
   Format.fprintf fmt "%a: %a [%a]" Loc.pp a.loc pp a.jmp Mnemonic.pp a.mnem
