@@ -1,7 +1,7 @@
 open Basic
 open Basic_collection
-
 include AddrMap
+
 type t = Char.t AddrMap.t
 
 let load_mem (s : t) (addr : Addr.t) (width : Int32.t) : Value.t =
@@ -9,9 +9,7 @@ let load_mem (s : t) (addr : Addr.t) (width : Int32.t) : Value.t =
       Char.t list =
     if width = 0l then acc
     else
-      let c =
-        AddrMap.find_opt addr s |> Option.value ~default:(Char.chr 0)
-      in
+      let c = AddrMap.find_opt addr s |> Option.value ~default:(Char.chr 0) in
       aux (Addr.succ addr) (Int32.pred width) (c :: acc)
   in
   let chars = aux addr width [] |> List.rev in

@@ -1,11 +1,11 @@
 open Basic
-open Basic_domain
+open Basic_collection
 
 type t =
   | Junimplemented
   | Jfallthrough of Loc.t
   | Jjump of Loc.t
-  | Jjump_ind of (VarNode.t * LocSetD.t)
+  | Jjump_ind of (VarNode.t * LocSet.t)
   | Jcbranch of (VarNode.t * Loc.t * Loc.t)
   | Jcall of (Loc.t * Loc.t)
   | Jcall_ind of (VarNode.t * Loc.t)
@@ -21,7 +21,7 @@ let pp fmt (a : t) =
         (Format.pp_print_list
            ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
            Loc.pp)
-        (LocSetD.elements s)
+        (LocSet.elements s)
   | Jcbranch (i0, i1, i2) ->
       Format.fprintf fmt "if %a goto %a else goto %a;" VarNode.pp i0 Loc.pp i1
         Loc.pp i2

@@ -3,7 +3,7 @@ open Basic_collection
 
 let init_sp = 0x7FFFFFFFC000L
 
-let from_signature (a : Addr.t) : State.t =
+let from_signature (p : Prog.t) (a : Addr.t) : State.t =
   {
     regs =
       RegFile.add_reg RegFile.empty

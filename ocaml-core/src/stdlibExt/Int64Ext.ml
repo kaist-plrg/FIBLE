@@ -19,13 +19,16 @@ let zext (v : t) (in_width : int32) (out_width : int32) : int64 =
   cut_width x out_width
 
 let bitwidth (v : t) : int64 =
-  let rec aux acc v = if v = 0L then acc else aux (Int64.add acc 1L) (Int64.shift_right_logical v 1)
+  let rec aux acc v =
+    if v = 0L then acc
+    else aux (Int64.add acc 1L) (Int64.shift_right_logical v 1)
   in
   aux 0L v
 
 let bitcount (v : t) : int64 =
-  let rec aux acc v = if v = 0L then acc else 
-        aux (Int64.add acc (Int64.logand v 1L)) (Int64.shift_right_logical v 1)
+  let rec aux acc v =
+    if v = 0L then acc
+    else aux (Int64.add acc (Int64.logand v 1L)) (Int64.shift_right_logical v 1)
   in
   aux 0L v
 

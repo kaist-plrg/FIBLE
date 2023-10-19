@@ -26,3 +26,6 @@ let dump_basic_block (p : t) (path : String.t) (filename : String.t) : unit =
     (List.sort
        (fun (f1 : Func.t) (f2 : Func.t) -> compare f1.entry f2.entry)
        p.funcs)
+
+let get_func_opt (p : t) (loc : Loc.t) : Func.t option =
+  List.find_opt (fun (f : Func.t) -> Loc.compare f.entry loc = 0) p.funcs

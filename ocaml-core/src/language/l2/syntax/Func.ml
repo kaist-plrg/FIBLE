@@ -1,10 +1,10 @@
 open Basic
-open Basic_domain
+open Basic_collection
 
 type t = {
   nameo : String.t option;
   entry : Loc.t;
-  boundaries : LocSetD.t;
+  boundaries : LocSet.t;
   sp_boundary : int64 * int64;
   blocks : Block.t list;
 }
@@ -19,7 +19,7 @@ let pp fmt { nameo; entry; boundaries; sp_boundary; blocks } =
     (Format.pp_print_option Format.pp_print_string)
     nameo Loc.pp entry
     (Format.pp_print_list Loc.pp)
-    (LocSetD.elements boundaries)
+    (LocSet.elements boundaries)
     (fun fmt (x, y) -> Format.fprintf fmt "(%Ld, %Ld)" x y)
     sp_boundary
     (Format.pp_print_list Block.pp)
