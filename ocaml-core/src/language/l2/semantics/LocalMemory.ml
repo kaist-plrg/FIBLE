@@ -11,7 +11,6 @@ end)
 type t = Memory.t FuncTimestampMap.t
 
 let empty = FuncTimestampMap.empty
-
 let add = FuncTimestampMap.add
 let remove = FuncTimestampMap.remove
 

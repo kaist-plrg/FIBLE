@@ -64,7 +64,4 @@ let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   let s' = step p s in
-  match s' with
-  | Error _ -> s'
-  | Ok s' ->
-      interp p s'
+  match s' with Error _ -> s' | Ok s' -> interp p s'

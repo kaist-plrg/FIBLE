@@ -4,15 +4,9 @@ let ( let* ) = Result.bind
 
 let check_pc (s0 : Loc.t) (s1 : L1.Cont.t) (s2 : L2.Cont.t) :
     (Unit.t, String.t) Result.t =
-    let s1_pc = match s1.remaining with
-    | [] -> s1.jmp.loc
-    | s :: _ -> s.loc
-in
-    let s2_pc = match s2.remaining with
-    | [] -> s2.jmp.loc
-    | s :: _ -> s.loc
-in
-  if (Loc.compare s0 s1_pc = 0) && (Loc.compare s1_pc s2_pc = 0) then Ok ()
+  let s1_pc = match s1.remaining with [] -> s1.jmp.loc | s :: _ -> s.loc in
+  let s2_pc = match s2.remaining with [] -> s2.jmp.loc | s :: _ -> s.loc in
+  if Loc.compare s0 s1_pc = 0 && Loc.compare s1_pc s2_pc = 0 then Ok ()
   else Error "PCs are not equal"
 
 let check_simu_state (s0 : L0.State.t) (s1 : L1.State.t) (s2 : L2.State.t) :

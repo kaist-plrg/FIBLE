@@ -1,7 +1,7 @@
 open Spfa
 
 let translate_jmp (j : L1.Jmp.t_full) (a : SPFA.Immutable.t) : L2.Jmp.t_full =
-  let njmp: L2.Jmp.t =
+  let njmp : L2.Jmp.t =
     match j.jmp with
     | Junimplemented -> Junimplemented
     | Jfallthrough l -> Jfallthrough l
@@ -11,8 +11,8 @@ let translate_jmp (j : L1.Jmp.t_full) (a : SPFA.Immutable.t) : L2.Jmp.t_full =
     | Jcall (l, lret) -> Jcall (8L, l, lret)
     | Jcall_ind (vn, lret) -> Jcall_ind (8L, vn, lret)
     | Jret vn -> Jret vn
-  
   in
+
   { jmp = njmp; loc = j.loc; mnem = j.mnem }
 
 let translate_inst (i : L1.Inst.t_full) (a : SPFA.Immutable.t) : L2.Inst.t_full

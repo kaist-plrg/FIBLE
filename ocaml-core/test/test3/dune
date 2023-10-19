@@ -1,0 +1,19 @@
+(rule
+ (target main.bin)
+ (deps main.c)
+ (action
+  (run clang -o %{target} -O0 %{deps})))
+
+(rule
+ (target main.output)
+ (deps main.bin)
+ (action
+  (with-stdout-to
+   %{target}
+   (run ../../src/main.exe -i %{deps} -run-sim -project-cwd ../../../../../))))
+
+(rule
+ (alias runtest)
+ (deps ../all.expected main.output)
+ (action
+  (diff ../all.expected main.output)))

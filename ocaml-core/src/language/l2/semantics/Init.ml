@@ -16,7 +16,7 @@ let from_signature (p : Prog.t) (a : Addr.t) : State.t =
           LocalMemory.store_mem LocalMemory.empty init_sp
             (Value.Num { value = 0xDEADBEEFL; width = 8l });
       };
-    func = (a, 0), 0L;
+    func = ((a, 0), 0L);
     cont = Cont.of_func_entry_loc p (a, 0) |> Result.get_ok;
     stack = [];
   }

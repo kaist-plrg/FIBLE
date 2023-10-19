@@ -27,7 +27,8 @@ let pp fmt (a : t) =
         Loc.pp i2
   | Jfallthrough i -> Format.fprintf fmt "fallthrough %a;" Loc.pp i
   | Junimplemented -> Format.fprintf fmt "unimplemented"
-  | Jcall (spdiff, t, f) -> Format.fprintf fmt "call (+%Lx) %a; -> %a" spdiff Loc.pp t Loc.pp f
+  | Jcall (spdiff, t, f) ->
+      Format.fprintf fmt "call (+%Lx) %a; -> %a" spdiff Loc.pp t Loc.pp f
   | Jcall_ind (spdiff, t, f) ->
       Format.fprintf fmt "call (+%Lx) *%a; -> %a" spdiff VarNode.pp t Loc.pp f
   | Jret i -> Format.fprintf fmt "return %a;" VarNode.pp i

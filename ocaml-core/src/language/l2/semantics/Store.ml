@@ -30,7 +30,7 @@ let load_mem (s : t) (v : Value.t) (width : Int32.t) :
   | SP sv -> Ok (load_mem_local s sv width)
   | Undef _ -> Error "load: Undefined address"
 
-let store_mem (s: t) (v: Value.t) (e: Value.t) : (t, String.t) Result.t = 
+let store_mem (s : t) (v : Value.t) (e : Value.t) : (t, String.t) Result.t =
   match v with
   | Num adv ->
       let addr = NumericValue.to_addr adv in

@@ -15,7 +15,7 @@ let eval_assignment (a : Assignable.t) (s : Store.t) (outwidth : Int32.t) :
   match a with
   | Avar vn -> Ok (eval_vn vn s)
   | Auop (u, vn) -> Value.eval_uop u (eval_vn vn s) outwidth
-  | Abop (b, lv, rv) -> Value.eval_bop b (eval_vn lv s) (eval_vn rv s) outwidth 
+  | Abop (b, lv, rv) -> Value.eval_bop b (eval_vn lv s) (eval_vn rv s) outwidth
 
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
     (Store.t, String.t) Result.t =
@@ -62,15 +62,24 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
         let* ncont = Cont.of_block_loc p (fst s.func) ift in
         Ok { s with cont = ncont }
   | Jcall (spdiff, calln, retn) ->
-      let* f = Prog.get_func_opt p calln |> Option.to_result ~none:"jcall: not found function" in
-      let* _ = if f.sp_diff = spdiff then Ok () else Error "jcall: spdiff not match" in
+      let* f =
+        Prog.get_func_opt p calln
+        |> Option.to_result ~none:"jcall: not found function"
+      in
+      let* _ =
+        if f.sp_diff = spdiff then Ok () else Error "jcall: spdiff not match"
+      in
       let* ncont = Cont.of_func_entry_loc p calln in
       let sp_curr =
         Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }
       in
       let* passing_val = Store.load_mem s.sto sp_curr 8l in
       let nlocal = Memory.store_mem Memory.empty 0L passing_val in
-      let* sp_saved = Value.eval_bop Bop.Bint_add sp_curr (Num { value = spdiff; width = 8l }) 8l in
+      let* sp_saved =
+        Value.eval_bop Bop.Bint_add sp_curr
+          (Num { value = spdiff; width = 8l })
+          8l
+      in
       Ok
         {
           State.timestamp = Int64Ext.succ s.timestamp;
@@ -97,15 +106,25 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
         }
   | Jcall_ind (spdiff, callvn, retn) ->
       let* calln = Value.try_loc (eval_vn callvn s.sto) in
-      let* f = Prog.get_func_opt p calln |> Option.to_result ~none:"jcall_ind: not found function" in
-      let* _ = if f.sp_diff = spdiff then Ok () else Error "jcall_ind: spdiff not match" in
+      let* f =
+        Prog.get_func_opt p calln
+        |> Option.to_result ~none:"jcall_ind: not found function"
+      in
+      let* _ =
+        if f.sp_diff = spdiff then Ok ()
+        else Error "jcall_ind: spdiff not match"
+      in
       let* ncont = Cont.of_func_entry_loc p calln in
       let sp_curr =
         Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }
       in
       let* passing_val = Store.load_mem s.sto sp_curr 8l in
       let nlocal = Memory.store_mem Memory.empty 0L passing_val in
-      let* sp_saved = Value.eval_bop Bop.Bint_add sp_curr (Num { value = spdiff; width = 8l }) 8l in
+      let* sp_saved =
+        Value.eval_bop Bop.Bint_add sp_curr
+          (Num { value = spdiff; width = 8l })
+          8l
+      in
       Ok
         {
           State.timestamp = Int64Ext.succ s.timestamp;

@@ -46,7 +46,7 @@ let speclist =
     ("-dump-l2", Arg.Set dump_flag.l2, ": dump l2");
     ("-func-path", Arg.Set_string func_path, ": target funcs path");
     ("-run-sim", Arg.Set dump_flag.run, ": run simulator and dump result");
-    ("-project-cwd", Arg.Set_string cwd, ": set cwd")
+    ("-project-cwd", Arg.Set_string cwd, ": set cwd");
   ]
 
 let create_server _ =
@@ -202,7 +202,7 @@ let () =
             lines)
           else [ "main" ]
         in
-        let cwd = if (String.equal !cwd "") then Sys.getcwd () else !cwd in
+        let cwd = if String.equal !cwd "" then Sys.getcwd () else !cwd in
         let tmp_path = Filename.concat cwd "tmp" in
         print_endline (Format.sprintf "Input file is %s" !ifile);
         let sfd, port = create_server () in
@@ -267,7 +267,10 @@ let () =
             (Filename.basename !ifile |> Filename.remove_extension)
         else ();
         if !(dump_flag.run) then
-          match Simulation.Check_simulation.run l0 l1 l2 (List.find (fun x -> fst x = "main") func_with_addrs |> snd) with
+          match
+            Simulation.Check_simulation.run l0 l1 l2
+              (List.find (fun x -> fst x = "main") func_with_addrs |> snd)
+          with
           | Ok _ -> Format.printf "Success%!\n"
           | Error e -> Format.printf "Error: %s%!\n" e
         else ();
