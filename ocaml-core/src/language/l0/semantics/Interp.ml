@@ -26,7 +26,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
   | Iload (_, addrvn, outputid) ->
       let addr = eval_vn addrvn s in
       let v = State.load_mem s (Value.to_addr addr) outputid.width in
-      Format.printf "Loading %a from %a\n" Value.pp v Value.pp addr;
+      (* Format.printf "Loading %a from %a\n" Value.pp v Value.pp addr; *)
       Ok
         {
           s with
@@ -36,7 +36,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
   | Istore (_, addrvn, valuevn) ->
       let addr = eval_vn addrvn s in
       let v = eval_vn valuevn s in
-      Format.printf "Storing %a at %a\n" Value.pp v Value.pp addr;
+      (* Format.printf "Storing %a at %a\n" Value.pp v Value.pp addr; *)
       Ok
         {
           s with
@@ -46,8 +46,8 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
   | Ijump l -> Ok { s with pc = l }
   | Icbranch (vn, l) ->
       let v = eval_vn vn s in
-      if Value.isZero v then Ok { s with pc = l }
-      else Ok { s with pc = Prog.fallthru p s.pc }
+      if Value.isZero v then Ok { s with pc = Prog.fallthru p s.pc }
+      else Ok { s with pc = l }
   | Ijump_ind vn ->
       let v = eval_vn vn s in
       Ok { s with pc = Value.to_loc v }
@@ -60,7 +60,6 @@ let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
     |> Option.to_result
          ~none:(Format.asprintf "No instruction at %a" Loc.pp s.pc)
   in
-  Format.printf "%a%!\n" Inst.pp ins;
   step_ins p ins s
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
@@ -68,5 +67,4 @@ let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match s' with
   | Error _ -> s'
   | Ok s' ->
-      Format.printf "%a%!\n" State.pp s';
       interp p s'

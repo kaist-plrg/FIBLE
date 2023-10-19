@@ -26,12 +26,12 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
   | Iload (_, addrvn, outputid) ->
       let addrv = eval_vn addrvn s in
       let* lv = Store.load_mem s addrv outputid.width in
-      Format.printf "Loading %a from %a\n" Value.pp lv Value.pp addrv;
+      (* Format.printf "Loading %a from %a\n" Value.pp lv Value.pp addrv; *)
       Ok { s with regs = RegFile.add_reg s.regs outputid lv }
   | Istore (_, addrvn, valuevn) ->
       let addrv = eval_vn addrvn s in
       let sv = eval_vn valuevn s in
-      Format.printf "Storing %a at %a\n" Value.pp sv Value.pp addrv;
+      (* Format.printf "Storing %a at %a\n" Value.pp sv Value.pp addrv; *)
       Store.store_mem s addrv sv
   | Isload (cv, otuputid) -> Error "unimplemented sload"
   | Isstore (cv, valuevn) -> Error "unimplemented sstore"
