@@ -15,7 +15,7 @@ let pp fmt p =
 let dump_prog (p : t) (path : String.t) (filename : String.t) : unit =
   let oc = open_out (Filename.concat path (filename ^ ".l2")) in
   let fmt = Format.formatter_of_out_channel oc in
-  Format.fprintf fmt "%a@.%!" pp p;
+  Format.fprintf fmt "%a%!" pp p;
   close_out oc
 
 let get_func_opt (p : t) (loc : Loc.t) : Func.t option =

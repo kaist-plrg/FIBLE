@@ -1,5 +1,5 @@
-
-let translate_jmp (j : L1.Jmp.t_full) (a : L1.SPFA.Immutable.t) : L2.Jmp.t_full =
+let translate_jmp (j : L1.Jmp.t_full) (a : L1.SPFA.Immutable.t) : L2.Jmp.t_full
+    =
   let njmp : L2.Jmp.t =
     match j.jmp with
     | Junimplemented -> Junimplemented
@@ -14,8 +14,8 @@ let translate_jmp (j : L1.Jmp.t_full) (a : L1.SPFA.Immutable.t) : L2.Jmp.t_full 
 
   { jmp = njmp; loc = j.loc; mnem = j.mnem }
 
-let translate_inst (i : L1.Inst.t_full) (a : L1.SPFA.Immutable.t) : L2.Inst.t_full
-    =
+let translate_inst (i : L1.Inst.t_full) (a : L1.SPFA.Immutable.t) :
+    L2.Inst.t_full =
   let nins : L2.Inst.t =
     match i.ins with
     | INop -> INop

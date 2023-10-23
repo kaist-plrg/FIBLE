@@ -43,8 +43,8 @@ let speclist =
     ("-func-path", Arg.Set_string func_path, ": target funcs path");
     ("-run-sim", Arg.Set dump_flag.run, ": run simulator and dump result");
     ("-project-cwd", Arg.Set_string cwd, ": set cwd");
+    ("-debug", Arg.Unit (fun _ -> Logger.set_level Logger.Debug), ": debug mode");
   ]
-
 
 let dump_cfa (cfa_res : (String.t * Addr.t * L0.CFA.Immutable.t) list)
     (dump_path : string) =
@@ -123,9 +123,7 @@ let () =
         let tmp_path = Filename.concat cwd "tmp" in
         Logger.debug "Input file is %s\n" !ifile;
         let server = Server.make_server !ifile !ghidra_path tmp_path cwd in
-        List.iter
-          (fun x -> print_endline (Format.sprintf "func %s" x))
-          target_funcs;
+        List.iter (fun x -> Logger.debug "func %s\n" x) target_funcs;
         let func_with_addrs =
           List.map (fun x -> (x, Server.get_func_addr server x)) target_funcs
         in
@@ -174,7 +172,7 @@ let () =
             Simulation.Check_simulation.run l0 l1 l2
               (List.find (fun x -> fst x = "main") func_with_addrs |> snd)
           with
-          | Ok _ -> Format.printf "Success%!\n"
-          | Error e -> Format.printf "Error: %s%!\n" e
+          | Ok _ -> Logger.info "Success\n"
+          | Error e -> Logger.info "Error: %s\n" e
         else ();
         Unix.kill server.pid Sys.sigterm

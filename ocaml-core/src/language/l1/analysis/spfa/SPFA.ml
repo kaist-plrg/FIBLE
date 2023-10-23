@@ -32,8 +32,8 @@ module Immutable = struct
       accesses = AccessD.Fin (Int64SetD.singleton 0L);
     }
 
-  let post_single_block (f : Func.t) (bb : Block.t) (ca : t)
-      (sp_num : int64) : t * bool =
+  let post_single_block (f : Func.t) (bb : Block.t) (ca : t) (sp_num : int64) :
+      t * bool =
     let preds = Func.get_preds f bb in
     let na =
       List.filter_map

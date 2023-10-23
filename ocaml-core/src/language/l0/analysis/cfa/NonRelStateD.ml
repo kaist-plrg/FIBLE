@@ -14,7 +14,8 @@ let eval_varnode (a : t) (d : OctagonD.t) (vn : VarNode.t) =
   | Const c -> AbsNumeric.of_const c.value
   | Register r -> (
       match find_opt (MemRef.R r) a with
-      | None -> AbsNumeric.of_interval (OctagonD.request_interval d (MemRef.R r))
+      | None ->
+          AbsNumeric.of_interval (OctagonD.request_interval d (MemRef.R r))
       | Some v ->
           AbsNumeric.meet
             (AbsNumeric.of_interval (OctagonD.request_interval d (MemRef.R r)))

@@ -79,7 +79,8 @@ let translate_func (p0 : L0.Prog.t) (nameo : String.t option) (entry : Addr.t)
            let preds = L0.JumpD.get_preds cf.sound_jump a in
            match preds with
            | [ p ] ->
-               if LocSetD.cardinal (L0.JumpD.find p cf.sound_jump) >= 2 then Some a
+               if LocSetD.cardinal (L0.JumpD.find p cf.sound_jump) >= 2 then
+                 Some a
                else None
            | _ -> Some a)
   in

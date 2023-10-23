@@ -62,8 +62,8 @@ let post_single (p : Prog.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
   | INop -> a
   | Iunimplemented -> a
 
-let filter_single (_ : Prog.t) (_ : Loc.t) (lf : Loc.t) (a : t)
-    (i : Inst.t) : t =
+let filter_single (_ : Prog.t) (_ : Loc.t) (lf : Loc.t) (a : t) (i : Inst.t) : t
+    =
   match i with
   | Icbranch (condv, trueloc) -> (
       match condv with

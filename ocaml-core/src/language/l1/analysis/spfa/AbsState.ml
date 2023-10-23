@@ -9,11 +9,10 @@ let post_single_instr (i : Inst.t) (c : t) : AccessD.t * t =
   | Inst.INop -> (AccessD.bottom, c)
   | Inst.Iassignment (a, vn) -> (AccessD.bottom, process_assignment c a vn)
   | Inst.Iload (i0, i1, o) ->
-      Format.asprintf "load: %a" SPVal.pp (eval_varnode c i1) |> print_endline;
+      Logger.debug "load: %a\n" SPVal.pp (eval_varnode c i1);
       (AccessD.log_access (eval_varnode c i1), c)
   | Inst.Istore (i0, i1, i2) ->
-      Format.asprintf "store: %a\n" SPVal.pp (eval_varnode c i1)
-      |> print_endline;
+      Logger.debug "store: %a\n" SPVal.pp (eval_varnode c i1);
       (AccessD.log_access (eval_varnode c i1), c)
 
 let post_single_jmp (i : Jmp.t) (c : t) (sp_num : int64) : t =
@@ -28,8 +27,7 @@ let post_single_jmp (i : Jmp.t) (c : t) (sp_num : int64) : t =
         c
   | _ -> c
 
-let post_single_block (b : Block.t) (c : t) (sp_num : int64) : AccessD.t * t
-    =
+let post_single_block (b : Block.t) (c : t) (sp_num : int64) : AccessD.t * t =
   Block.fold_left
     (fun (acc, c) i ->
       let nacc, c = post_single_instr i.ins c in

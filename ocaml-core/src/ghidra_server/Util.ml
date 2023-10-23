@@ -1,8 +1,7 @@
 open StdlibExt
 open Basic
 
-let _ = Random.self_init ();;
-
+let _ = Random.self_init ()
 
 module SpaceInfo = struct
   type t = { unique : int32; register : int32; const : int32; ram : int32 }

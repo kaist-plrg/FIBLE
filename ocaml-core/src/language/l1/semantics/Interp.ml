@@ -26,12 +26,12 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
   | Iload (_, addrvn, outputid) ->
       let addr = eval_vn addrvn s in
       let v = Store.load_mem s (Value.to_addr addr) outputid.width in
-      (* Format.printf "Loading %a from %a\n" Value.pp v Value.pp addr; *)
+      Logger.debug "Loading %a from %a\n" Value.pp v Value.pp addr;
       Ok { s with regs = RegFile.add_reg s.regs outputid v }
   | Istore (_, addrvn, valuevn) ->
       let addr = eval_vn addrvn s in
       let v = eval_vn valuevn s in
-      (* Format.printf "Storing %a at %a\n" Value.pp v Value.pp addr; *)
+      Logger.debug "Storing %a at %a\n" Value.pp v Value.pp addr;
       Ok { s with mem = Memory.store_mem s.mem (Value.to_addr addr) v }
   | INop -> Ok s
 
@@ -101,5 +101,5 @@ let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match s' with
   | Error _ -> s'
   | Ok s' ->
-      Format.printf "%a%!\n" State.pp s';
+      Logger.debug "%a\n" State.pp s';
       interp p s'

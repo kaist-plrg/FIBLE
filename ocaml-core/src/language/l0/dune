@@ -3,9 +3,23 @@
 (library
  (name l0)
  (flags -w -20-33-3)
- (libraries stdlibExt basic basic_collection common_language basic_domain value_domain)
- (modules Inst Prog Value RegFile Memory State Init Interp
- NonRelStateD
+ (libraries
+  stdlibExt
+  basic
+  basic_collection
+  common_language
+  basic_domain
+  value_domain)
+ (modules
+  Inst
+  Prog
+  Value
+  RegFile
+  Memory
+  State
+  Init
+  Interp
+  NonRelStateD
   OctagonD
   BoolPowerD
   AbsState

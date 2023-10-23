@@ -2,7 +2,4 @@
  (name ghidra_server)
  (libraries stdlibExt basic l0)
  (flags -w -20-33-3)
- (modules
-  Interaction
-  Server
-  Util))
+ (modules Interaction Server Util))

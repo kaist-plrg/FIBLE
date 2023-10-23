@@ -26,7 +26,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
   | Iload (_, addrvn, outputid) ->
       let addr = eval_vn addrvn s in
       let v = State.load_mem s (Value.to_addr addr) outputid.width in
-      (* Format.printf "Loading %a from %a\n" Value.pp v Value.pp addr; *)
+      Logger.debug "Loading %a from %a\n" Value.pp v Value.pp addr;
       Ok
         {
           s with
@@ -36,7 +36,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
   | Istore (_, addrvn, valuevn) ->
       let addr = eval_vn addrvn s in
       let v = eval_vn valuevn s in
-      (* Format.printf "Storing %a at %a\n" Value.pp v Value.pp addr; *)
+      Logger.debug "Storing %a at %a\n" Value.pp v Value.pp addr;
       Ok
         {
           s with

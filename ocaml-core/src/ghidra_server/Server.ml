@@ -51,7 +51,7 @@ let run_ghidra ifile ghidra_path tmp_path cwd port =
       |]
       devnull devnull devnull
   in
-  print_endline (Format.sprintf "Running ghidra at pid %d" ghidra_pid);
+  Logger.debug "Running ghidra at pid %d\n" ghidra_pid;
   Sys.set_signal Sys.sigint
     (Sys.Signal_handle
        (fun _ ->
@@ -68,7 +68,7 @@ let varnode_raw_to_varnode (si : SpaceInfo.t) (v : VarNode_Raw.t) : VarNode.t =
   else failwith (Format.sprintf "Unknown space %ld" v.space)
 
 let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : L0.Inst.t_full =
-  print_endline (Format.asprintf "Converting %a" PCode_Raw.pp p);
+  Logger.debug "Converting %a\n" PCode_Raw.pp p;
   let inputs i = varnode_raw_to_varnode si p.inputs.(i) in
   let output _ =
     match varnode_raw_to_varnode si (Option.get p.output) with
@@ -160,28 +160,26 @@ let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : L0.Inst.t_full =
   in
   { ins = inst; mnem = p.mnemonic }
 
+let get_func_addr (server : t) (x : string) : int64 =
+  Interaction.put_char 'f';
+  Interaction.put_string x;
+  Interaction.flush server.fd;
+  Interaction.get_long server.fd
 
-  let get_func_addr (server : t) (x : string) : int64 =
-    Interaction.put_char 'f';
-    Interaction.put_string x;
-    Interaction.flush server.fd;
-    Interaction.get_long server.fd
-  
-  let get_pcode_list (fd : Unix.file_descr) : PCode_Raw.t list =
-    print_endline "Getting pcode list";
-    let num_pcodes = Interaction.get_int fd in
-    print_endline (Format.sprintf "Number of pcodes: %ld" num_pcodes);
-    if num_pcodes = 0l then
-      [ { mnemonic = "NOP"; opcode = 999l; inputs = [||]; output = None } ]
-    else
-      let rec loop acc = function
-        | 0 -> acc
-        | n -> loop (PCode_Raw.get fd :: acc) (n - 1)
-      in
-      List.rev (loop [] (Int32.to_int num_pcodes))
-  
-  let tmpReg : RegId.t = { id = Unique 0L; width = 0l }
-  
+let get_pcode_list (fd : Unix.file_descr) : PCode_Raw.t list =
+  Logger.debug "Getting pcode list\n";
+  let num_pcodes = Interaction.get_int fd in
+  Logger.debug "Number of pcodes: %ld\n" num_pcodes;
+  if num_pcodes = 0l then
+    [ { mnemonic = "NOP"; opcode = 999l; inputs = [||]; output = None } ]
+  else
+    let rec loop acc = function
+      | 0 -> acc
+      | n -> loop (PCode_Raw.get fd :: acc) (n - 1)
+    in
+    List.rev (loop [] (Int32.to_int num_pcodes))
+
+let tmpReg : RegId.t = { id = Unique 0L; width = 0l }
 
 let make_server ifile ghidra_path tmp_path cwd : t =
   let sfd, port = create_server_socket () in
@@ -194,11 +192,10 @@ let make_server ifile ghidra_path tmp_path cwd : t =
     failwith "No connection")
   else ();
   let fd, _ = Unix.accept sfd in
-  print_endline (Format.sprintf "Accepted connection");
+  Logger.debug "Accepted connection\n";
   let spaceinfo = SpaceInfo.get fd in
-  print_endline
-    (Format.sprintf "Got stateinfo %ld %ld %ld" spaceinfo.unique
-       spaceinfo.register spaceinfo.const);
+  Logger.debug "Got stateinfo %ld %ld %ld\n" spaceinfo.unique spaceinfo.register
+    spaceinfo.const;
   let instHash : (int * L0.Inst.t_full list) Int64Hashtbl.t =
     Int64Hashtbl.create 1000
   in
@@ -207,7 +204,7 @@ let make_server ifile ghidra_path tmp_path cwd : t =
       Some (Int64Hashtbl.find instHash addr)
     else
       let iaddr = addr in
-      print_endline (Format.sprintf "Sending %Lx" iaddr);
+      Logger.debug "Sending %Lx\n" iaddr;
       Interaction.put_char 'i';
       Interaction.put_long iaddr;
       Interaction.flush fd;
@@ -217,10 +214,8 @@ let make_server ifile ghidra_path tmp_path cwd : t =
         let pcodes =
           List.map (pcode_raw_to_pcode spaceinfo) (get_pcode_list fd)
         in
-        print_endline (Format.sprintf "Received %d pcodes" (List.length pcodes));
-        List.iter
-          (fun x -> print_endline (Format.asprintf "%a" L0.Inst.pp_full x))
-          pcodes;
+        Logger.debug "Received %d pcodes\n" (List.length pcodes);
+        List.iter (fun x -> Logger.debug "%a\n" L0.Inst.pp_full x) pcodes;
         Int64Hashtbl.add instHash addr (Int32.to_int inst_len, pcodes);
         Some (Int32.to_int inst_len, pcodes)
   in
