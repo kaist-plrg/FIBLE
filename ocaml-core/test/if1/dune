@@ -10,7 +10,12 @@
  (action
   (with-stdout-to
    %{target}
-   (run ../../src/tool/interpreter.exe -i %{deps} -project-cwd ../../../../../))))
+   (run
+    ../../src/tool/interpreter.exe
+    -i
+    %{deps}
+    -project-cwd
+    ../../../../../))))
 
 (rule
  (alias runtest)

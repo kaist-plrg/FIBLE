@@ -14,6 +14,7 @@ let speclist =
   [
     ("-i", Arg.Set_string ifile, ": input file");
     ("-project-cwd", Arg.Set_string cwd, ": set cwd");
+    ("-func-path", Arg.Set_string func_path, ": target funcs path");
     ("-debug", Arg.Unit (fun _ -> Logger.set_level Logger.Debug), ": debug mode");
   ]
 
