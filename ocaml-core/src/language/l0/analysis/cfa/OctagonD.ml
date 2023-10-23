@@ -193,7 +193,7 @@ let request_interval (a : t) (mr : MemRef.t) =
         interval equiv_intervals
   | _ -> (IntervalD.ETop, IntervalD.ETop)
 
-let process_load (_ : L0.Prog.t) (a : t) (pointerv : VarNode.t) (outv : RegId.t)
+let process_load (_ : Prog.t) (a : t) (pointerv : VarNode.t) (outv : RegId.t)
     =
   match (pointerv, MemRef.convert_regid outv) with
   | Register ({ id = RegId.Unique _; _ } as u), outmr -> (

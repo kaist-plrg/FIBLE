@@ -2,4 +2,4 @@
  (name value_domain)
  (flags -w -20-33-3)
  (libraries basic basic_domain)
- (modules LimSetD Mod8D IntervalD AbsVal SPVal))
+ (modules LimSetD Mod8D IntervalD AbsNumeric SPVal))

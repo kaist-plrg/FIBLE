@@ -9,12 +9,8 @@
   stdlibExt
   basic
   l0
-  basic_domain
   l1
-  value_domain
-  cfa
   l2
-  spfa
   translation
   simulation)
  (modules Util main))

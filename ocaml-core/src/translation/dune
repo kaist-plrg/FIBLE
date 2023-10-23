@@ -1,5 +1,5 @@
 (library
  (name translation)
  (flags -w -20-33-3)
- (libraries cfa spfa)
+ (libraries l0 l1 l2)
  (modules L0toL1 L1toL2))

@@ -129,17 +129,17 @@ let initstate (si : SpaceInfo.t) (fd : Unix.file_descr) (addr : int64) =
   Interaction.flush fd;
   Interaction.get_long fd
 
-let dump_cfa (cfa_res : (String.t * Addr.t * Cfa.CFA.Immutable.t) list)
+let dump_cfa (cfa_res : (String.t * Addr.t * L0.CFA.Immutable.t) list)
     (dump_path : string) =
   List.iter
     (fun (fname, _, x) ->
       let dump_cfa_path = Filename.concat dump_path (fname ^ ".boundary") in
-      let { Cfa.CFA.Immutable.abs_state } = x in
+      let { L0.CFA.Immutable.abs_state } = x in
       let contained_addrs = abs_state.pre_state in
       let oc = open_out dump_cfa_path in
       let ofmt = Format.formatter_of_out_channel oc in
       let sorted_fboundary =
-        Cfa.FSAbsD.AbsLocMapD.to_seq contained_addrs
+        L0.FSAbsD.AbsLocMapD.to_seq contained_addrs
         |> Seq.filter (fun x -> snd (fst x) == 0)
         |> Seq.map (fun x -> fst (fst x))
         |> List.of_seq |> List.sort compare
@@ -150,7 +150,7 @@ let dump_cfa (cfa_res : (String.t * Addr.t * Cfa.CFA.Immutable.t) list)
     cfa_res;
   ()
 
-let dump_spfa (spfa_res : (L1.Func.t * Spfa.SPFA.Immutable.t) list)
+let dump_spfa (spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list)
     (dump_path : string) =
   List.iter
     (fun ((func : L1.Func.t), x) ->
@@ -161,12 +161,12 @@ let dump_spfa (spfa_res : (L1.Func.t * Spfa.SPFA.Immutable.t) list)
       let dump_spfa_path =
         Filename.concat dump_path (fname ^ ".stack_boundary")
       in
-      let { Spfa.SPFA.Immutable.accesses } = x in
+      let { L1.SPFA.Immutable.accesses } = x in
       let oc = open_out dump_spfa_path in
       let ofmt = Format.formatter_of_out_channel oc in
       match accesses with
-      | Spfa.AccessD.Top -> Format.fprintf ofmt "Top\n"
-      | Spfa.AccessD.Fin accesses ->
+      | L1.AccessD.Top -> Format.fprintf ofmt "Top\n"
+      | L1.AccessD.Fin accesses ->
           (match Int64SetD.min_elt_opt accesses with
           | None -> Format.fprintf ofmt "Empty\n"
           | Some addr -> Format.fprintf ofmt "%Ld\n" addr);
@@ -230,16 +230,16 @@ let () =
         let l0 : L0.Prog.t =
           { ins_mem = instfunc spaceinfo fd; rom = initstate spaceinfo fd }
         in
-        let cfa_res : (String.t * Addr.t * Cfa.CFA.Immutable.t) list =
+        let cfa_res : (String.t * Addr.t * L0.CFA.Immutable.t) list =
           func_with_addrs
           |> List.map (fun (fname, e) ->
-                 (fname, e, Cfa.CFA.Immutable.follow_flow l0 e))
+                 (fname, e, L0.CFA.Immutable.follow_flow l0 e))
         in
         let l1 : L1.Prog.t =
           Translation.L0toL1.translate_prog_from_cfa l0 cfa_res
         in
-        let spfa_res : (L1.Func.t * Spfa.SPFA.Immutable.t) list =
-          l1.funcs |> List.map (fun x -> (x, Spfa.SPFA.Immutable.analyze x 32L))
+        let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
+          l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32L))
         in
         let l2 : L2.Prog.t =
           Translation.L1toL2.translate_prog_from_spfa l1 spfa_res 32L

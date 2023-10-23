@@ -1,6 +1,5 @@
 open Basic
 open Basic_domain
-open Cfa
 
 let translate_stmt (loc : Loc.t) (i : L0.Inst.t_full) : L1.Inst.t_full =
   match i.ins with
@@ -33,7 +32,7 @@ let translate_jmp (loc : Loc.t) (i : L0.Inst.t_full) (next : Loc.t)
   | Iunimplemented -> { loc; jmp = Junimplemented; mnem = i.mnem }
   | _ -> { loc; jmp = Jfallthrough next; mnem = i.mnem }
 
-let translate_block (p0 : L0.Prog.t) (entry : Loc.t) (cf : CFA.Immutable.t)
+let translate_block (p0 : L0.Prog.t) (entry : Loc.t) (cf : L0.CFA.Immutable.t)
     (entries : LocSetD.t) : L1.Block.t =
   let rec aux (loc : Loc.t) (acc : L1.Inst.t_full list) : L1.Block.t =
     let ninst = L0.Prog.get_ins_full p0 loc in
@@ -45,7 +44,7 @@ let translate_block (p0 : L0.Prog.t) (entry : Loc.t) (cf : CFA.Immutable.t)
           jmp = { loc; jmp = Junimplemented; mnem = "" };
         }
     | Some i -> (
-        match JumpD.find_opt loc cf.sound_jump with
+        match L0.JumpD.find_opt loc cf.sound_jump with
         | None ->
             {
               loc = entry;
@@ -72,15 +71,15 @@ let translate_block (p0 : L0.Prog.t) (entry : Loc.t) (cf : CFA.Immutable.t)
   aux entry []
 
 let translate_func (p0 : L0.Prog.t) (nameo : String.t option) (entry : Addr.t)
-    (cf : CFA.Immutable.t) : L1.Func.t =
+    (cf : L0.CFA.Immutable.t) : L1.Func.t =
   let boundary_entries = fst cf.analysis_contour.boundary_point in
   let other_block_entires =
-    JumpD.to_seq cf.sound_jump
+    L0.JumpD.to_seq cf.sound_jump
     |> Seq.filter_map (fun (a, _) ->
-           let preds = JumpD.get_preds cf.sound_jump a in
+           let preds = L0.JumpD.get_preds cf.sound_jump a in
            match preds with
            | [ p ] ->
-               if LocSetD.cardinal (JumpD.find p cf.sound_jump) >= 2 then Some a
+               if LocSetD.cardinal (L0.JumpD.find p cf.sound_jump) >= 2 then Some a
                else None
            | _ -> Some a)
   in
@@ -95,13 +94,13 @@ let translate_func (p0 : L0.Prog.t) (nameo : String.t option) (entry : Addr.t)
 let translate_prog (p0 : L0.Prog.t) (entries : Addr.t list) : L1.Prog.t =
   let funcs =
     List.map
-      (fun e -> translate_func p0 None e (CFA.Immutable.follow_flow p0 e))
+      (fun e -> translate_func p0 None e (L0.CFA.Immutable.follow_flow p0 e))
       entries
   in
   { funcs; rom = p0.rom }
 
 let translate_prog_from_cfa (p0 : L0.Prog.t)
-    (cfa_res : (String.t * Addr.t * CFA.Immutable.t) list) : L1.Prog.t =
+    (cfa_res : (String.t * Addr.t * L0.CFA.Immutable.t) list) : L1.Prog.t =
   let funcs =
     List.map (fun (fname, e, cf) -> translate_func p0 (Some fname) e cf) cfa_res
   in

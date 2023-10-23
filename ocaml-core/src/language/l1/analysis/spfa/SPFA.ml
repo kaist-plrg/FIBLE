@@ -15,7 +15,7 @@ module Immutable = struct
         let make x y = { accesses = x; states = y }
       end)
 
-  let init (f : L1.Func.t) (sp_num : int64) : t =
+  let init (f : Func.t) (sp_num : int64) : t =
     {
       states =
         {
@@ -32,12 +32,12 @@ module Immutable = struct
       accesses = AccessD.Fin (Int64SetD.singleton 0L);
     }
 
-  let post_single_block (f : L1.Func.t) (bb : L1.Block.t) (ca : t)
+  let post_single_block (f : Func.t) (bb : Block.t) (ca : t)
       (sp_num : int64) : t * bool =
-    let preds = L1.Func.get_preds f bb in
+    let preds = Func.get_preds f bb in
     let na =
       List.filter_map
-        (fun (l : L1.Block.t) ->
+        (fun (l : Block.t) ->
           FSAbsD.AbsLocMapD.find_opt l.loc ca.states.pre_state
           |> Option.map (fun a -> (l.loc, a)))
         preds
@@ -82,13 +82,13 @@ module Immutable = struct
           },
           true )
 
-  let post_worklist (f : L1.Func.t) (c : t) (l : Loc.t) (sp_num : int64) :
+  let post_worklist (f : Func.t) (c : t) (l : Loc.t) (sp_num : int64) :
       t * Loc.t List.t =
-    let bb = L1.Func.get_bb f l |> Option.get in
+    let bb = Func.get_bb f l |> Option.get in
     let na, propagated = post_single_block f bb c sp_num in
-    if propagated then (na, L1.Block.succ bb) else (na, [])
+    if propagated then (na, Block.succ bb) else (na, [])
 
-  let rec a_fixpoint_worklist (f : L1.Func.t) (c : t) (ls : Loc.t List.t)
+  let rec a_fixpoint_worklist (f : Func.t) (c : t) (ls : Loc.t List.t)
       (sp_num : int64) : t =
     match ls with
     | [] -> c
@@ -98,6 +98,6 @@ module Immutable = struct
           (ls @ List.filter (fun l -> not (List.mem l ls)) newLs)
           sp_num
 
-  let analyze (f : L1.Func.t) (sp_num : int64) : t =
+  let analyze (f : Func.t) (sp_num : int64) : t =
     a_fixpoint_worklist f (init f sp_num) (f.entry :: []) sp_num
 end

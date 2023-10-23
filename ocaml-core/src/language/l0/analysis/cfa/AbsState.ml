@@ -30,7 +30,7 @@ let pp fmt (a : t) =
     NonRelStateD.pp a.value_nonrel OctagonD.pp a.value_octagon BoolPowerD.pp
     a.value_boolpower
 
-let post_single (p : L0.Prog.t) (ls : Loc.t) (a : t) (i : L0.Inst.t) : t =
+let post_single (p : Prog.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
   match i with
   | Iassignment (asn, outputv) ->
       {
@@ -62,8 +62,8 @@ let post_single (p : L0.Prog.t) (ls : Loc.t) (a : t) (i : L0.Inst.t) : t =
   | INop -> a
   | Iunimplemented -> a
 
-let filter_single (_ : L0.Prog.t) (_ : Loc.t) (lf : Loc.t) (a : t)
-    (i : L0.Inst.t) : t =
+let filter_single (_ : Prog.t) (_ : Loc.t) (lf : Loc.t) (a : t)
+    (i : Inst.t) : t =
   match i with
   | Icbranch (condv, trueloc) -> (
       match condv with
@@ -91,6 +91,6 @@ let try_concretize_vn (a : t) (vn : VarNode.t) (limit : int) : Int64Set.t option
   match vn with
   | Register u -> (
       match NonRelStateD.find_opt (MemRef.R u) a.value_nonrel with
-      | Some a -> AbsVal.try_concretize a limit
+      | Some a -> AbsNumeric.try_concretize a limit
       | None -> None)
   | _ -> None
