@@ -4,7 +4,7 @@ open Basic_domain
 open Value_domain
 open Ghidra_server
 
-let usage_msg = "pcert -i <ifile> -g <ghidra_path> -p <ghidra_port>"
+let usage_msg = "pcert -i <ifile>"
 let ghidra_path = ref ""
 let ifile = ref ""
 let dump_path = ref ""
@@ -16,7 +16,6 @@ type dump_flag_type = {
   basic_block : bool ref;
   spfa : bool ref;
   l2 : bool ref;
-  run : bool ref;
 }
 
 let dump_flag =
@@ -26,7 +25,6 @@ let dump_flag =
     basic_block = ref false;
     spfa = ref false;
     l2 = ref false;
-    run = ref false;
   }
 
 let cwd = ref ""
@@ -41,7 +39,6 @@ let speclist =
     ("-dump-spfa", Arg.Set dump_flag.spfa, ": dump spfa");
     ("-dump-l2", Arg.Set dump_flag.l2, ": dump l2");
     ("-func-path", Arg.Set_string func_path, ": target funcs path");
-    ("-run-sim", Arg.Set dump_flag.run, ": run simulator and dump result");
     ("-project-cwd", Arg.Set_string cwd, ": set cwd");
     ("-debug", Arg.Unit (fun _ -> Logger.set_level Logger.Debug), ": debug mode");
   ]
@@ -166,13 +163,5 @@ let () =
         if !(dump_flag.l2) then
           L2.Prog.dump_prog l2 !dump_path
             (Filename.basename !ifile |> Filename.remove_extension)
-        else ();
-        if !(dump_flag.run) then
-          match
-            Simulation.Check_simulation.run l0 l1 l2
-              (List.find (fun x -> fst x = "main") func_with_addrs |> snd)
-          with
-          | Ok _ -> Logger.info "Success\n"
-          | Error e -> Logger.info "Error: %s\n" e
         else ();
         Unix.kill server.pid Sys.sigterm

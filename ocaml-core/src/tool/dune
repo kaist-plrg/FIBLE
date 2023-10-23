@@ -1,5 +1,38 @@
 (executable
  (flags -w -20-33-3)
+ (name cfa_analyzer)
+ (public_name multi-step-decomp)
+ (package multi-step-decomp)
+ (libraries
+  zarith
+  unix
+  stdlibExt
+  basic
+  l0
+  ghidra_server
+  )
+ (modules cfa_analyzer))
+
+(executable
+ (flags -w -20-33-3)
+ (name interpreter)
+ (public_name multi-step-decomp)
+ (package multi-step-decomp)
+ (libraries
+  zarith
+  unix
+  stdlibExt
+  basic
+  l0
+  ghidra_server
+  l1
+  l2
+  translation
+  simulation)
+ (modules interpreter))
+
+(executable
+ (flags -w -20-33-3)
  (name decompiler)
  (public_name multi-step-decomp)
  (package multi-step-decomp)

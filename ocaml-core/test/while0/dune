@@ -10,7 +10,7 @@
  (action
   (with-stdout-to
    %{target}
-   (run ../../src/main.exe -i %{deps} -run-sim -project-cwd ../../../../../))))
+   (run ../../src/tool/interpreter.exe -i %{deps} -project-cwd ../../../../../))))
 
 (rule
  (alias runtest)
