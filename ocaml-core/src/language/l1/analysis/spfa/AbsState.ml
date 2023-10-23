@@ -4,8 +4,6 @@ open Basic_domain
 open Value_domain
 include NonRelStateD
 
-let print_endline = Interaction.print_endline
-
 let post_single_instr (i : Inst.t) (c : t) : AccessD.t * t =
   match i with
   | Inst.INop -> (AccessD.bottom, c)

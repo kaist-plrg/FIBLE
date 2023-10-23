@@ -2,11 +2,7 @@ open StdlibExt
 open Basic
 open Basic_domain
 open Value_domain
-open Util
-
-let print_endline = Interaction.print_endline;;
-
-Random.self_init ()
+open Ghidra_server
 
 let usage_msg = "pcert -i <ifile> -g <ghidra_path> -p <ghidra_port>"
 let ghidra_path = ref ""
@@ -49,85 +45,6 @@ let speclist =
     ("-project-cwd", Arg.Set_string cwd, ": set cwd");
   ]
 
-let create_server _ =
-  let fd = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-  let port = 0 in
-  let _ = Unix.bind fd (Unix.ADDR_INET (Unix.inet_addr_loopback, port)) in
-  let _ = Unix.listen fd 1 in
-  let port =
-    match Unix.getsockname fd with
-    | Unix.ADDR_INET (_, p) -> p
-    | _ -> failwith "impossible"
-  in
-  (fd, port)
-
-let gen_random_name (fname : string) =
-  let rand = Random.int 1000000000 in
-  let fname = Filename.basename fname in
-  let fname = Filename.remove_extension fname in
-  let fname = "PEx" ^ fname ^ string_of_int rand in
-  fname
-
-let run_ghidra ifile tmp_path cwd port =
-  let ghidra_headless_path =
-    Filename.concat !ghidra_path "support/analyzeHeadless"
-  in
-  let devnull = Unix.openfile "/dev/null" [ Unix.O_RDWR ] 0o666 in
-  (* ignore stdin/stdout *)
-  let ghidra_pid =
-    Unix.create_process ghidra_headless_path
-      [|
-        ghidra_headless_path;
-        tmp_path;
-        gen_random_name ifile;
-        "-import";
-        ifile;
-        "-postScript";
-        "PCert.java";
-        string_of_int port;
-        "-scriptPath";
-        cwd;
-        "-deleteProject";
-      |]
-      devnull devnull devnull
-  in
-  print_endline (Format.sprintf "Running ghidra at pid %d" ghidra_pid);
-  Sys.set_signal Sys.sigint
-    (Sys.Signal_handle
-       (fun _ ->
-         Unix.kill ghidra_pid Sys.sigterm;
-         exit 0));
-  ghidra_pid
-
-let instHash : (int * L0.Inst.t_full list) Int64Hashtbl.t =
-  Int64Hashtbl.create 1000
-
-let instfunc (si : SpaceInfo.t) (fd : Unix.file_descr) (addr : int64) :
-    (int * L0.Inst.t_full list) option =
-  if Int64Hashtbl.mem instHash addr then Some (Int64Hashtbl.find instHash addr)
-  else
-    let iaddr = addr in
-    print_endline (Format.sprintf "Sending %Lx" iaddr);
-    Interaction.put_char 'i';
-    Interaction.put_long iaddr;
-    Interaction.flush fd;
-    let inst_len = Interaction.get_int fd in
-    if inst_len = 0l then None
-    else
-      let pcodes = List.map (pcode_raw_to_pcode si) (get_pcode_list fd) in
-      print_endline (Format.sprintf "Received %d pcodes" (List.length pcodes));
-      List.iter
-        (fun x -> print_endline (Format.asprintf "%a" L0.Inst.pp_full x))
-        pcodes;
-      Int64Hashtbl.add instHash addr (Int32.to_int inst_len, pcodes);
-      Some (Int32.to_int inst_len, pcodes)
-
-let initstate (si : SpaceInfo.t) (fd : Unix.file_descr) (addr : int64) =
-  let iaddr = addr in
-  Interaction.put_char 's';
-  Interaction.put_long iaddr;
-  Interaction.flush fd;
-  Interaction.get_long fd
 
 let dump_cfa (cfa_res : (String.t * Addr.t * L0.CFA.Immutable.t) list)
     (dump_path : string) =
@@ -204,31 +121,17 @@ let () =
         in
         let cwd = if String.equal !cwd "" then Sys.getcwd () else !cwd in
         let tmp_path = Filename.concat cwd "tmp" in
-        print_endline (Format.sprintf "Input file is %s" !ifile);
-        let sfd, port = create_server () in
-        print_endline (Format.sprintf "Listening on port %d" port);
-        let ghidra_pid = run_ghidra !ifile tmp_path cwd port in
-
-        let x, _, _ = Unix.select [ sfd ] [] [] 30.0 in
-        if x = [] then (
-          Unix.kill ghidra_pid Sys.sigterm;
-          failwith "No connection")
-        else ();
-        let fd, _ = Unix.accept sfd in
-        print_endline (Format.sprintf "Accepted connection");
-        let spaceinfo = SpaceInfo.get fd in
-        print_endline
-          (Format.sprintf "Got stateinfo %ld %ld %ld" spaceinfo.unique
-             spaceinfo.register spaceinfo.const);
+        Logger.debug "Input file is %s\n" !ifile;
+        let server = Server.make_server !ifile !ghidra_path tmp_path cwd in
         List.iter
           (fun x -> print_endline (Format.sprintf "func %s" x))
           target_funcs;
         let func_with_addrs =
-          List.map (fun x -> (x, get_func_addr fd x)) target_funcs
+          List.map (fun x -> (x, Server.get_func_addr server x)) target_funcs
         in
 
         let l0 : L0.Prog.t =
-          { ins_mem = instfunc spaceinfo fd; rom = initstate spaceinfo fd }
+          { ins_mem = server.instfunc; rom = server.initstate }
         in
         let cfa_res : (String.t * Addr.t * L0.CFA.Immutable.t) list =
           func_with_addrs
@@ -274,4 +177,4 @@ let () =
           | Ok _ -> Format.printf "Success%!\n"
           | Error e -> Format.printf "Error: %s%!\n" e
         else ();
-        Unix.kill ghidra_pid Sys.sigterm
+        Unix.kill server.pid Sys.sigterm

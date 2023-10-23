@@ -1,6 +1,6 @@
 (executable
  (flags -w -20-33-3)
- (name main)
+ (name decompiler)
  (public_name multi-step-decomp)
  (package multi-step-decomp)
  (libraries
@@ -9,8 +9,9 @@
   stdlibExt
   basic
   l0
+  ghidra_server
   l1
   l2
   translation
   simulation)
- (modules Util main))
+ (modules decompiler))

@@ -1,5 +1,4 @@
-let debug = false
-let print_endline s = if debug then print_endline s else ()
+
 let recvbuf = Bytes.create 2048
 let sendbuf = Bytes.create 2048
 let send_offset = ref 0
