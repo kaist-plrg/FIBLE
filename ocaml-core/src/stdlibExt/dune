@@ -5,6 +5,7 @@
   Int64Ext
   HashtblExt
   Int64Map
+  StringMap
   Int64Set
   Int64Hashtbl
   MutMap

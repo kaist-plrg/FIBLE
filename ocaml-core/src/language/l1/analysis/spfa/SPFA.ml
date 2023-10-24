@@ -100,4 +100,18 @@ module Immutable = struct
 
   let analyze (f : Func.t) (sp_num : int64) : t =
     a_fixpoint_worklist f (init f sp_num) (f.entry :: []) sp_num
+  (*
+  let rec a_fixpoint_worklist_prog (p : Prog.t) (c : t) (ls : Loc.t List.t)
+    (sp_num : int64) : t =
+  match ls with
+  | [] -> c
+  | l :: ls ->
+      let nc, newLs = post_worklist f c l sp_num in
+      a_fixpoint_worklist f nc
+        (ls @ List.filter (fun l -> not (List.mem l ls)) newLs)
+        sp_num
+  
+  let analyze_prog (p: Prog.t) (sp_num: int64): t =
+    a_fixpoint_worklist_prog p (init_prog p sp_num) (Prog.get_funcs p) sp_num
+    *)
 end

@@ -54,13 +54,33 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
   | Inst.INop -> Ok { s with pc = Prog.fallthru p s.pc }
   | Inst.Iunimplemented -> Error "Unimplemented instruction"
 
+let handle_extern (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
+  match AddrMap.find_opt (Loc.to_addr s.pc) p.externs with
+  | None -> Ok s
+  | Some name ->
+      Logger.debug "Calling %s\n" name;
+      let retpointer =
+        State.get_reg s { id = RegId.Register 32L; width = 8l }
+      in
+      let retaddr = State.load_mem s (Value.to_addr retpointer) 8l in
+      Ok
+        {
+          s with
+          pc = Value.to_loc retaddr;
+          regs =
+            RegFile.add_reg s.regs
+              { id = RegId.Register 32L; width = 8l }
+              { value = Int64.add retpointer.value 8L; width = 8l };
+        }
+
 let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   let* ins =
     Prog.get_ins p s.pc
     |> Option.to_result
          ~none:(Format.asprintf "No instruction at %a" Loc.pp s.pc)
   in
-  step_ins p ins s
+  let* ns = step_ins p ins s in
+  handle_extern p ns
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   let s' = step p s in

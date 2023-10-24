@@ -42,7 +42,11 @@ let () =
         let addr = Server.get_func_addr server target_func in
 
         let l0 : L0.Prog.t =
-          { ins_mem = server.instfunc; rom = server.initstate }
+          {
+            ins_mem = server.instfunc;
+            rom = server.initstate;
+            externs = Util.ExternalFunction.to_addrMap server.external_function;
+          }
         in
         (if !repl then L0.CFA_repl.repl_analysis l0 addr
          else

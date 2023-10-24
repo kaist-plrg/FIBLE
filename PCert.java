@@ -4,10 +4,13 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressFactory;
 import ghidra.program.model.address.AddressSpace;
+import ghidra.program.model.lang.Register;
+import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.pcode.PcodeOp;
 import ghidra.program.model.pcode.Varnode;
@@ -34,7 +37,6 @@ public class PCert extends GhidraScript {
         // Write to socket
         println("Sent address space");
     }
-    
 
     public void putVarNode(DataOutputStream out, Varnode vn) throws IOException {
         out.writeInt(vn.getSpace());
@@ -70,8 +72,7 @@ public class PCert extends GhidraScript {
         Instruction instruction = currentProgram.getListing().getInstructionAt(addr);
         if (instruction == null) {
             out.writeInt(0);
-        }
-        else {
+        } else {
             PcodeOp[] pcode = instruction.getPcode();
             int instruction_length = instruction.getLength();
             out.writeInt(instruction_length);
@@ -84,21 +85,22 @@ public class PCert extends GhidraScript {
     }
 
     public void send_data_at(DataOutputStream out, long address) throws IOException {
-        byte [] data = new byte[8];
+        byte[] data = new byte[1];
         try {
-            currentProgram.getMemory().getBytes(currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(address), data);
+            currentProgram.getMemory()
+                    .getBytes(currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(address), data);
         } catch (Exception e) {
-            out.writeLong(-1);
+            out.writeByte(0);
             return;
         }
-        long data_long = ByteBuffer.wrap(data).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong();
+        byte data_byte = ByteBuffer.wrap(data).order(java.nio.ByteOrder.LITTLE_ENDIAN).get();
         // Write to socket
-        out.writeLong(data_long);
+        out.writeByte(data_byte);
     }
 
     public void send_function_addr(DataOutputStream out, String name) throws IOException {
         Address func_address = null;
-        for (Symbol sym: currentProgram.getSymbolTable().getSymbols(name))  {
+        for (Symbol sym : currentProgram.getSymbolTable().getSymbols(name)) {
             func_address = sym.getAddress();
         }
         if (func_address != null) {
@@ -108,10 +110,58 @@ public class PCert extends GhidraScript {
         }
     }
 
+    public void add_thunk_to(Address addr, List<Address> func_addresses) {
+        if (func_addresses.contains(addr)) {
+            return;
+        }
+        func_addresses.add(addr);
+        Function func = currentProgram.getFunctionManager().getFunctionAt(addr);
+        if (func == null) {
+            return;
+        }
+        Address[] thunk_addrs = func.getFunctionThunkAddresses(true);
+        if (thunk_addrs == null) {
+            return;
+        }
+        for (Address thunk_addr : thunk_addrs) {
+            add_thunk_to(thunk_addr, func_addresses);
+        }
+    }
+
+    public void send_register_number(DataOutputStream out) throws IOException {
+        List<Register> rs = currentProgram.getProgramContext().getRegisters();
+        out.writeInt(rs.size());
+        for (Register r : rs) {
+            writeString(out, r.getName());
+            out.writeInt(r.getOffset());
+        }
+    }
+
+    public void send_external_functions(DataOutputStream out) throws IOException {
+        List<Function> ex_funcs = new java.util.ArrayList<Function>();
+        for (Function func : currentProgram.getFunctionManager().getExternalFunctions()) {
+            ex_funcs.add(func);
+        }
+        out.writeInt(ex_funcs.size());
+        for (Function func : ex_funcs) {
+            List<Address> func_addresses = new java.util.ArrayList<Address>();
+            for (Address thunk_addr : func.getFunctionThunkAddresses(true)) {
+                add_thunk_to(thunk_addr, func_addresses);
+            }
+            writeString(out, func.getName());
+            out.writeInt(func_addresses.size());
+            for (Address addr : func_addresses) {
+                out.writeLong(addr.getOffset());
+            }
+        }
+    }
+
     public void loop_program(Socket connected) throws IOException {
         DataInputStream in = new DataInputStream(connected.getInputStream());
         DataOutputStream out = new DataOutputStream(new BufferedOutputStream(connected.getOutputStream()));
         send_address_space(out);
+        send_register_number(out);
+        send_external_functions(out);
         out.flush();
         // Loop until connection is closed
         // Read from socket
@@ -159,7 +209,7 @@ public class PCert extends GhidraScript {
         } catch (IOException e) {
             println("Could not listen on port " + port);
             return;
-        }    
+        }
     }
 
 }

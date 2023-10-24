@@ -37,31 +37,10 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
   | Isstore (cv, valuevn) -> Error "unimplemented sstore"
   | INop -> Ok s
 
-let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
-    (State.t, String.t) Result.t =
-  match jmp.jmp with
-  | Jjump l ->
-      let* ncont = Cont.of_block_loc p (fst s.func) l in
-      Ok { s with cont = ncont }
-  | Jfallthrough l ->
-      let* ncont = Cont.of_block_loc p (fst s.func) l in
-      Ok { s with cont = ncont }
-  | Jjump_ind (vn, ls) ->
-      let* loc = Value.try_loc (eval_vn vn s.sto) in
-      if LocSet.mem loc ls then
-        let* ncont = Cont.of_block_loc p (fst s.func) loc in
-        Ok { s with cont = ncont }
-      else Error "jump_ind: Not a valid jump"
-  | Jcbranch (vn, ift, iff) ->
-      let v = eval_vn vn s.sto in
-      let* iz = Value.try_isZero v in
-      if iz then
-        let* ncont = Cont.of_block_loc p (fst s.func) iff in
-        Ok { s with cont = ncont }
-      else
-        let* ncont = Cont.of_block_loc p (fst s.func) ift in
-        Ok { s with cont = ncont }
-  | Jcall (spdiff, calln, retn) ->
+let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
+    (s : State.t) : (State.t, String.t) Result.t =
+  match AddrMap.find_opt (Loc.to_addr calln) p.externs with
+  | None ->
       let* f =
         Prog.get_func_opt p calln
         |> Option.to_result ~none:"jcall: not found function"
@@ -104,51 +83,61 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
                   nlocal s.sto.local;
             };
         }
-  | Jcall_ind (spdiff, callvn, retn) ->
-      let* calln = Value.try_loc (eval_vn callvn s.sto) in
-      let* f =
-        Prog.get_func_opt p calln
-        |> Option.to_result ~none:"jcall_ind: not found function"
-      in
-      let* _ =
-        if f.sp_diff = spdiff then Ok ()
-        else Error "jcall_ind: spdiff not match"
-      in
-      let* ncont = Cont.of_func_entry_loc p calln in
+  | Some name ->
+      Logger.debug "Calling %s\n" name;
       let sp_curr =
         Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }
       in
-      let* passing_val = Store.load_mem s.sto sp_curr 8l in
-      let nlocal = Memory.store_mem Memory.empty 0L passing_val in
       let* sp_saved =
         Value.eval_bop Bop.Bint_add sp_curr
           (Num { value = spdiff; width = 8l })
           8l
       in
+
+      let* ncont = Cont.of_block_loc p (fst s.func) retn in
       Ok
         {
-          State.timestamp = Int64Ext.succ s.timestamp;
-          cont = ncont;
-          stack = (s.func, sp_saved, retn) :: s.stack;
-          func = (calln, Int64Ext.succ s.timestamp);
+          s with
           sto =
             {
               s.sto with
               regs =
                 RegFile.add_reg s.sto.regs
                   { id = RegId.Register 32L; width = 8l }
-                  (SP
-                     {
-                       SPVal.func = calln;
-                       timestamp = Int64Ext.succ s.timestamp;
-                       offset = 0L;
-                     });
-              local =
-                LocalMemory.add
-                  (calln, Int64Ext.succ s.timestamp)
-                  nlocal s.sto.local;
+                  sp_saved;
             };
+          cont = ncont;
+          stack = s.stack;
         }
+
+let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
+    (State.t, String.t) Result.t =
+  match jmp.jmp with
+  | Jjump l ->
+      let* ncont = Cont.of_block_loc p (fst s.func) l in
+      Ok { s with cont = ncont }
+  | Jfallthrough l ->
+      let* ncont = Cont.of_block_loc p (fst s.func) l in
+      Ok { s with cont = ncont }
+  | Jjump_ind (vn, ls) ->
+      let* loc = Value.try_loc (eval_vn vn s.sto) in
+      if LocSet.mem loc ls then
+        let* ncont = Cont.of_block_loc p (fst s.func) loc in
+        Ok { s with cont = ncont }
+      else Error "jump_ind: Not a valid jump"
+  | Jcbranch (vn, ift, iff) ->
+      let v = eval_vn vn s.sto in
+      let* iz = Value.try_isZero v in
+      if iz then
+        let* ncont = Cont.of_block_loc p (fst s.func) iff in
+        Ok { s with cont = ncont }
+      else
+        let* ncont = Cont.of_block_loc p (fst s.func) ift in
+        Ok { s with cont = ncont }
+  | Jcall (spdiff, calln, retn) -> step_call p spdiff calln retn s
+  | Jcall_ind (spdiff, callvn, retn) ->
+      let* calln = Value.try_loc (eval_vn callvn s.sto) in
+      step_call p spdiff calln retn s
   | Jret retvn -> (
       let* retn = Value.try_loc (eval_vn retvn s.sto) in
       match s.stack with

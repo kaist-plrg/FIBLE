@@ -65,3 +65,49 @@ module PCode_Raw = struct
     in
     { mnemonic; opcode; inputs; output }
 end
+
+module RegSpec = struct
+  type t = Int32.t StringMap.t
+
+  let get (fd : Unix.file_descr) : t =
+    Logger.debug "RegSpec.get\n";
+    let num = Interaction.get_int fd in
+    Logger.debug "RegSpec.get: num=%ld\n" num;
+    let rec loop acc n =
+      if n = 0 then acc
+      else (
+        Logger.debug "RegSpec.get: loop\n";
+        let name = Interaction.get_string fd in
+        let id = Interaction.get_int fd in
+        Logger.debug "RegSpec.get %d: name=%s; id=%ld\n" n name id;
+        loop (StringMap.add name id acc) (n - 1))
+    in
+    loop StringMap.empty (Int32.to_int num)
+end
+
+module ExternalFunction = struct
+  type t = Int64.t List.t StringMap.t
+
+  let get (fd : Unix.file_descr) : t =
+    Logger.debug "ExternalFunction.get";
+    let num = Interaction.get_int fd in
+    let rec loop acc n =
+      if n = 0 then acc
+      else
+        let name = Interaction.get_string fd in
+        let num_args = Interaction.get_int fd in
+        let args =
+          List.init (Int32.to_int num_args) (fun _ -> Interaction.get_long fd)
+        in
+        loop (StringMap.add name args acc) (n - 1)
+    in
+    loop StringMap.empty (Int32.to_int num)
+
+  let to_addrMap (ext : t) : String.t Basic_collection.AddrMap.t =
+    StringMap.fold
+      (fun name args acc ->
+        List.fold_right
+          (fun addr acc -> Basic_collection.AddrMap.add addr name acc)
+          args acc)
+      ext Basic_collection.AddrMap.empty
+end

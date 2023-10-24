@@ -126,7 +126,11 @@ let () =
         in
 
         let l0 : L0.Prog.t =
-          { ins_mem = server.instfunc; rom = server.initstate }
+          {
+            ins_mem = server.instfunc;
+            rom = server.initstate;
+            externs = Util.ExternalFunction.to_addrMap server.external_function;
+          }
         in
         let cfa_res : (String.t * Addr.t * L0.CFA.Immutable.t) list =
           func_with_addrs

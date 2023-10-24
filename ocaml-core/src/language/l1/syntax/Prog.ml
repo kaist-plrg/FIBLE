@@ -1,11 +1,26 @@
 open StdlibExt
 open Basic
+open Basic_collection
 
-type t = { funcs : Func.t list; rom : Addr.t -> int64 }
+type t = {
+  funcs : Func.t list;
+  rom : Addr.t -> Char.t;
+  externs : String.t AddrMap.t;
+}
 
-let get_rom (p : t) (addr : Addr.t) (width : int32) : int64 =
-  let v_full = p.rom addr in
-  Int64Ext.cut_width v_full width
+let get_rom_byte (p : t) (addr : Addr.t) : Char.t = p.rom addr
+
+let get_rom (p : t) (addr : Addr.t) (width : Int32.t) :
+    Common_language.NumericValue.t =
+  let rec aux (addr : Addr.t) (width : Int32.t) (acc : Char.t list) :
+      Char.t list =
+    if width = 0l then acc
+    else
+      let c = get_rom_byte p addr in
+      aux (Addr.succ addr) (Int32.pred width) (c :: acc)
+  in
+  let chars = aux addr width [] |> List.rev in
+  Common_language.NumericValue.of_chars chars
 
 let pp fmt p =
   Format.fprintf fmt "@[<v>";

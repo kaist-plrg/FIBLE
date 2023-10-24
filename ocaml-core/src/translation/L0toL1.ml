@@ -98,11 +98,11 @@ let translate_prog (p0 : L0.Prog.t) (entries : Addr.t list) : L1.Prog.t =
       (fun e -> translate_func p0 None e (L0.CFA.Immutable.follow_flow p0 e))
       entries
   in
-  { funcs; rom = p0.rom }
+  { funcs; rom = p0.rom; externs = p0.externs }
 
 let translate_prog_from_cfa (p0 : L0.Prog.t)
     (cfa_res : (String.t * Addr.t * L0.CFA.Immutable.t) list) : L1.Prog.t =
   let funcs =
     List.map (fun (fname, e, cf) -> translate_func p0 (Some fname) e cf) cfa_res
   in
-  { funcs; rom = p0.rom }
+  { funcs; rom = p0.rom; externs = p0.externs }

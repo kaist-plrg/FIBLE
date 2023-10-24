@@ -6,7 +6,9 @@ type t = {
   pid : int;
   fd : Unix.file_descr;
   instfunc : Int64.t -> (int * L0.Inst.t_full list) option;
-  initstate : Int64.t -> Int64.t;
+  initstate : Int64.t -> Char.t;
+  external_function : ExternalFunction.t;
+  regspec : RegSpec.t;
 }
 
 let create_server_socket _ =
@@ -194,6 +196,8 @@ let make_server ifile ghidra_path tmp_path cwd : t =
   let fd, _ = Unix.accept sfd in
   Logger.debug "Accepted connection\n";
   let spaceinfo = SpaceInfo.get fd in
+  let regspec = RegSpec.get fd in
+  let external_function = ExternalFunction.get fd in
   Logger.debug "Got stateinfo %ld %ld %ld\n" spaceinfo.unique spaceinfo.register
     spaceinfo.const;
   let instHash : (int * L0.Inst.t_full list) Int64Hashtbl.t =
@@ -225,7 +229,7 @@ let make_server ifile ghidra_path tmp_path cwd : t =
     Interaction.put_char 's';
     Interaction.put_long iaddr;
     Interaction.flush fd;
-    Interaction.get_long fd
+    Interaction.get_char fd
   in
 
-  { pid = ghidra_pid; fd; instfunc; initstate }
+  { pid = ghidra_pid; fd; instfunc; initstate; external_function; regspec }

@@ -4,7 +4,8 @@ open Basic_collection
 
 type t = {
   ins_mem : Addr.t -> (int * Inst.t_full list) option;
-  rom : Addr.t -> int64;
+  rom : Addr.t -> Char.t;
+  externs : String.t AddrMap.t;
 }
 
 let get_ins (p : t) (loc : Loc.t) : Inst.t option =
@@ -22,9 +23,19 @@ let get_ins_full (p : t) (loc : Loc.t) : Inst.t_full option =
       if snd loc < List.length ins_list then Some (List.nth ins_list (snd loc))
       else None
 
-let get_rom (p : t) (addr : Addr.t) (width : int32) : int64 =
-  let v_full = p.rom addr in
-  Int64Ext.cut_width v_full width
+let get_rom_byte (p : t) (addr : Addr.t) : Char.t = p.rom addr
+
+let get_rom (p : t) (addr : Addr.t) (width : Int32.t) :
+    Common_language.NumericValue.t =
+  let rec aux (addr : Addr.t) (width : Int32.t) (acc : Char.t list) :
+      Char.t list =
+    if width = 0l then acc
+    else
+      let c = get_rom_byte p addr in
+      aux (Addr.succ addr) (Int32.pred width) (c :: acc)
+  in
+  let chars = aux addr width [] |> List.rev in
+  Common_language.NumericValue.of_chars chars
 
 let reposition_sn (vs : int * Inst.t_full list) (s : Loc.t) : Loc.t =
   match vs with

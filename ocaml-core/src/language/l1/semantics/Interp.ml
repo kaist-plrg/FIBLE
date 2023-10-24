@@ -35,6 +35,30 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
       Ok { s with mem = Memory.store_mem s.mem (Value.to_addr addr) v }
   | INop -> Ok s
 
+let step_call (p : Prog.t) (calln : Loc.t) (retn : Loc.t) (s : State.t) :
+    (State.t, String.t) Result.t =
+  match AddrMap.find_opt (Loc.to_addr calln) p.externs with
+  | None ->
+      let* ncont = Cont.of_func_entry_loc p calln in
+      Ok
+        { s with cont = ncont; stack = (s.func, retn) :: s.stack; func = calln }
+  | Some name ->
+      Logger.debug "Calling %s\n" name;
+      let retpointer =
+        Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }
+      in
+      let* ncont = Cont.of_block_loc p s.func retn in
+      Ok
+        {
+          s with
+          sto =
+            Store.add_reg s.sto
+              { id = RegId.Register 32L; width = 8l }
+              { value = Int64.add retpointer.value 8L; width = 8l };
+          cont = ncont;
+          stack = s.stack;
+        }
+
 let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
     (State.t, String.t) Result.t =
   match jmp.jmp with
@@ -58,20 +82,10 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
       else
         let* ncont = Cont.of_block_loc p s.func ift in
         Ok { s with cont = ncont }
-  | Jcall (calln, retn) ->
-      let* ncont = Cont.of_func_entry_loc p calln in
-      Ok
-        { s with cont = ncont; stack = (s.func, retn) :: s.stack; func = calln }
+  | Jcall (calln, retn) -> step_call p calln retn s
   | Jcall_ind (callvn, retn) ->
       let calln = eval_vn callvn s.sto in
-      let* ncont = Cont.of_func_entry_loc p (Value.to_loc calln) in
-      Ok
-        {
-          s with
-          cont = ncont;
-          stack = (s.func, retn) :: s.stack;
-          func = Value.to_loc calln;
-        }
+      step_call p (Value.to_loc calln) retn s
   | Jret retvn -> (
       let retn = eval_vn retvn s.sto in
       match s.stack with
