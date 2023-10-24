@@ -38,4 +38,7 @@ let pp fmt a =
 
 let pp_loc fmt (a, loc) =
   Format.fprintf fmt "@[<v 0>pre_state:@,  @[%a@]@,post_state:@,  @[%a@]@]"
-    (Format.pp_print_option AbsState.pp) (AbsLocMapD.find_opt loc a.pre_state) (Format.pp_print_option AbsState.pp) (AbsLocMapD.find_opt loc a.post_state)
+    (Format.pp_print_option AbsState.pp)
+    (AbsLocMapD.find_opt loc a.pre_state)
+    (Format.pp_print_option AbsState.pp)
+    (AbsLocMapD.find_opt loc a.post_state)

@@ -11,7 +11,7 @@ let le (l : level) (r : level) = map_level l <= map_level r
 let current_level = ref Info
 let set_level level = current_level := level
 
-let debug (fstr : ('a, Format.formatter, unit) format): 'a =
+let debug (fstr : ('a, Format.formatter, unit) format) : 'a =
   if le !current_level Debug then (
     Format.fprintf Format.std_formatter "[DEBUG] ";
     let v = Format.fprintf Format.std_formatter fstr in

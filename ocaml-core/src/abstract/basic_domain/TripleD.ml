@@ -1,7 +1,8 @@
 module MakeJoinSemiLattice_Record
     (T1 : DomainSpec.JoinSemiLatitce)
     (T2 : DomainSpec.JoinSemiLatitce)
-    (T3 : DomainSpec.JoinSemiLatitce) (R : sig
+    (T3 : DomainSpec.JoinSemiLatitce)
+    (R : sig
       type t
 
       val get_fst : t -> T1.t
@@ -27,7 +28,8 @@ end
 module MakeJoinSemiLatticeWithTop_Record
     (T1 : DomainSpec.JoinSemiLatitceWithTop)
     (T2 : DomainSpec.JoinSemiLatitceWithTop)
-    (T3 : DomainSpec.JoinSemiLatitceWithTop) (R : sig
+    (T3 : DomainSpec.JoinSemiLatitceWithTop)
+    (R : sig
       type t
 
       val get_fst : t -> T1.t
@@ -44,7 +46,8 @@ end
 module MakeLattice_Record
     (T1 : DomainSpec.Lattice)
     (T2 : DomainSpec.Lattice)
-    (T3 : DomainSpec.Lattice) (R : sig
+    (T3 : DomainSpec.Lattice)
+    (R : sig
       type t
 
       val get_fst : t -> T1.t
@@ -65,7 +68,8 @@ end
 module MakeLatticeWithTop_Record
     (T1 : DomainSpec.LatticeWithTop)
     (T2 : DomainSpec.LatticeWithTop)
-    (T3 : DomainSpec.LatticeWithTop) (R : sig
+    (T3 : DomainSpec.LatticeWithTop)
+    (R : sig
       type t
 
       val get_fst : t -> T1.t
@@ -82,7 +86,8 @@ end
 module MakeJoinSemiLattice_Mut_Record
     (T1 : DomainSpec.JoinSemiLatitce_Mut)
     (T2 : DomainSpec.JoinSemiLatitce_Mut)
-    (T3 : DomainSpec.JoinSemiLatitce_Mut) (R : sig
+    (T3 : DomainSpec.JoinSemiLatitce_Mut)
+    (R : sig
       type t
 
       val get_fst : t -> T1.t

@@ -44,7 +44,7 @@ let () =
         let l0 : L0.Prog.t =
           { ins_mem = server.instfunc; rom = server.initstate }
         in
-        (if !repl then L0.CFA.Immutable.repl_analysis l0 addr
+        (if !repl then L0.CFA_repl.repl_analysis l0 addr
          else
            let _ = L0.CFA.Immutable.follow_flow l0 addr in
            ());
