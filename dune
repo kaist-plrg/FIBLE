@@ -1,4 +1,5 @@
 (alias
  (name default)
  (deps
-  (alias_rec ocaml-core/src/default)))
+  (alias_rec ocaml-core/src/default)
+  (alias_rec c-core/src/default)))

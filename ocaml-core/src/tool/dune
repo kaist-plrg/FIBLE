@@ -3,7 +3,7 @@
  (name cfa_analyzer)
  (public_name multi-step-decomp)
  (package multi-step-decomp)
- (libraries zarith unix stdlibExt basic l0 ghidra_server)
+ (libraries zarith unix stdlibExt basic l0 server)
  (modules cfa_analyzer))
 
 (executable
@@ -17,7 +17,7 @@
   stdlibExt
   basic
   l0
-  ghidra_server
+  server
   l1
   l2
   translation
@@ -35,7 +35,7 @@
   stdlibExt
   basic
   l0
-  ghidra_server
+  server
   l1
   l2
   translation

@@ -2,7 +2,7 @@ open StdlibExt
 open Basic
 open Basic_domain
 open Value_domain
-open Ghidra_server
+open Server
 
 let usage_msg = "interpreter -i <ifile>"
 let ghidra_path = ref ""
@@ -20,7 +20,7 @@ let speclist =
     ("-repl", Arg.Set repl, ": repl mode");
   ]
 
-let () =
+let main () =
   match Sys.getenv_opt "GHIDRA_PATH" with
   | None ->
       raise
@@ -37,9 +37,9 @@ let () =
         let cwd = if String.equal !cwd "" then Sys.getcwd () else !cwd in
         let tmp_path = Filename.concat cwd "tmp" in
         Logger.debug "Input file is %s\n" !ifile;
-        let server = Server.make_server !ifile !ghidra_path tmp_path cwd in
+        let server = Ghidra.make_server !ifile !ghidra_path tmp_path cwd in
         Logger.debug "func %s\n" target_func;
-        let addr = Server.get_func_addr server target_func in
+        let addr = Ghidra.get_func_addr server target_func in
 
         let l0 : L0.Prog.t =
           {
@@ -53,3 +53,11 @@ let () =
            let _ = L0.CFA.Immutable.follow_flow l0 addr in
            ());
         Unix.kill server.pid Sys.sigterm
+
+let () =
+  try
+    main ();
+    Handle_signal.finailize ()
+  with e ->
+    Handle_signal.finailize ();
+    raise e

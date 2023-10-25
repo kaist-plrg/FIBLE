@@ -1,0 +1,5 @@
+(rule
+ (target environment.exe)
+ (deps environment.c)
+ (action
+  (run clang -o %{target} -O0 %{deps})))

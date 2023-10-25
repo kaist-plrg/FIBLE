@@ -34,7 +34,6 @@ let run_ghidra ifile ghidra_path tmp_path cwd port =
   let ghidra_headless_path =
     Filename.concat ghidra_path "support/analyzeHeadless"
   in
-  let devnull = Unix.openfile "/dev/null" [ Unix.O_RDWR ] 0o666 in
   (* ignore stdin/stdout *)
   let ghidra_pid =
     Unix.create_process ghidra_headless_path
@@ -51,14 +50,10 @@ let run_ghidra ifile ghidra_path tmp_path cwd port =
         cwd;
         "-deleteProject";
       |]
-      devnull devnull devnull
+      Handle_signal.devnull Handle_signal.devnull Handle_signal.devnull
   in
   Logger.debug "Running ghidra at pid %d\n" ghidra_pid;
-  Sys.set_signal Sys.sigint
-    (Sys.Signal_handle
-       (fun _ ->
-         Unix.kill ghidra_pid Sys.sigterm;
-         exit 0));
+  Handle_signal.install_pid ghidra_pid;
   ghidra_pid
 
 let varnode_raw_to_varnode (si : SpaceInfo.t) (v : VarNode_Raw.t) : VarNode.t =
@@ -190,7 +185,6 @@ let make_server ifile ghidra_path tmp_path cwd : t =
 
   let x, _, _ = Unix.select [ sfd ] [] [] 30.0 in
   if x = [] then (
-    Unix.kill ghidra_pid Sys.sigterm;
     failwith "No connection")
   else ();
   let fd, _ = Unix.accept sfd in
