@@ -9,6 +9,9 @@ type hidden_fn = Hide : ('a -> 'b) fn -> hidden_fn
 let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
   StringMap.of_list
     [
+      ( "putchar",
+        ( { Interop.params = [ Interop.T32 ]; result = T32 },
+          Hide (int @-> returning int) ) );
       ( "puts",
         ( { Interop.params = [ Interop.TString ]; result = T32 },
           Hide (string @-> returning int) ) );
