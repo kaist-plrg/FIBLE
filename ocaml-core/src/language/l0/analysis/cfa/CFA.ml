@@ -43,9 +43,9 @@ let flow_heuristic_simple (p : Prog.t) (l : Loc.t) (a : AbsState.t) (i : Inst.t)
   match (i, m) with
   | Ijump v, "CALL" -> HrFallthrough
   | Ijump a, m ->
-      if
-        (not (AddrMap.mem (Loc.to_addr a) p.externs))
-        && (String.starts_with ~prefix:"J" m || String.starts_with ~prefix:"M" m)
+      if AddrMap.mem (Loc.to_addr a) p.externs then HrFallthrough
+      else if
+        String.starts_with ~prefix:"J" m || String.starts_with ~prefix:"M" m
       then HrSound (LocSetD.singleton a)
       else HrUnsound LocSetD.empty
   | Ijump_ind vn, "RET" -> HrExit
