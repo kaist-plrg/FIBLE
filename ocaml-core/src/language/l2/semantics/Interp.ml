@@ -256,7 +256,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
             Logger.info "try to ret %a but supposed ret is %a\n" Loc.pp retn
               Loc.pp retn'
           else ();
-          let* ncont = Cont.of_block_loc p (fst calln) retn in
+          let* ncont = Cont.of_block_loc p (fst calln) retn' in
           Ok
             {
               s with
