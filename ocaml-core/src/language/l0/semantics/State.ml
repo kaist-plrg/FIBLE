@@ -1,5 +1,6 @@
 open Basic
 open Basic_collection
+open World
 
 type t = { regs : RegFile.t; mem : Memory.t; pc : Loc.t }
 

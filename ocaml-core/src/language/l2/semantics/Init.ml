@@ -11,7 +11,7 @@ let from_signature (p : Prog.t) (a : Addr.t) : State.t =
           RegFile.add_reg RegFile.empty
             { id = RegId.Register 32L; width = 8l }
             (Value.SP init_sp);
-        mem = Memory.empty;
+        mem = Memory.from_rom p.rom;
         local =
           LocalMemory.store_mem LocalMemory.empty init_sp
             (Value.Num { value = 0xDEADBEEFL; width = 8l });

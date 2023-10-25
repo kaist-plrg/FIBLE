@@ -8,6 +8,8 @@ depends: [
   "zarith"
   "ocaml-lsp-server"
   "ocamlformat"
+  "ctypes"
+  "ctypes-foreign"
   "odoc" {with-doc}
 ]
 build: [

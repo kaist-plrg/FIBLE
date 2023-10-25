@@ -1,5 +1,0 @@
-(library
- (name server)
- (libraries unix stdlibExt basic l0)
- (flags -w -20-33-3)
- (modules Interaction Ghidra Environment Util Handle_signal))

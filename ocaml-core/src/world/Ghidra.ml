@@ -1,27 +1,16 @@
 open StdlibExt
 open Basic
 open Util
+open Common_language
 
 type t = {
   pid : int;
   fd : Unix.file_descr;
-  instfunc : Int64.t -> (int * L0.Inst.t_full list) option;
+  instfunc : Int64.t -> (int * RawInst.t_full list) option;
   initstate : Int64.t -> Char.t;
   external_function : ExternalFunction.t;
   regspec : RegSpec.t;
 }
-
-let create_server_socket _ =
-  let fd = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-  let port = 0 in
-  let _ = Unix.bind fd (Unix.ADDR_INET (Unix.inet_addr_loopback, port)) in
-  let _ = Unix.listen fd 1 in
-  let port =
-    match Unix.getsockname fd with
-    | Unix.ADDR_INET (_, p) -> p
-    | _ -> failwith "impossible"
-  in
-  (fd, port)
 
 let gen_random_name (fname : string) =
   let rand = Random.int 1000000000 in
@@ -50,10 +39,10 @@ let run_ghidra ifile ghidra_path tmp_path cwd port =
         cwd;
         "-deleteProject";
       |]
-      Handle_signal.devnull Handle_signal.devnull Handle_signal.devnull
+      Global.devnull Global.devnull Global.devnull
   in
   Logger.debug "Running ghidra at pid %d\n" ghidra_pid;
-  Handle_signal.install_pid ghidra_pid;
+  Global.install_pid ghidra_pid;
   ghidra_pid
 
 let varnode_raw_to_varnode (si : SpaceInfo.t) (v : VarNode_Raw.t) : VarNode.t =
@@ -64,7 +53,7 @@ let varnode_raw_to_varnode (si : SpaceInfo.t) (v : VarNode_Raw.t) : VarNode.t =
   else if v.space = si.ram then Const { value = v.offset; width = v.size }
   else failwith (Format.sprintf "Unknown space %ld" v.space)
 
-let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : L0.Inst.t_full =
+let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : RawInst.t_full =
   Logger.debug "Converting %a\n" PCode_Raw.pp p;
   let inputs i = varnode_raw_to_varnode si p.inputs.(i) in
   let output _ =
@@ -73,17 +62,17 @@ let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : L0.Inst.t_full =
     | _ -> raise (Invalid_argument "Output is not a register")
   in
   let mkJump _ =
-    L0.Inst.Ijump
+    RawInst.Ijump
       (match inputs 0 with
       | Const { value = a; _ } -> (a, 0)
       | _ -> failwith "Jump target is not a constant")
   in
-  let mkJIump _ = L0.Inst.Ijump_ind (inputs 0) in
-  let mkUop op = L0.Inst.Iassignment (Auop (op, inputs 0), output ()) in
+  let mkJIump _ = RawInst.Ijump_ind (inputs 0) in
+  let mkUop op = RawInst.Iassignment (Auop (op, inputs 0), output ()) in
   let mkBop op =
-    L0.Inst.Iassignment (Abop (op, inputs 0, inputs 1), output ())
+    RawInst.Iassignment (Abop (op, inputs 0, inputs 1), output ())
   in
-  let (inst : L0.Inst.t) =
+  let (inst : RawInst.t) =
     match p.opcode with
     | 0l -> Iunimplemented
     | 1l -> Iassignment (Avar (inputs 0), output ())
@@ -179,14 +168,12 @@ let get_pcode_list (fd : Unix.file_descr) : PCode_Raw.t list =
 let tmpReg : RegId.t = { id = Unique 0L; width = 0l }
 
 let make_server ifile ghidra_path tmp_path cwd : t =
-  let sfd, port = create_server_socket () in
+  let sfd, port = Util.create_server_socket () in
   Logger.debug "Listening on port %d\n" port;
   let ghidra_pid = run_ghidra ifile ghidra_path tmp_path cwd port in
 
   let x, _, _ = Unix.select [ sfd ] [] [] 30.0 in
-  if x = [] then (
-    failwith "No connection")
-  else ();
+  if x = [] then failwith "No connection" else ();
   let fd, _ = Unix.accept sfd in
   Logger.debug "Accepted connection\n";
   let spaceinfo = SpaceInfo.get fd in
@@ -194,10 +181,10 @@ let make_server ifile ghidra_path tmp_path cwd : t =
   let external_function = ExternalFunction.get fd in
   Logger.debug "Got stateinfo %ld %ld %ld\n" spaceinfo.unique spaceinfo.register
     spaceinfo.const;
-  let instHash : (int * L0.Inst.t_full list) Int64Hashtbl.t =
+  let instHash : (int * RawInst.t_full list) Int64Hashtbl.t =
     Int64Hashtbl.create 1000
   in
-  let instfunc (addr : int64) : (int * L0.Inst.t_full list) option =
+  let instfunc (addr : int64) : (int * RawInst.t_full list) option =
     if Int64Hashtbl.mem instHash addr then
       Some (Int64Hashtbl.find instHash addr)
     else
@@ -213,7 +200,7 @@ let make_server ifile ghidra_path tmp_path cwd : t =
           List.map (pcode_raw_to_pcode spaceinfo) (get_pcode_list fd)
         in
         Logger.debug "Received %d pcodes\n" (List.length pcodes);
-        List.iter (fun x -> Logger.debug "%a\n" L0.Inst.pp_full x) pcodes;
+        List.iter (fun x -> Logger.debug "%a\n" RawInst.pp_full x) pcodes;
         Int64Hashtbl.add instHash addr (Int32.to_int inst_len, pcodes);
         Some (Int32.to_int inst_len, pcodes)
   in

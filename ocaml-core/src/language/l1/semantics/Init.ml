@@ -12,7 +12,7 @@ let from_signature (p : Prog.t) (a : Addr.t) : State.t =
             { id = RegId.Register 32L; width = 8l }
             { value = init_sp; width = 8l };
         mem =
-          Memory.store_mem Memory.empty init_sp
+          Memory.store_mem (Memory.from_rom p.rom) init_sp
             { value = 0xDEADBEEFL; width = 8l };
       };
     func = (a, 0);

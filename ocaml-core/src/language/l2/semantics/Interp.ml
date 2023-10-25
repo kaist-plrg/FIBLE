@@ -17,6 +17,104 @@ let eval_assignment (a : Assignable.t) (s : Store.t) (outwidth : Int32.t) :
   | Auop (u, vn) -> Value.eval_uop u (eval_vn vn s) outwidth
   | Abop (b, lv, rv) -> Value.eval_bop b (eval_vn lv s) (eval_vn rv s) outwidth
 
+let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :
+    Common_language.Interop.t =
+  match tagv with
+  | TString -> VString (Store.load_string s.sto v |> Result.get_ok)
+  | T8 ->
+      V8
+        (Char.chr
+           (match v with
+           | Num { value; _ } -> Int64.to_int value
+           | _ -> failwith "Not a number"))
+  | T16 ->
+      V16
+        (Int64.to_int32
+           (match v with
+           | Num { value; _ } -> value
+           | _ -> failwith "Not a number"))
+  | T32 ->
+      V32
+        (Int64.to_int32
+           (match v with
+           | Num { value; _ } -> value
+           | _ -> failwith "Not a number"))
+  | T64 ->
+      V64
+        (match v with
+        | Num { value; _ } -> value
+        | _ -> failwith "Not a number")
+  | _ -> failwith "Not supported"
+
+let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
+  match v with
+  | V8 c ->
+      {
+        s with
+        sto =
+          {
+            s.sto with
+            regs =
+              RegFile.add_reg s.sto.regs
+                { id = RegId.Register 0L; width = 8l }
+                (Value.Num { value = Int64.of_int (Char.code c); width = 8l });
+          };
+      }
+  | V16 i ->
+      {
+        s with
+        sto =
+          {
+            s.sto with
+            regs =
+              RegFile.add_reg s.sto.regs
+                { id = RegId.Register 0L; width = 8l }
+                (Value.Num { value = Int64.of_int32 i; width = 8l });
+          };
+      }
+  | V32 i ->
+      {
+        s with
+        sto =
+          {
+            s.sto with
+            regs =
+              RegFile.add_reg s.sto.regs
+                { id = RegId.Register 0L; width = 8l }
+                (Value.Num { value = Int64.of_int32 i; width = 8l });
+          };
+      }
+  | V64 i ->
+      {
+        s with
+        sto =
+          {
+            s.sto with
+            regs =
+              RegFile.add_reg s.sto.regs
+                { id = RegId.Register 0L; width = 8l }
+                (Value.Num { value = i; width = 8l });
+          };
+      }
+  | _ -> failwith "Unsupported return type"
+
+let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
+    Common_language.Interop.t list =
+  if List.length fsig.params > 6 then
+    failwith "At most 6 argument is supported for external functions";
+  let reg_list = [ 56L; 48L; 16L; 8L; 128L; 136L ] in
+  let rec aux (acc : Common_language.Interop.t list)
+      (param_tags : Common_language.Interop.tag list) (regs : Int64.t list) :
+      Common_language.Interop.t list =
+    match (param_tags, regs) with
+    | [], _ -> List.rev acc
+    | tag :: param_tags, reg :: regs ->
+        let v = Store.get_reg s.sto { id = RegId.Register reg; width = 8l } in
+        aux (build_arg s tag v :: acc) param_tags regs
+    | _ -> failwith "Not enough registers"
+  in
+  aux [] fsig.params reg_list
+
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
     (Store.t, String.t) Result.t =
   match ins with
@@ -53,7 +151,7 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
         Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }
       in
       let* passing_val = Store.load_mem s.sto sp_curr 8l in
-      let nlocal = Memory.store_mem Memory.empty 0L passing_val in
+      let nlocal = Frame.store_mem Frame.empty 0L passing_val in
       let* sp_saved =
         Value.eval_bop Bop.Bint_add sp_curr
           (Num { value = spdiff; width = 8l })
@@ -85,6 +183,13 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
         }
   | Some name ->
       Logger.debug "Calling %s\n" name;
+      let* fsig, _ =
+        StringMap.find_opt name World.Environment.signature_map
+        |> Option.to_result ~none:"No external function"
+      in
+      let args = build_args s fsig in
+      let retv = World.Environment.request_call name args in
+
       let sp_curr =
         Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }
       in
@@ -96,19 +201,21 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
 
       let* ncont = Cont.of_block_loc p (fst s.func) retn in
       Ok
-        {
-          s with
-          sto =
-            {
-              s.sto with
-              regs =
-                RegFile.add_reg s.sto.regs
-                  { id = RegId.Register 32L; width = 8l }
-                  sp_saved;
-            };
-          cont = ncont;
-          stack = s.stack;
-        }
+        (build_ret
+           {
+             s with
+             sto =
+               {
+                 s.sto with
+                 regs =
+                   RegFile.add_reg s.sto.regs
+                     { id = RegId.Register 32L; width = 8l }
+                     sp_saved;
+               };
+             cont = ncont;
+             stack = s.stack;
+           }
+           retv)
 
 let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
     (State.t, String.t) Result.t =

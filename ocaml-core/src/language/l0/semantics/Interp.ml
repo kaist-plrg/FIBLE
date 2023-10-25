@@ -54,6 +54,72 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
   | Inst.INop -> Ok { s with pc = Prog.fallthru p s.pc }
   | Inst.Iunimplemented -> Error "Unimplemented instruction"
 
+let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :
+    Common_language.Interop.t =
+  match tagv with
+  | TString -> VString (Memory.load_string s.mem (Value.to_addr v))
+  | T8 -> V8 (Char.chr (Int64.to_int v.value))
+  | T16 -> V16 (Int64.to_int32 v.value)
+  | T32 -> V32 (Int64.to_int32 v.value)
+  | T64 -> V64 v.value
+  | TFloat -> VFloat (Int64.float_of_bits v.value)
+  | TDouble -> VDouble (Int64.float_of_bits v.value)
+  | TVoid -> VUnit
+  | TList _ -> failwith "List not supported"
+
+let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
+  match v with
+  | V8 c ->
+      {
+        s with
+        regs =
+          RegFile.add_reg s.regs
+            { id = RegId.Register 0L; width = 8l }
+            { value = Int64.of_int (Char.code c); width = 8l };
+      }
+  | V16 i ->
+      {
+        s with
+        regs =
+          RegFile.add_reg s.regs
+            { id = RegId.Register 0L; width = 8l }
+            { value = Int64.of_int32 i; width = 8l };
+      }
+  | V32 i ->
+      {
+        s with
+        regs =
+          RegFile.add_reg s.regs
+            { id = RegId.Register 0L; width = 8l }
+            { value = Int64.of_int32 i; width = 8l };
+      }
+  | V64 i ->
+      {
+        s with
+        regs =
+          RegFile.add_reg s.regs
+            { id = RegId.Register 0L; width = 8l }
+            { value = i; width = 8l };
+      }
+  | _ -> failwith "Unsupported return type"
+
+let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
+    Common_language.Interop.t list =
+  if List.length fsig.params > 6 then
+    failwith "At most 6 argument is supported for external functions";
+  let reg_list = [ 56L; 48L; 16L; 8L; 128L; 136L ] in
+  let rec aux (acc : Common_language.Interop.t list)
+      (param_tags : Common_language.Interop.tag list) (regs : Int64.t list) :
+      Common_language.Interop.t list =
+    match (param_tags, regs) with
+    | [], _ -> List.rev acc
+    | tag :: param_tags, reg :: regs ->
+        let v = State.get_reg s { id = RegId.Register reg; width = 8l } in
+        aux (build_arg s tag v :: acc) param_tags regs
+    | _ -> failwith "Not enough registers"
+  in
+  aux [] fsig.params reg_list
+
 let handle_extern (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match AddrMap.find_opt (Loc.to_addr s.pc) p.externs with
   | None -> Ok s
@@ -63,15 +129,23 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
         State.get_reg s { id = RegId.Register 32L; width = 8l }
       in
       let retaddr = State.load_mem s (Value.to_addr retpointer) 8l in
+      let* fsig, _ =
+        StringMap.find_opt name World.Environment.signature_map
+        |> Option.to_result ~none:"No external function"
+      in
+      let args = build_args s fsig in
+      let retv = World.Environment.request_call name args in
       Ok
-        {
-          s with
-          pc = Value.to_loc retaddr;
-          regs =
-            RegFile.add_reg s.regs
-              { id = RegId.Register 32L; width = 8l }
-              { value = Int64.add retpointer.value 8L; width = 8l };
-        }
+        (build_ret
+           {
+             s with
+             pc = Value.to_loc retaddr;
+             regs =
+               RegFile.add_reg s.regs
+                 { id = RegId.Register 32L; width = 8l }
+                 { value = Int64.add retpointer.value 8L; width = 8l };
+           }
+           retv)
 
 let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   let* ins =

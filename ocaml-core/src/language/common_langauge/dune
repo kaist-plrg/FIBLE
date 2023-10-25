@@ -6,9 +6,13 @@
  (libraries stdlibExt basic basic_collection)
  (modules
   NumericValue
+  Interop
   RegFileF
   NumericMemory
+  ROMCombinedMemory
   FailableMemory
+  ROMCombinedFailableMemory
   NumericBop
   NumericUop
-  Block))
+  Block
+  RawInst))

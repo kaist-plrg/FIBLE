@@ -1,0 +1,12 @@
+(library
+ (name world)
+ (libraries
+  unix
+  stdlibExt
+  ctypes
+  ctypes-foreign
+  basic
+  basic_collection
+  common_language)
+ (flags -w -20-33-3)
+ (modules Interaction Ghidra Environment Util Global))

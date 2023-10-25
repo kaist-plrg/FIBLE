@@ -8,7 +8,7 @@ module FuncTimestampMap = Map.Make (struct
   let compare = compare
 end)
 
-type t = Memory.t FuncTimestampMap.t
+type t = Frame.t FuncTimestampMap.t
 
 let empty = FuncTimestampMap.empty
 let add = FuncTimestampMap.add
@@ -16,21 +16,28 @@ let remove = FuncTimestampMap.remove
 
 let load_mem (s : t) (addr : SPVal.t) (width : Int32.t) : Value.t =
   if FuncTimestampMap.mem (addr.func, addr.timestamp) s then
-    Memory.load_mem
+    Frame.load_mem
       (FuncTimestampMap.find (addr.func, addr.timestamp) s)
       addr.offset width
   else Num (NumericValue.zero width)
+
+let load_string (s : t) (addr : SPVal.t) : (String.t, String.t) Result.t =
+  if FuncTimestampMap.mem (addr.func, addr.timestamp) s then
+    Frame.load_string
+      (FuncTimestampMap.find (addr.func, addr.timestamp) s)
+      addr.offset
+  else Ok ""
 
 let store_mem (s : t) (addr : SPVal.t) (v : Value.t) : t =
   if FuncTimestampMap.mem (addr.func, addr.timestamp) s then
     FuncTimestampMap.add
       (addr.func, addr.timestamp)
-      (Memory.store_mem
+      (Frame.store_mem
          (FuncTimestampMap.find (addr.func, addr.timestamp) s)
          addr.offset v)
       s
   else
     FuncTimestampMap.add
       (addr.func, addr.timestamp)
-      (Memory.store_mem Memory.empty addr.offset v)
+      (Frame.store_mem Frame.empty addr.offset v)
       s

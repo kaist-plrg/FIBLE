@@ -16,6 +16,7 @@
   Stack
   RegFile
   Memory
+  Frame
   LocalMemory
   Store
   State

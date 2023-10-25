@@ -9,7 +9,8 @@
   basic_collection
   common_language
   basic_domain
-  value_domain)
+  value_domain
+  world)
  (modules
   Inst
   Prog

@@ -2,7 +2,7 @@ open StdlibExt
 open Basic
 open Basic_domain
 open Value_domain
-open Server
+open World
 
 let usage_msg = "pcert -i <ifile>"
 let ghidra_path = ref ""
@@ -117,6 +117,7 @@ let main () =
           else [ "main" ]
         in
         let cwd = if String.equal !cwd "" then Sys.getcwd () else !cwd in
+        Global.projectd := Some cwd;
         let tmp_path = Filename.concat cwd "tmp" in
         Logger.debug "Input file is %s\n" !ifile;
         let server = Ghidra.make_server !ifile !ghidra_path tmp_path cwd in
@@ -172,7 +173,7 @@ let main () =
 let () =
   try
     main ();
-    Handle_signal.finailize ()
+    Global.finailize ()
   with e ->
-    Handle_signal.finailize ();
+    Global.finailize ();
     raise e

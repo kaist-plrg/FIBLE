@@ -1,13 +1,14 @@
 let devnull = Unix.openfile "/dev/null" [ Unix.O_RDWR ] 0o666
-let enabled = ref false
+let kill_enabled = ref false
 let pid_list : int list ref = ref []
+let projectd : String.t option ref = ref None
 let killall () = List.iter (fun pid -> Unix.kill pid Sys.sigterm) !pid_list
-let finailize () = if !enabled then killall () else ()
+let finailize () = if !kill_enabled then killall () else ()
 
 let install_pid pid =
   pid_list := pid :: !pid_list;
-  if not !enabled then (
-    enabled := true;
+  if not !kill_enabled then (
+    kill_enabled := true;
     Sys.set_signal Sys.sigint
       (Sys.Signal_handle
          (fun _ ->
