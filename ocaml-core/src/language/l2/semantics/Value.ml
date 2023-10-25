@@ -67,6 +67,8 @@ let eval_bop (b : Bop.t) (lv : t) (rv : t) (outwidth : Int32.t) :
              offset = Int64.sub o.offset (Int64Ext.sext rv.value rv.width 8l);
            })
   | Bop.Bint_sub, SP o1, SP o2 ->
-    if (o1.timestamp, o1.func) = (o2.timestamp, o2.func) then Ok (Num (NumericValue.of_int64 (Int64.sub o1.offset o2.offset) outwidth)) else Ok (Undef outwidth)
-
+      if (o1.timestamp, o1.func) = (o2.timestamp, o2.func) then
+        Ok
+          (Num (NumericValue.of_int64 (Int64.sub o1.offset o2.offset) outwidth))
+      else Ok (Undef outwidth)
   | _ -> Ok (Undef outwidth)
