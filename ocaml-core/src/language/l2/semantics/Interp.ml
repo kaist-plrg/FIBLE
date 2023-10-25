@@ -141,7 +141,8 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
   | None ->
       let* f =
         Prog.get_func_opt p calln
-        |> Option.to_result ~none:(Format.asprintf "jcall: not found function %a" Loc.pp calln)
+        |> Option.to_result
+             ~none:(Format.asprintf "jcall: not found function %a" Loc.pp calln)
       in
       let* _ =
         if f.sp_diff = spdiff then Ok () else Error "jcall: spdiff not match"

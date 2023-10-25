@@ -43,7 +43,8 @@ let flow_heuristic_simple (p : Prog.t) (l : Loc.t) (a : AbsState.t) (i : Inst.t)
   match (i, m) with
   | Ijump v, "CALL" -> HrFallthrough
   | Ijump a, m ->
-      if String.starts_with ~prefix:"J" m then HrSound (LocSetD.singleton a)
+      if String.starts_with ~prefix:"J" m || String.starts_with ~prefix:"M" m
+      then HrSound (LocSetD.singleton a)
       else HrUnsound LocSetD.empty
   | Ijump_ind vn, "RET" -> HrExit
   | Ijump_ind vn, "CALL" -> HrFallthrough

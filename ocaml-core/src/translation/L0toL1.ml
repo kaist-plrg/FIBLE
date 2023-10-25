@@ -15,7 +15,10 @@ let translate_jmp (loc : Loc.t) (i : L0.Inst.t_full) (next : Loc.t)
       {
         loc;
         jmp =
-          (if String.starts_with ~prefix:"J" i.mnem then Jjump l
+          (if
+             String.starts_with ~prefix:"J" i.mnem
+             || String.starts_with ~prefix:"M" i.mnem
+           then Jjump l
            else Jcall (l, next));
         mnem = i.mnem;
       }
