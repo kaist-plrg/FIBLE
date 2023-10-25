@@ -73,8 +73,15 @@ let eval_bop (b : Bop.t) (lv : t) (rv : t) (outwidth : Int32.t) :
       else Ok (Undef outwidth)
   | _ -> Ok (Undef outwidth)
 
+let refine_width (v : t) (width : int32) : t =
+  match v with
+  | Num n -> Num (NumericValue.refine_width n width)
+  | SP v -> SP v
+  | Undef _ -> Undef width
 
-let refine_width (v: t) (width: int32): t = match v with
- | Num n -> Num (NumericValue.refine_width n width)
- | SP v -> SP v
- | Undef _ -> Undef width
+let replace_width (ov : t) (nv : t) (width : Int32.t) : t =
+  match (ov, nv) with
+  | Num ov, Num nv -> Num (NumericValue.replace_width ov nv width)
+  | _, Num nv -> Num nv
+  | _, SP v -> SP v
+  | _, Undef _ -> Undef width

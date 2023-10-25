@@ -49,5 +49,14 @@ let of_int64_safe (v : Int64.t) (width : Int32.t) : (t, String.t) Result.t =
 
 let refine_width (x : t) (width : Int32.t) : t =
   if Int32.equal x.width width then x
-  else
-    { value = (Int64Ext.cut_width x.value width); width }
+  else { value = Int64Ext.cut_width x.value width; width }
+
+let replace_width (ov : t) (nv : t) (width : Int32.t) : t =
+  let rv =
+    Int64.logand ov.value
+      (Int64.shift_left (-1L) (Int32.to_int (Int32.mul width 8l)))
+  in
+  {
+    value = Int64.logor rv (Int64Ext.cut_width nv.value width);
+    width = ov.width;
+  }
