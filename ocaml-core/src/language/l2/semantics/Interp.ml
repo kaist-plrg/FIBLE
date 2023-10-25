@@ -252,23 +252,22 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
       match s.stack with
       | [] -> Error (Format.asprintf "ret to %a: Empty stack" Loc.pp retn)
       | (calln, sp_saved, retn') :: stack' ->
-          if Loc.compare retn retn' = 0 then
-            let* ncont = Cont.of_block_loc p (fst calln) retn in
-            Ok
-              {
-                s with
-                cont = ncont;
-                stack = stack';
-                func = calln;
-                sto =
-                  Store.add_reg s.sto
-                    { id = RegId.Register 32L; width = 8l }
-                    sp_saved;
-              }
-          else
-            Error
-              (Format.asprintf "ret to %a: Expected %a" Loc.pp retn Loc.pp retn')
-      )
+          if Loc.compare retn retn' <> 0 then
+            Logger.info "try to ret %a but supposed ret is %a\n" Loc.pp retn
+              Loc.pp retn'
+          else ();
+          let* ncont = Cont.of_block_loc p (fst calln) retn in
+          Ok
+            {
+              s with
+              cont = ncont;
+              stack = stack';
+              func = calln;
+              sto =
+                Store.add_reg s.sto
+                  { id = RegId.Register 32L; width = 8l }
+                  sp_saved;
+            })
   | Junimplemented -> Error "unimplemented jump"
 
 let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
