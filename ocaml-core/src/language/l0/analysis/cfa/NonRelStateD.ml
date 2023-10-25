@@ -12,7 +12,7 @@ let clear_mr a (mr : MemRef.t) = filter (fun k _ -> Stdlib.compare k mr <> 0) a
 let eval_varnode (a : t) (d : OctagonD.t) (vn : VarNode.t) =
   match vn with
   | Const c -> AbsNumeric.of_const c.value
-  | Register r -> (
+  | Register { id = r; _ } -> (
       match find_opt (MemRef.R r) a with
       | None ->
           AbsNumeric.of_interval (OctagonD.request_interval d (MemRef.R r))
@@ -22,9 +22,9 @@ let eval_varnode (a : t) (d : OctagonD.t) (vn : VarNode.t) =
             v)
 
 let process_load (p : Prog.t) (a : t) (d : OctagonD.t) (pointerv : VarNode.t)
-    (outv : RegId.t) =
-  match (pointerv, MemRef.convert_regid outv) with
-  | Register ({ id = RegId.Unique _; _ } as u), outmr -> (
+    (outv : RegId.t_width) =
+  match (pointerv, MemRef.convert_regid outv.id) with
+  | Register { id = RegId.Unique _ as u; _ }, outmr -> (
       match
         Option.bind (find_opt (MemRef.R u) a) (fun x ->
             AbsNumeric.try_concretize x 20)
@@ -44,8 +44,8 @@ let process_load (p : Prog.t) (a : t) (d : OctagonD.t) (pointerv : VarNode.t)
   | _, outmr -> clear_mr a outmr
 
 let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
-    (outv : RegId.t) =
-  match MemRef.convert_regid outv with
+    (outv : RegId.t_width) =
+  match MemRef.convert_regid outv.id with
   | outmr -> (
       let na = clear_mr a outmr in
       match asn with

@@ -16,8 +16,8 @@ let clear_memref a =
 let clear_mr a (mr : MemRef.t) = filter (fun k _ -> Stdlib.compare k mr <> 0) a
 
 let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
-    (outv : RegId.t) =
-  match MemRef.convert_regid outv with
+    (outv : RegId.t_width) =
+  match MemRef.convert_regid outv.id with
   | outmr -> (
       let na = clear_mr a outmr in
       match asn with
@@ -27,8 +27,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
           |> Option.value ~default:na
       | Abop (Bint_less, op1v, op2v) -> (
           match (op1v, op2v) with
-          | Register ({ id = RegId.Unique _; _ } as u), Const { value = c; _ }
-            ->
+          | Register { id = RegId.Unique _ as u; _ }, Const { value = c; _ } ->
               (add outmr
                  ( OctagonD.gen_single_lt
                      (OctagonD.gen_single_ge OctagonD.top (MemRef.R u) 0L)
@@ -38,8 +37,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
           | _ -> na)
       | Abop (Bint_equal, op1v, op2v) -> (
           match (op1v, op2v) with
-          | Register ({ id = RegId.Unique _; _ } as u), Const { value = c; _ }
-            ->
+          | Register { id = RegId.Unique _ as u; _ }, Const { value = c; _ } ->
               (add outmr
                  ( OctagonD.gen_single_eq OctagonD.top (MemRef.R u) c,
                    OctagonD.top ))
@@ -49,8 +47,8 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
       | Abop (Bint_slessequal, _, _) -> na
       | Abop (Bbool_or, op1v, op2v) -> (
           match (op1v, op2v) with
-          | ( Register ({ id = RegId.Register _; _ } as r1),
-              Register ({ id = RegId.Register _; _ } as r2) ) -> (
+          | ( Register { id = RegId.Register _ as r1; _ },
+              Register { id = RegId.Register _ as r2; _ } ) -> (
               match (find_opt (MemRef.R r1) na, find_opt (MemRef.R r2) na) with
               | Some (dt, df), Some (dt2, df2) ->
                   add outmr
@@ -64,7 +62,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
       | Abop (_, _, _) -> na
       | Auop (Ubool_negate, opv) -> (
           match opv with
-          | Register ({ id = RegId.Unique _; _ } as u) -> (
+          | Register { id = RegId.Unique _ as u; _ } -> (
               match find_opt (MemRef.R u) na with
               | Some (d1, d2) -> add outmr (d2, d1) na
               | _ -> na)

@@ -165,7 +165,7 @@ let get_pcode_list (fd : Unix.file_descr) : PCode_Raw.t list =
     in
     List.rev (loop [] (Int32.to_int num_pcodes))
 
-let tmpReg : RegId.t = { id = Unique 0L; width = 0l }
+let tmpReg : RegId.t_width = { id = Unique 0L; width = 0l }
 
 let make_server ifile ghidra_path tmp_path cwd : t =
   let sfd, port = Util.create_server_socket () in

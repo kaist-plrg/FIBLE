@@ -67,7 +67,7 @@ let filter_single (_ : Prog.t) (_ : Loc.t) (lf : Loc.t) (a : t) (i : Inst.t) : t
   match i with
   | Icbranch (condv, trueloc) -> (
       match condv with
-      | Register ({ id = RegId.Unique _; _ } as i) -> (
+      | Register { id = RegId.Unique _ as i; _ } -> (
           match BoolPowerD.find_opt (MemRef.R i) a.value_boolpower with
           | Some b ->
               if compare trueloc lf = 0 then
@@ -90,7 +90,7 @@ let try_concretize_vn (a : t) (vn : VarNode.t) (limit : int) : Int64Set.t option
     =
   match vn with
   | Register u -> (
-      match NonRelStateD.find_opt (MemRef.R u) a.value_nonrel with
+      match NonRelStateD.find_opt (MemRef.R u.id) a.value_nonrel with
       | Some a -> AbsNumeric.try_concretize a limit
       | None -> None)
   | _ -> None

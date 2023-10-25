@@ -1,8 +1,8 @@
-type t = Register of RegId.t | Const of Const.t
+type t = Register of RegId.t_width | Const of Const.t
 
 let pp (fmt : Format.formatter) (v : t) =
   match v with
-  | Register n -> Format.fprintf fmt "%a" RegId.pp n
+  | Register n -> Format.fprintf fmt "%a" RegId.pp_width n
   | Const n -> Format.fprintf fmt "%a" Const.pp n
 
 let compare = compare

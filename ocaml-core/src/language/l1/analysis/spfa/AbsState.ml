@@ -18,8 +18,7 @@ let post_single_instr (i : Inst.t) (c : t) : AccessD.t * t =
 let post_single_jmp (i : Jmp.t) (c : t) (sp_num : int64) : t =
   match i with
   | Jmp.Jcall _ | Jmp.Jcall_ind _ ->
-      add
-        { id = RegId.Register sp_num; width = 8l }
+      add (RegId.Register sp_num)
         (SPVal.add
            (eval_varnode c
               (VarNode.Register { id = RegId.Register sp_num; width = 8l }))

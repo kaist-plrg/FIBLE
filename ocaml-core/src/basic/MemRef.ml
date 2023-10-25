@@ -1,7 +1,7 @@
 type t = R of RegId.t | ROffset of (RegId.t * int64)
 
 let convert_varnode (v : VarNode.t) : t option =
-  match v with VarNode.Register r -> Some (R r) | _ -> None
+  match v with VarNode.Register r -> Some (R r.id) | _ -> None
 
 let convert_regid (r : RegId.t) : t = R r
 
