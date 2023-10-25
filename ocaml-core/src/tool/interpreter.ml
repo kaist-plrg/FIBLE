@@ -77,8 +77,9 @@ let main () =
           Translation.L1toL2.translate_prog_from_spfa l1 spfa_res 32L
         in
         (match
-           Simulation.Check_simulation.run l0 l1 l2
-             (List.find (fun x -> fst x = "main") func_with_addrs |> snd)
+           L2.Interp.interp l2
+             (L2.Init.from_signature l2
+                (List.find (fun x -> fst x = "main") func_with_addrs |> snd))
          with
         | Ok _ -> Logger.info "Success\n"
         | Error e -> Logger.info "Error: %s\n" e);
