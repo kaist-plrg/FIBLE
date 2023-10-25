@@ -53,8 +53,10 @@ let refine_width (x : t) (width : Int32.t) : t =
 
 let replace_width (ov : t) (nv : t) (width : Int32.t) : t =
   let rv =
-    Int64.logand ov.value
-      (Int64.shift_left (-1L) (Int32.to_int (Int32.mul width 8l)))
+    if Int32.equal width 8l then Int64.zero
+    else
+      Int64.logand ov.value
+        (Int64.shift_left (-1L) (Int32.to_int (Int32.mul width 8l)))
   in
   {
     value = Int64.logor rv (Int64Ext.cut_width nv.value width);
