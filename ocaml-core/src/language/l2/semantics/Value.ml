@@ -71,6 +71,14 @@ let eval_bop (b : Bop.t) (lv : t) (rv : t) (outwidth : Int32.t) :
         Ok
           (Num (NumericValue.of_int64 (Int64.sub o1.offset o2.offset) outwidth))
       else Ok (Undef outwidth)
+  | Bop.Bint_sub, v1, v2 ->
+      if (match v1 with Undef _ -> false | _ -> true) && v1 = v2 then
+        Ok (Num (NumericValue.zero outwidth))
+      else Ok (Undef outwidth)
+  | Bop.Bint_xor, v1, v2 ->
+      if (match v1 with Undef _ -> false | _ -> true) && v1 = v2 then
+        Ok (Num (NumericValue.zero outwidth))
+      else Ok (Undef outwidth)
   | _ -> Ok (Undef outwidth)
 
 let refine_width (v : t) (width : int32) : t =
