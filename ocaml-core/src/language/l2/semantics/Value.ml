@@ -72,3 +72,9 @@ let eval_bop (b : Bop.t) (lv : t) (rv : t) (outwidth : Int32.t) :
           (Num (NumericValue.of_int64 (Int64.sub o1.offset o2.offset) outwidth))
       else Ok (Undef outwidth)
   | _ -> Ok (Undef outwidth)
+
+
+let refine_width (v: t) (width: int32): t = match v with
+ | Num n -> Num (NumericValue.refine_width n width)
+ | SP v -> SP v
+ | Undef _ -> Undef width

@@ -5,6 +5,7 @@ module Make (Value : sig
   type t
 
   val zero : Int32.t -> t
+  val refine_width: t -> Int32.t -> t
 end) =
 struct
   include RegIdMap
@@ -15,5 +16,5 @@ struct
     RegIdMap.add r.id v s
 
   let get_reg (s : t) (r : RegId.t_width) : Value.t =
-    RegIdMap.find_opt r.id s |> Option.value ~default:(Value.zero r.width)
+    Value.refine_width (RegIdMap.find_opt r.id s |> Option.value ~default:(Value.zero r.width)) r.width
 end

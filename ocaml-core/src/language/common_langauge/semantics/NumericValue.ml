@@ -46,3 +46,8 @@ let of_int64_safe (v : Int64.t) (width : Int32.t) : (t, String.t) Result.t =
       (Format.sprintf
          "NumericValue.of_int64_safe: %Ld does not fit in %ld bytes" v width)
   else Ok { value = v; width }
+
+let refine_width (x : t) (width : Int32.t) : t =
+  if Int32.equal x.width width then x
+  else
+    { value = (Int64Ext.cut_width x.value width); width }
