@@ -1,5 +1,6 @@
 open Basic
 open Basic_domain
+open Basic_collection
 
 let translate_stmt (loc : Loc.t) (i : L0.Inst.t_full) : L1.Inst.t_full =
   match i.ins with
@@ -8,16 +9,17 @@ let translate_stmt (loc : Loc.t) (i : L0.Inst.t_full) : L1.Inst.t_full =
   | Istore (i0, i1, i2) -> { loc; ins = Istore (i0, i1, i2); mnem = i.mnem }
   | _ -> { loc; ins = INop; mnem = i.mnem }
 
-let translate_jmp (loc : Loc.t) (i : L0.Inst.t_full) (next : Loc.t)
-    (jmps : LocSetD.t) : L1.Jmp.t_full =
+let translate_jmp (p : L0.Prog.t) (loc : Loc.t) (i : L0.Inst.t_full)
+    (next : Loc.t) (jmps : LocSetD.t) : L1.Jmp.t_full =
   match i.ins with
   | Ijump l ->
       {
         loc;
         jmp =
           (if
-             String.starts_with ~prefix:"J" i.mnem
-             || String.starts_with ~prefix:"M" i.mnem
+             (not (AddrMap.mem (Loc.to_addr l) p.externs))
+             && (String.starts_with ~prefix:"J" i.mnem
+                || String.starts_with ~prefix:"M" i.mnem)
            then Jjump l
            else Jcall (l, next));
         mnem = i.mnem;
@@ -61,14 +63,14 @@ let translate_block (p0 : L0.Prog.t) (entry : Loc.t) (cf : L0.CFA.Immutable.t)
                 {
                   loc = entry;
                   body = List.rev (translate_stmt loc i :: acc);
-                  jmp = translate_jmp loc i jmp jmps;
+                  jmp = translate_jmp p0 loc i jmp jmps;
                 }
               else aux jmp (translate_stmt loc i :: acc)
             else
               {
                 loc = entry;
                 body = List.rev (translate_stmt loc i :: acc);
-                jmp = translate_jmp loc i (L0.Prog.fallthru p0 loc) jmps;
+                jmp = translate_jmp p0 loc i (L0.Prog.fallthru p0 loc) jmps;
               })
   in
   aux entry []
