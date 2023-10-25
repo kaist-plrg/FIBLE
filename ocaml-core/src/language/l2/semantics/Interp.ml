@@ -185,7 +185,8 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
       Logger.debug "Calling %s\n" name;
       let* fsig, _ =
         StringMap.find_opt name World.Environment.signature_map
-        |> Option.to_result ~none:"No external function"
+        |> Option.to_result
+             ~none:(Format.asprintf "No external function %s" name)
       in
       let args = build_args s fsig in
       let retv = World.Environment.request_call name args in
