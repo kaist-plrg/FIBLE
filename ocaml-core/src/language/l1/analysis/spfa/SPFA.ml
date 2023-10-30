@@ -37,7 +37,7 @@ module Immutable = struct
     let na =
       List.filter_map
         (fun (l : Block.t) ->
-          FSAbsD.AbsLocMapD.find_opt l.loc ca.states.pre_state
+          FSAbsD.AbsLocMapD.find_opt l.loc ca.states.post_state
           |> Option.map (fun a -> (l.loc, a)))
         preds
       |> List.fold_left

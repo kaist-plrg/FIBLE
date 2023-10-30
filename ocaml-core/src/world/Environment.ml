@@ -16,12 +16,15 @@ let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
         ( { Interop.params = [ Interop.TString ]; result = T32 },
           Hide (string @-> returning int) ) );
       ( "printf",
-        ( { Interop.params = [ Interop.TString ]; result = T32 },
-          Hide (string @-> returning int) ) );
+        ( { Interop.params = [ Interop.TString; Interop.T64 ]; result = T32 },
+          Hide (string @-> int64_t @-> returning int) ) );
       (* Incorrect; todo *)
       ( "__printf_chk",
-        ( { Interop.params = [ Interop.T32; Interop.TString ]; result = T32 },
-          Hide (int @-> string @-> returning int) ) );
+        ( {
+            Interop.params = [ Interop.T32; Interop.TString; Interop.T64 ];
+            result = T32;
+          },
+          Hide (int @-> string @-> int64_t @-> returning int) ) );
       (* Incorrect; todo *)
       ( "memcmp",
         ( {

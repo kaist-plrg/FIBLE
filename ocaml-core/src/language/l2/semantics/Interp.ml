@@ -42,8 +42,18 @@ let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :
   | T64 ->
       V64
         (match v with
-        | Num { value; _ } -> value
-        | _ -> failwith "Not a number")
+        | Num { value; _ } ->
+            if value < 0x1000L then value
+            else
+              Foreign.foreign "strdup"
+                (Ctypes_static.( @-> ) Ctypes.string
+                   (Ctypes.returning Ctypes_static.int64_t))
+                "[null]"
+        | _ ->
+            Foreign.foreign "strdup"
+              (Ctypes_static.( @-> ) Ctypes.string
+                 (Ctypes.returning Ctypes_static.int64_t))
+              "[null]")
   | _ -> failwith "Not supported"
 
 let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
@@ -115,8 +125,8 @@ let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
   in
   aux [] fsig.params reg_list
 
-let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
-    (Store.t, String.t) Result.t =
+let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
+    : (Store.t, String.t) Result.t =
   match ins with
   | Iassignment (a, o) ->
       let* v = eval_assignment a s o.width in
@@ -131,8 +141,22 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
       let sv = eval_vn valuevn s in
       Logger.debug "Storing %a at %a\n" Value.pp sv Value.pp addrv;
       Store.store_mem s addrv sv
-  | Isload (cv, otuputid) -> Error "unimplemented sload"
-  | Isstore (cv, valuevn) -> Error "unimplemented sstore"
+  | Isload (cv, outputid) ->
+      let addrv =
+        Value.SP
+          { SPVal.func = fst func; timestamp = snd func; offset = cv.value }
+      in
+      let* lv = Store.load_mem s addrv outputid.width in
+      Logger.debug "Loading %a from %a\n" Value.pp lv Value.pp addrv;
+      Ok { s with regs = RegFile.add_reg s.regs outputid lv }
+  | Isstore (cv, valuevn) ->
+      let addrv =
+        Value.SP
+          { SPVal.func = fst func; timestamp = snd func; offset = cv.value }
+      in
+      let sv = eval_vn valuevn s in
+      Logger.debug "Storing %a at %a\n" Value.pp sv Value.pp addrv;
+      Store.store_mem s addrv sv
   | INop -> Ok s
 
 let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
@@ -253,7 +277,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
       | [] -> Error (Format.asprintf "ret to %a: Empty stack" Loc.pp retn)
       | (calln, sp_saved, retn') :: stack' ->
           if Loc.compare retn retn' <> 0 then
-            Logger.info "try to ret %a but supposed ret is %a\n" Loc.pp retn
+            Logger.debug "try to ret %a but supposed ret is %a\n" Loc.pp retn
               Loc.pp retn'
           else ();
           let* ncont = Cont.of_block_loc p (fst calln) retn' in
@@ -274,10 +298,10 @@ let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match s.cont with
   | { remaining = []; jmp } -> step_jmp p jmp s
   | { remaining = i :: []; jmp } ->
-      let* sto' = step_ins p i.ins s.sto in
+      let* sto' = step_ins p i.ins s.sto s.func in
       step_jmp p jmp { s with sto = sto' }
   | { remaining = i :: res; jmp } ->
-      let* sto' = step_ins p i.ins s.sto in
+      let* sto' = step_ins p i.ins s.sto s.func in
       Ok { s with sto = sto'; cont = { remaining = res; jmp } }
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
