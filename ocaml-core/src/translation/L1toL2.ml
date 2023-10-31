@@ -45,7 +45,9 @@ let translate_block (b : L1.Block.t) (ga : L1.SPFA.Immutable.t) : L2.Block.t =
     match astate with
     | Some v ->
         List.fold_left
-          (fun (acci, a) i -> (acci @ [ translate_inst i ga a ], a))
+          (fun (acci, a) i ->
+            ( acci @ [ translate_inst i ga a ],
+              snd (L1.AbsState.post_single_instr i.ins a) ))
           ([], v) b.body
     | None ->
         ( List.map (fun i -> translate_inst i ga L1.AbsState.top) b.body,
