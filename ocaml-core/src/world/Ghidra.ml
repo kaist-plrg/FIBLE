@@ -41,7 +41,7 @@ let run_ghidra ifile ghidra_path tmp_path cwd port =
       |]
       Global.devnull Global.devnull Global.devnull
   in
-  Logger.debug "Running ghidra at pid %d\n" ghidra_pid;
+  [%log debug "Running ghidra at pid %d" ghidra_pid];
   Global.install_pid ghidra_pid;
   ghidra_pid
 
@@ -54,7 +54,7 @@ let varnode_raw_to_varnode (si : SpaceInfo.t) (v : VarNode_Raw.t) : VarNode.t =
   else failwith (Format.sprintf "Unknown space %ld" v.space)
 
 let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : RawInst.t_full =
-  Logger.debug "Converting %a\n" PCode_Raw.pp p;
+  [%log debug "Converting %a" PCode_Raw.pp p];
   let inputs i = varnode_raw_to_varnode si p.inputs.(i) in
   let output _ =
     match varnode_raw_to_varnode si (Option.get p.output) with
@@ -153,9 +153,9 @@ let get_func_addr (server : t) (x : string) : int64 =
   Interaction.get_long server.fd
 
 let get_pcode_list (fd : Unix.file_descr) : PCode_Raw.t list =
-  Logger.debug "Getting pcode list\n";
+  [%log debug "Getting pcode list"];
   let num_pcodes = Interaction.get_int fd in
-  Logger.debug "Number of pcodes: %ld\n" num_pcodes;
+  [%log debug "Number of pcodes: %ld" num_pcodes];
   if num_pcodes = 0l then
     [ { mnemonic = "NOP"; opcode = 999l; inputs = [||]; output = None } ]
   else
@@ -169,18 +169,19 @@ let tmpReg : RegId.t_width = { id = Unique 0L; width = 0l }
 
 let make_server ifile ghidra_path tmp_path cwd : t =
   let sfd, port = Util.create_server_socket () in
-  Logger.debug "Listening on port %d\n" port;
+  [%log debug "Listening on port %d" port];
   let ghidra_pid = run_ghidra ifile ghidra_path tmp_path cwd port in
 
   let x, _, _ = Unix.select [ sfd ] [] [] 30.0 in
   if x = [] then failwith "No connection" else ();
   let fd, _ = Unix.accept sfd in
-  Logger.debug "Accepted connection\n";
+  [%log debug "Accepted connection"];
   let spaceinfo = SpaceInfo.get fd in
   let regspec = RegSpec.get fd in
   let external_function = ExternalFunction.get fd in
-  Logger.debug "Got stateinfo %ld %ld %ld\n" spaceinfo.unique spaceinfo.register
-    spaceinfo.const;
+  [%log
+    debug "Got stateinfo %ld %ld %ld" spaceinfo.unique spaceinfo.register
+      spaceinfo.const];
   let instHash : (int * RawInst.t_full list) Int64Hashtbl.t =
     Int64Hashtbl.create 1000
   in
@@ -189,7 +190,7 @@ let make_server ifile ghidra_path tmp_path cwd : t =
       Some (Int64Hashtbl.find instHash addr)
     else
       let iaddr = addr in
-      Logger.debug "Sending %Lx\n" iaddr;
+      [%log debug "Sending %Lx" iaddr];
       Interaction.put_char 'i';
       Interaction.put_long iaddr;
       Interaction.flush fd;
@@ -199,8 +200,8 @@ let make_server ifile ghidra_path tmp_path cwd : t =
         let pcodes =
           List.map (pcode_raw_to_pcode spaceinfo) (get_pcode_list fd)
         in
-        Logger.debug "Received %d pcodes\n" (List.length pcodes);
-        List.iter (fun x -> Logger.debug "%a\n" RawInst.pp_full x) pcodes;
+        [%log debug "Received %d pcodes" (List.length pcodes)];
+        List.iter (fun x -> [%log debug "%a\n" RawInst.pp_full x]) pcodes;
         Int64Hashtbl.add instHash addr (Int32.to_int inst_len, pcodes);
         Some (Int32.to_int inst_len, pcodes)
   in

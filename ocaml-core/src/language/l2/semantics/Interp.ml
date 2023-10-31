@@ -134,12 +134,12 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
   | Iload (_, addrvn, outputid) ->
       let addrv = eval_vn addrvn s in
       let* lv = Store.load_mem s addrv outputid.width in
-      Logger.debug "Loading %a from %a\n" Value.pp lv Value.pp addrv;
+      [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
       Ok { s with regs = RegFile.add_reg s.regs outputid lv }
   | Istore (_, addrvn, valuevn) ->
       let addrv = eval_vn addrvn s in
       let sv = eval_vn valuevn s in
-      Logger.debug "Storing %a at %a\n" Value.pp sv Value.pp addrv;
+      [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       Store.store_mem s addrv sv
   | Isload (cv, outputid) ->
       let addrv =
@@ -147,7 +147,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
           { SPVal.func = fst func; timestamp = snd func; offset = cv.value }
       in
       let* lv = Store.load_mem s addrv outputid.width in
-      Logger.debug "Loading %a from %a\n" Value.pp lv Value.pp addrv;
+      [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
       Ok { s with regs = RegFile.add_reg s.regs outputid lv }
   | Isstore (cv, valuevn) ->
       let addrv =
@@ -155,7 +155,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
           { SPVal.func = fst func; timestamp = snd func; offset = cv.value }
       in
       let sv = eval_vn valuevn s in
-      Logger.debug "Storing %a at %a\n" Value.pp sv Value.pp addrv;
+      [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       Store.store_mem s addrv sv
   | INop -> Ok s
 
@@ -207,7 +207,7 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
             };
         }
   | Some name ->
-      Logger.debug "Calling %s\n" name;
+      [%log debug "Calling %s" name];
       let* fsig, _ =
         StringMap.find_opt name World.Environment.signature_map
         |> Option.to_result
@@ -277,8 +277,9 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
       | [] -> Error (Format.asprintf "ret to %a: Empty stack" Loc.pp retn)
       | (calln, sp_saved, retn') :: stack' ->
           if Loc.compare retn retn' <> 0 then
-            Logger.debug "try to ret %a but supposed ret is %a\n" Loc.pp retn
-              Loc.pp retn'
+            [%log
+              debug "try to ret %a but supposed ret is %a" Loc.pp retn Loc.pp
+                retn']
           else ();
           let* ncont = Cont.of_block_loc p (fst calln) retn' in
           Ok
@@ -309,5 +310,5 @@ let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match s' with
   | Error _ -> s'
   | Ok s' ->
-      Logger.debug "%a\n" State.pp s';
+      [%log debug "%a" State.pp s'];
       interp p s'

@@ -1,8 +1,11 @@
 (library
  (name world)
+ (preprocess
+  (pps ppx_log))
  (libraries
   unix
   stdlibExt
+  ppx_log
   ctypes
   ctypes-foreign
   basic

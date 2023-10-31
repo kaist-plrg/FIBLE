@@ -5,6 +5,7 @@ maintainer: ["Jihee Park <jiheepark@kaist.ac.kr>"]
 authors: ["Jihee Park"]
 depends: [
   "dune" {>= "3.7"}
+  "ppxlib"
   "zarith"
   "ocaml-lsp-server"
   "ocamlformat"

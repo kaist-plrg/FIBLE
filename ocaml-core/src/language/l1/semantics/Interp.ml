@@ -26,12 +26,12 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
   | Iload (_, addrvn, outputid) ->
       let addr = eval_vn addrvn s in
       let v = Store.load_mem s (Value.to_addr addr) outputid.width in
-      Logger.debug "Loading %a from %a\n" Value.pp v Value.pp addr;
+      [%log debug "Loading %a from %a" Value.pp v Value.pp addr];
       Ok { s with regs = RegFile.add_reg s.regs outputid v }
   | Istore (_, addrvn, valuevn) ->
       let addr = eval_vn addrvn s in
       let v = eval_vn valuevn s in
-      Logger.debug "Storing %a at %a\n" Value.pp v Value.pp addr;
+      [%log debug "Storing %a at %a" Value.pp v Value.pp addr];
       Ok { s with mem = Memory.store_mem s.mem (Value.to_addr addr) v }
   | INop -> Ok s
 
@@ -43,7 +43,7 @@ let step_call (p : Prog.t) (calln : Loc.t) (retn : Loc.t) (s : State.t) :
       Ok
         { s with cont = ncont; stack = (s.func, retn) :: s.stack; func = calln }
   | Some name ->
-      Logger.debug "Calling %s\n" name;
+      [%log debug "Calling %s" name];
       let retpointer =
         Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }
       in
@@ -115,5 +115,5 @@ let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match s' with
   | Error _ -> s'
   | Ok s' ->
-      Logger.debug "%a\n" State.pp s';
+      [%log debug "%a" State.pp s'];
       interp p s'

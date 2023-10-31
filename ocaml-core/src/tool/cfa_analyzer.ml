@@ -37,9 +37,9 @@ let main () =
         let cwd = if String.equal !cwd "" then Sys.getcwd () else !cwd in
         Global.projectd := Some cwd;
         let tmp_path = Filename.concat cwd "tmp" in
-        Logger.debug "Input file is %s\n" !ifile;
+        [%log debug "Input file is %s" !ifile];
         let server = Ghidra.make_server !ifile !ghidra_path tmp_path cwd in
-        Logger.debug "func %s\n" target_func;
+        [%log debug "func %s" target_func];
         let addr = Ghidra.get_func_addr server target_func in
 
         let l0 : L0.Prog.t =

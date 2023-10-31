@@ -1,13 +1,17 @@
 (executable
  (flags -w -20-33-3)
+ (preprocess
+  (pps ppx_log))
  (name cfa_analyzer)
  (public_name multi-step-decomp)
  (package multi-step-decomp)
- (libraries zarith unix stdlibExt basic l0 world)
+ (libraries zarith unix stdlibExt ppx_log basic l0 world)
  (modules cfa_analyzer))
 
 (executable
  (flags -w -20-33-3)
+ (preprocess
+  (pps ppx_log))
  (name interpreter)
  (public_name multi-step-decomp)
  (package multi-step-decomp)
@@ -15,6 +19,7 @@
   zarith
   unix
   stdlibExt
+  ppx_log
   basic
   l0
   world
@@ -26,6 +31,8 @@
 
 (executable
  (flags -w -20-33-3)
+ (preprocess
+  (pps ppx_log))
  (name decompiler)
  (public_name multi-step-decomp)
  (package multi-step-decomp)
@@ -33,6 +40,7 @@
   zarith
   unix
   stdlibExt
+  ppx_log
   basic
   l0
   world

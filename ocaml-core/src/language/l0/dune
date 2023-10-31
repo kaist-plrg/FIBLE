@@ -3,8 +3,11 @@
 (library
  (name l0)
  (flags -w -20-33-3)
+ (preprocess
+  (pps ppx_log))
  (libraries
   stdlibExt
+  ppx_log
   basic
   basic_collection
   common_language

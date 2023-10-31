@@ -26,7 +26,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
   | Iload (_, addrvn, outputid) ->
       let addr = eval_vn addrvn s in
       let v = State.load_mem s (Value.to_addr addr) outputid.width in
-      Logger.debug "Loading %a from %a\n" Value.pp v Value.pp addr;
+      [%log debug "Loading %a from %a" Value.pp v Value.pp addr];
       Ok
         {
           s with
@@ -36,7 +36,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
   | Istore (_, addrvn, valuevn) ->
       let addr = eval_vn addrvn s in
       let v = eval_vn valuevn s in
-      Logger.debug "Storing %a at %a\n" Value.pp v Value.pp addr;
+      [%log debug "Storing %a at %a" Value.pp v Value.pp addr];
       Ok
         {
           s with
@@ -124,7 +124,7 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match AddrMap.find_opt (Loc.to_addr s.pc) p.externs with
   | None -> Ok s
   | Some name ->
-      Logger.debug "Calling %s\n" name;
+      [%log debug "Calling %s" name];
       let retpointer =
         State.get_reg s { id = RegId.Register 32L; width = 8l }
       in

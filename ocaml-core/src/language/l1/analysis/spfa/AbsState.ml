@@ -9,10 +9,10 @@ let post_single_instr (i : Inst.t) (c : t) : AccessD.t * t =
   | Inst.INop -> (AccessD.bottom, c)
   | Inst.Iassignment (a, vn) -> (AccessD.bottom, process_assignment c a vn)
   | Inst.Iload (i0, i1, o) ->
-      Logger.debug "load: %a\n" SPVal.pp (eval_varnode c i1);
+      [%log debug "load: %a" SPVal.pp (eval_varnode c i1)];
       (AccessD.log_access (eval_varnode c i1), c)
   | Inst.Istore (i0, i1, i2) ->
-      Logger.debug "store: %a\n" SPVal.pp (eval_varnode c i1);
+      [%log debug "store: %a" SPVal.pp (eval_varnode c i1)];
       (AccessD.log_access (eval_varnode c i1), c)
 
 let post_single_jmp (i : Jmp.t) (c : t) (sp_num : int64) : t =
