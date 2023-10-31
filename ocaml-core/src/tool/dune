@@ -15,18 +15,7 @@
  (name interpreter)
  (public_name multi-step-decomp)
  (package multi-step-decomp)
- (libraries
-  zarith
-  unix
-  stdlibExt
-  ppx_log
-  basic
-  l0
-  world
-  l1
-  l2
-  translation
-  simulation)
+ (libraries zarith unix stdlibExt ppx_log basic l0 world l1 l2 translation)
  (modules interpreter))
 
 (executable
@@ -36,16 +25,15 @@
  (name decompiler)
  (public_name multi-step-decomp)
  (package multi-step-decomp)
- (libraries
-  zarith
-  unix
-  stdlibExt
-  ppx_log
-  basic
-  l0
-  world
-  l1
-  l2
-  translation
-  simulation)
+ (libraries zarith unix stdlibExt ppx_log basic l0 world l1 l2 translation)
  (modules decompiler))
+
+(executable
+ (flags -w -20-33-3)
+ (preprocess
+  (pps ppx_log))
+ (name sim_checker)
+ (public_name multi-step-decomp)
+ (package multi-step-decomp)
+ (libraries zarith unix stdlibExt ppx_log basic l0 world l1 l2 translation simulation)
+ (modules sim_checker))

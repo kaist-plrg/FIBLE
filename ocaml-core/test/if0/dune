@@ -11,7 +11,7 @@
   (with-stdout-to
    %{target}
    (run
-    ../../src/tool/interpreter.exe
+    ../../src/tool/sim_checker.exe
     -i
     %{deps}
     -project-cwd
