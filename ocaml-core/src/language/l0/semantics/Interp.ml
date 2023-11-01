@@ -65,7 +65,7 @@ let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :
   | TFloat -> VFloat (Int64.float_of_bits v.value)
   | TDouble -> VDouble (Int64.float_of_bits v.value)
   | TVoid -> VUnit
-  | TList _ -> failwith "List not supported"
+  | TList _ -> [%log fatal "List not supported"]
 
 let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
   match v with
@@ -101,12 +101,12 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
             { id = RegId.Register 0L; width = 8l }
             { value = i; width = 8l };
       }
-  | _ -> failwith "Unsupported return type"
+  | _ -> [%log fatal "Unsupported return type"]
 
 let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
     Common_language.Interop.t list =
   if List.length fsig.params > 6 then
-    failwith "At most 6 argument is supported for external functions";
+    [%log fatal "At most 6 argument is supported for external functions"];
   let reg_list = [ 56L; 48L; 16L; 8L; 128L; 136L ] in
   let rec aux (acc : Common_language.Interop.t list)
       (param_tags : Common_language.Interop.tag list) (regs : Int64.t list) :
@@ -116,7 +116,7 @@ let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
     | tag :: param_tags, reg :: regs ->
         let v = State.get_reg s { id = RegId.Register reg; width = 8l } in
         aux (build_arg s tag v :: acc) param_tags regs
-    | _ -> failwith "Not enough registers"
+    | _ -> [%log fatal "Not enough registers"]
   in
   aux [] fsig.params reg_list
 

@@ -33,10 +33,11 @@ let to_chars (x : t) : Char.t list =
 let of_int64 v width =
   let bits = Int64Ext.bitwidth v in
   if Int64.to_int32 bits > Int32.mul width 8l then
-    raise
-      (Invalid_argument
-         (Format.sprintf "NumericValue.of_int64: %Ld does not fit in %ld bytes"
-            v width))
+    [%log
+      raise
+        (Invalid_argument
+           (Format.sprintf
+              "NumericValue.of_int64: %Ld does not fit in %ld bytes" v width))]
   else { value = v; width }
 
 let of_int64_safe (v : Int64.t) (width : Int32.t) : (t, String.t) Result.t =

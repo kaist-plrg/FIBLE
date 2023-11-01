@@ -64,8 +64,10 @@ let translate_func (f : L1.Func.t) (a : L1.SPFA.Immutable.t) : L2.Func.t =
       (match a.accesses with
       | Fin s -> (L1.AccessD.FinSet.min_elt s, L1.AccessD.FinSet.max_elt s)
       | _ ->
-          raise
-            (Failure "SPFA.Immutable.analyze returned non-constant sp boundary"));
+          [%log
+            raise
+              (Failure
+                 "SPFA.Immutable.analyze returned non-constant sp boundary")]);
   }
 
 let translate_prog (p1 : L1.Prog.t) (sp_num : int64) : L2.Prog.t =

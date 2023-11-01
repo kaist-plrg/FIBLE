@@ -3,7 +3,9 @@
 (library
  (name common_language)
  (flags -w -20-33-3)
- (libraries stdlibExt basic basic_collection)
+ (preprocess
+  (pps ppx_log))
+ (libraries ppx_log stdlibExt basic basic_collection)
  (modules
   NumericValue
   Interop

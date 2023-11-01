@@ -55,7 +55,7 @@ module Immutable = struct
           else AbsState.join b a
       | Some (lss, a), None -> a
       | None, Some a -> a
-      | None, None -> raise (Failure "Assertion failed: find_opt")
+      | None, None -> [%log raise (Failure "Assertion failed: find_opt")]
     in
     let abs_1 : FSAbsD.t =
       {
@@ -83,7 +83,10 @@ module Immutable = struct
 
   let post_worklist (f : Func.t) (c : t) (l : Loc.t) (sp_num : int64) :
       t * Loc.t List.t =
-    let bb = Func.get_bb f l |> Option.get in
+    let bb =
+      Func.get_bb f l
+      |> Option.value ~default:[%log raise (Invalid_argument "option is None")]
+    in
     let na, propagated = post_single_block f bb c sp_num in
     if propagated then (na, Block.succ bb) else (na, [])
 

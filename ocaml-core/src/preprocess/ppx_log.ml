@@ -5,7 +5,8 @@ let expand ~ctxt (la : label) (alist : (arg_label * expression) list) :
     expression =
   let loc = Expansion_context.Extension.extension_point_loc ctxt in
   Builder.eapply ~loc
-    (Builder.pexp_ident ~loc { txt = Ldot (Lident "Logger", la); loc })
+    (Builder.pexp_ident ~loc
+       { txt = Ldot (Ldot (Lident "StdlibExt", "Logger"), la); loc })
     (Builder.estring ~loc loc.loc_start.pos_fname
     :: Builder.eint ~loc loc.loc_start.pos_lnum
     :: List.map snd alist)

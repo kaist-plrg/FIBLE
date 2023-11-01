@@ -58,7 +58,7 @@ let to_ctype : type t. t typ -> Interop.t -> t =
         { ty = Ctypes_static.Pointer (Ctypes_static.Primitive Char) },
       Interop.VString x ) ->
       Obj.magic x
-  | _ -> failwith "Not implemented"
+  | _ -> [%log fatal "Not implemented"]
 
 let to_interop : type t. t typ -> t -> Interop.t =
  fun type_sig arg ->
@@ -79,7 +79,7 @@ let to_interop : type t. t typ -> t -> Interop.t =
   | Ctypes_static.View
       { ty = Ctypes_static.Pointer (Ctypes_static.Primitive Char) } ->
       Interop.VString (Obj.magic arg)
-  | _ -> failwith "Not implemented"
+  | _ -> [%log fatal "Not implemented"]
 
 let rec call_with_signature : type a. a fn -> a -> Interop.t list -> Interop.t =
  fun func_sig f args ->
@@ -88,9 +88,9 @@ let rec call_with_signature : type a. a fn -> a -> Interop.t list -> Interop.t =
       to_interop x (f (to_ctype a h))
   | Ctypes_static.Function (a, b), h :: rest ->
       call_with_signature b (f (to_ctype a h)) rest
-  | _ -> failwith "Not implemented"
+  | _ -> [%log fatal "Not implemented"]
 
 let request_call (fname : String.t) (arg : Interop.t list) : Interop.t =
   match StringMap.find_opt fname signature_map with
   | Some (_, Hide fn) -> call_with_signature fn (Foreign.foreign fname fn) arg
-  | None -> failwith "Not implemented"
+  | None -> [%log fatal "Not implemented"]

@@ -51,21 +51,26 @@ let varnode_raw_to_varnode (si : SpaceInfo.t) (v : VarNode_Raw.t) : VarNode.t =
     Register { id = Register v.offset; width = v.size }
   else if v.space = si.const then Const { value = v.offset; width = v.size }
   else if v.space = si.ram then Const { value = v.offset; width = v.size }
-  else failwith (Format.sprintf "Unknown space %ld" v.space)
+  else [%log fatal "Unknown space %ld" v.space]
 
 let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : RawInst.t_full =
   [%log debug "Converting %a" PCode_Raw.pp p];
   let inputs i = varnode_raw_to_varnode si p.inputs.(i) in
   let output _ =
-    match varnode_raw_to_varnode si (Option.get p.output) with
+    match
+      varnode_raw_to_varnode si
+        (p.output
+        |> Option.value
+             ~default:[%log raise (Invalid_argument "option is None")])
+    with
     | Register r -> r
-    | _ -> raise (Invalid_argument "Output is not a register")
+    | _ -> [%log raise (Invalid_argument "Output is not a register")]
   in
   let mkJump _ =
     RawInst.Ijump
       (match inputs 0 with
       | Const { value = a; _ } -> (a, 0)
-      | _ -> failwith "Jump target is not a constant")
+      | _ -> [%log fatal "Jump target is not a constant"])
   in
   let mkJIump _ = RawInst.Ijump_ind (inputs 0) in
   let mkUop op = RawInst.Iassignment (Auop (op, inputs 0), output ()) in
@@ -84,7 +89,7 @@ let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : RawInst.t_full =
           ( inputs 1,
             match inputs 0 with
             | Const { value = a; _ } -> (a, 0)
-            | _ -> failwith "Jump target is not a constant" )
+            | _ -> [%log fatal "Jump target is not a constant"] )
     | 6l -> mkJIump ()
     | 7l -> mkJump ()
     | 8l -> mkJIump ()
@@ -173,7 +178,7 @@ let make_server ifile ghidra_path tmp_path cwd : t =
   let ghidra_pid = run_ghidra ifile ghidra_path tmp_path cwd port in
 
   let x, _, _ = Unix.select [ sfd ] [] [] 30.0 in
-  if x = [] then failwith "No connection" else ();
+  if x = [] then [%log fatal "No connection"] else ();
   let fd, _ = Unix.accept sfd in
   [%log debug "Accepted connection"];
   let spaceinfo = SpaceInfo.get fd in

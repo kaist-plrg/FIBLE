@@ -152,9 +152,10 @@ let main () =
          || !(dump_flag.l2))
           && !dump_path = ""
         then
-          failwith
-            "Dump path is not specified. Please specify dump path with \
-             -dump-path";
+          [%log
+            fatal
+              "Dump path is not specified. Please specify dump path with \
+               -dump-path"];
         if !(dump_flag.cfa) then dump_cfa cfa_res !dump_path else ();
         if !(dump_flag.l1) then
           L1.Prog.dump_prog l1 !dump_path

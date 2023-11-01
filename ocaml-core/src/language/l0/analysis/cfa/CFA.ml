@@ -250,7 +250,10 @@ module Immutable = struct
     | _ -> (ca.analysis_contour, ca.sound_jump, [])
 
   let post_contour_single (p : Prog.t) (ca : t) (l : Loc.t) : FSAbsD.t * bool =
-    let i = Prog.get_ins p l |> Option.get in
+    let i =
+      Prog.get_ins p l
+      |> Option.value ~default:[%log raise (Invalid_argument "option is None")]
+    in
     let sj = ca.sound_jump in
     let preds = JumpD.get_preds sj l in
     let na =
@@ -279,7 +282,7 @@ module Immutable = struct
           else AbsState.join b a
       | Some (lss, a), None, _ -> a
       | None, Some a, _ -> a
-      | None, None, false -> raise (Failure "Assertion failed: find_opt")
+      | None, None, false -> [%log raise (Failure "Assertion failed: find_opt")]
     in
     let abs_1 : FSAbsD.t =
       {
@@ -385,7 +388,7 @@ module Mutable = struct
         | None ->
             FSAbsD_Mut.join_single_post ca.abs_state l np;
             true)
-    | _ -> raise (Failure "Assertion failed: find_opt")
+    | _ -> [%log raise (Failure "Assertion failed: find_opt")]
 
   let post (p : Prog.t) (c : t) (l : Loc.t) : Loc.t List.t =
     let propagate = post_contour_fs p c l in

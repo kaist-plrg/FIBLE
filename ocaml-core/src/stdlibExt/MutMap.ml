@@ -145,7 +145,11 @@ module Make (Ord : Map.OrderedType) = struct
       m None
 
   let choose (m : 'a t) : key * 'a =
-    Inner.to_seq m |> Seq.uncons |> Option.get |> fst
+    Inner.to_seq m |> Seq.uncons
+    |> Option.value
+         ~default:
+           (Logger.raise __FILE__ __LINE__ (Invalid_argument "option is None"))
+    |> fst
 
   let choose_opt (m : 'a t) : (key * 'a) option =
     Inner.to_seq m |> Seq.uncons |> Option.map fst

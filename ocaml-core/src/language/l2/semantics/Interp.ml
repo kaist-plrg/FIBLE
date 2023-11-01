@@ -26,19 +26,19 @@ let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :
         (Char.chr
            (match v with
            | Num { value; _ } -> Int64.to_int value
-           | _ -> failwith "Not a number"))
+           | _ -> [%log fatal "Not a number"]))
   | T16 ->
       V16
         (Int64.to_int32
            (match v with
            | Num { value; _ } -> value
-           | _ -> failwith "Not a number"))
+           | _ -> [%log fatal "Not a number"]))
   | T32 ->
       V32
         (Int64.to_int32
            (match v with
            | Num { value; _ } -> value
-           | _ -> failwith "Not a number"))
+           | _ -> [%log fatal "Not a number"]))
   | T64 ->
       V64
         (match v with
@@ -54,7 +54,7 @@ let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :
               (Ctypes_static.( @-> ) Ctypes.string
                  (Ctypes.returning Ctypes_static.int64_t))
               "[null]")
-  | _ -> failwith "Not supported"
+  | _ -> [%log fatal "Not supported"]
 
 let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
   match v with
@@ -106,12 +106,12 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
                 (Value.Num { value = i; width = 8l });
           };
       }
-  | _ -> failwith "Unsupported return type"
+  | _ -> [%log fatal "Unsupported return type"]
 
 let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
     Common_language.Interop.t list =
   if List.length fsig.params > 6 then
-    failwith "At most 6 argument is supported for external functions";
+    [%log fatal "At most 6 argument is supported for external functions"];
   let reg_list = [ 56L; 48L; 16L; 8L; 128L; 136L ] in
   let rec aux (acc : Common_language.Interop.t list)
       (param_tags : Common_language.Interop.tag list) (regs : Int64.t list) :
@@ -121,7 +121,7 @@ let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
     | tag :: param_tags, reg :: regs ->
         let v = Store.get_reg s.sto { id = RegId.Register reg; width = 8l } in
         aux (build_arg s tag v :: acc) param_tags regs
-    | _ -> failwith "Not enough registers"
+    | _ -> [%log fatal "Not enough registers"]
   in
   aux [] fsig.params reg_list
 

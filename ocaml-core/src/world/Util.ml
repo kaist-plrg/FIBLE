@@ -11,7 +11,7 @@ let create_server_socket () =
   let port =
     match Unix.getsockname fd with
     | Unix.ADDR_INET (_, p) -> p
-    | _ -> failwith "impossible"
+    | _ -> [%log fatal "impossible"]
   in
   (fd, port)
 
