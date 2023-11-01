@@ -20,3 +20,5 @@ let install_pid pid =
            killall ();
            exit 0)))
   else ()
+
+let run_main (main : unit -> 'a) : 'a = Fun.protect ~finally:finailize main

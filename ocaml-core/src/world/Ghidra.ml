@@ -56,12 +56,13 @@ let varnode_raw_to_varnode (si : SpaceInfo.t) (v : VarNode_Raw.t) : VarNode.t =
 let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : RawInst.t_full =
   [%log debug "Converting %a" PCode_Raw.pp p];
   let inputs i = varnode_raw_to_varnode si p.inputs.(i) in
-  let output _ =
+  let output () =
     match
       varnode_raw_to_varnode si
-        (p.output
-        |> Option.value
-             ~default:[%log raise (Invalid_argument "option is None")])
+        ((p.output |> Option.map Fun.const
+         |> Option.value ~default:(fun () ->
+                [%log raise (Invalid_argument "option is None")]))
+           ())
     with
     | Register r -> r
     | _ -> [%log raise (Invalid_argument "Output is not a register")]

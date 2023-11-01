@@ -85,10 +85,4 @@ let main () =
         | Error e -> Format.printf "Error: %s\n" e);
         Unix.kill server.pid Sys.sigterm
 
-let () =
-  try
-    main ();
-    Global.finailize ()
-  with e ->
-    Global.finailize ();
-    raise e
+let () = Global.run_main main

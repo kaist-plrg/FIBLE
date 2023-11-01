@@ -251,8 +251,10 @@ module Immutable = struct
 
   let post_contour_single (p : Prog.t) (ca : t) (l : Loc.t) : FSAbsD.t * bool =
     let i =
-      Prog.get_ins p l
-      |> Option.value ~default:[%log raise (Invalid_argument "option is None")]
+      (Prog.get_ins p l |> Option.map Fun.const
+      |> Option.value ~default:(fun () ->
+             [%log raise (Invalid_argument "option is None")]))
+        ()
     in
     let sj = ca.sound_jump in
     let preds = JumpD.get_preds sj l in

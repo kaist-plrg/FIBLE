@@ -171,10 +171,4 @@ let main () =
             (Filename.basename !ifile |> Filename.remove_extension)
         else ()
 
-let () =
-  try
-    main ();
-    Global.finailize ()
-  with e ->
-    Global.finailize ();
-    raise e
+let () = Global.run_main main

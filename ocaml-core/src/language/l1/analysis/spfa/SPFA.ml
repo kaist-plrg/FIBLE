@@ -84,8 +84,10 @@ module Immutable = struct
   let post_worklist (f : Func.t) (c : t) (l : Loc.t) (sp_num : int64) :
       t * Loc.t List.t =
     let bb =
-      Func.get_bb f l
-      |> Option.value ~default:[%log raise (Invalid_argument "option is None")]
+      (Func.get_bb f l |> Option.map Fun.const
+      |> Option.value ~default:(fun () ->
+             [%log raise (Invalid_argument "option is None")]))
+        ()
     in
     let na, propagated = post_single_block f bb c sp_num in
     if propagated then (na, Block.succ bb) else (na, [])
