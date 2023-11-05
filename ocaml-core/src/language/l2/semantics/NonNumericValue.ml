@@ -11,7 +11,8 @@ let pp fmt = function
   | Undef i -> Format.fprintf fmt "undef_%ld" i
 
 let eval_uop (u : Uop.t) (v : t) (outwidth : Int32.t) :
-    (NumericValue.t, t) Either.t = Right (Undef outwidth)
+    (NumericValue.t, t) Either.t =
+  Right (Undef outwidth)
 
 let eval_bop (b : Bop.t)
     (vs : (t * t, t * NumericValue.t, NumericValue.t * t) Either3.t)
@@ -55,10 +56,7 @@ let eval_bop (b : Bop.t)
 let refine_width (v : t) (width : int32) : t =
   match v with SP v -> SP v | Undef _ -> Undef width
 
-
-let width_of (v: t): Int32.t =
-  match v with
-  | SP _ -> 8l
-  | Undef width -> width
+let width_of (v : t) : Int32.t =
+  match v with SP _ -> 8l | Undef width -> width
 
 let undefined width = Undef width

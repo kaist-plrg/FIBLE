@@ -14,12 +14,12 @@ module Make (NonNumericValue : sig
     (NumericValue.t, t) Either.t
 
   val refine_width : t -> Int32.t -> t
-
-  val width_of: t -> Int32.t
-  val undefined: Int32.t -> t
+  val width_of : t -> Int32.t
+  val undefined : Int32.t -> t
 end) =
 struct
   let ( let* ) = Result.bind
+
   module NonNumericValue = NonNumericValue
 
   type t = Num of NumericValue.t | NonNum of NonNumericValue.t

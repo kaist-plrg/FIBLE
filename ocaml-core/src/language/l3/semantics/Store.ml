@@ -62,8 +62,7 @@ let store_mem (s : t) (v : Value.t) (e : Value.t) : (t, String.t) Result.t =
   | Num adv ->
       let addr = NumericValue.to_addr adv in
       Ok (store_mem_global s addr e)
-
   | NonNum (ParamP pv) -> Ok (store_mem_param s pv e)
   | NonNum (LocalP lv) -> Ok (store_mem_local s lv e)
   | NonNum (SP sv) -> Error (Format.asprintf "store: SP %a" SPVal.pp sv)
-  | NonNum (Undef _ )-> Error "store: Undefined address"
+  | NonNum (Undef _) -> Error "store: Undefined address"

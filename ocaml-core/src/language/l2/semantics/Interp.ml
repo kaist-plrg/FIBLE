@@ -143,16 +143,16 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
       Store.store_mem s addrv sv
   | Isload (cv, outputid) ->
       let addrv =
-        Value.NonNum (SP
-          { SPVal.func = fst func; timestamp = snd func; offset = cv.value })
+        Value.NonNum
+          (SP { SPVal.func = fst func; timestamp = snd func; offset = cv.value })
       in
       let* lv = Store.load_mem s addrv outputid.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
       Ok { s with regs = RegFile.add_reg s.regs outputid lv }
   | Isstore (cv, valuevn) ->
       let addrv =
-        Value.NonNum (SP 
-          { SPVal.func = fst func; timestamp = snd func; offset = cv.value })
+        Value.NonNum
+          (SP { SPVal.func = fst func; timestamp = snd func; offset = cv.value })
       in
       let sv = eval_vn valuevn s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
@@ -194,12 +194,13 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
               regs =
                 RegFile.add_reg s.sto.regs
                   { id = RegId.Register 32L; width = 8l }
-                  (NonNum (SP
-                     {
-                       SPVal.func = calln;
-                       timestamp = Int64Ext.succ s.timestamp;
-                       offset = 0L;
-                     }));
+                  (NonNum
+                     (SP
+                        {
+                          SPVal.func = calln;
+                          timestamp = Int64Ext.succ s.timestamp;
+                          offset = 0L;
+                        }));
               local =
                 LocalMemory.add
                   (calln, Int64Ext.succ s.timestamp)

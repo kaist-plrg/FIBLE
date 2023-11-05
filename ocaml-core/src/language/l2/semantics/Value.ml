@@ -1,1 +1,1 @@
-include Common_language.ValueF.Make(NonNumericValue)
+include Common_language.ValueF.Make (NonNumericValue)
