@@ -8,12 +8,15 @@
  (libraries ppx_log stdlibExt basic basic_collection)
  (modules
   NumericValue
+  ValueF
   Interop
   RegFileF
   NumericMemory
   ROMCombinedMemory
   FailableMemory
   ROMCombinedFailableMemory
+  MemoryF
+  FrameF
   NumericBop
   NumericUop
   Block

@@ -13,6 +13,7 @@
   Jmp
   Prog
   SPVal
+  NonNumericValue
   Value
   Cont
   Stack
