@@ -24,4 +24,10 @@
   Store
   State
   Init
-  Interp))
+  Interp
+  ASymb
+  ARegFile
+  AStack
+  AbsState
+  FSAbsD
+  CSA))

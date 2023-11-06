@@ -23,7 +23,6 @@ struct
   module NonNumericValue = NonNumericValue
 
   type t = Num of NumericValue.t | NonNum of NonNumericValue.t
-  type nonnum_t = NonNumericValue.t
 
   let to_either (v : t) : (NumericValue.t, NonNumericValue.t) Either.t =
     match v with Num n -> Left n | NonNum n -> Right n
