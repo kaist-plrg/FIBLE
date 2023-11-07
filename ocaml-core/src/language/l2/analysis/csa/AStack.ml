@@ -1,10 +1,11 @@
 open StdlibExt
 open Basic_collection
 
-type t = InitHoleMap of ASymb.t AddrMap.t | Bottom
+type t = Top | InitHoleMap of ASymb.t AddrMap.t | Bottom
 
 let join (c1 : t) (c2 : t) : t =
   match (c1, c2) with
+  | Top, _ | _, Top -> Top
   | InitHoleMap m1, InitHoleMap m2 ->
       InitHoleMap
         (AddrMap.merge
@@ -21,6 +22,8 @@ let join (c1 : t) (c2 : t) : t =
 
 let le (c1 : t) (c2 : t) : bool =
   match (c1, c2) with
+  | _, Top -> true
+  | Top, _ -> false
   | InitHoleMap m1, InitHoleMap m2 ->
       AddrMap.for_all
         (fun r s1 ->
@@ -41,8 +44,11 @@ let le (c1 : t) (c2 : t) : bool =
   | Bottom, _ -> true
   | _, Bottom -> false
 
+let top = Top
+
 let process_sload (c : t) (offset : Int64.t) : ASymb.t =
   match c with
+  | Top -> ASymb.Top
   | InitHoleMap m ->
       AddrMap.find_opt offset m
       |> Option.value ~default:(ASymb.AStackOffset (offset, Int64Set.empty))
@@ -50,5 +56,6 @@ let process_sload (c : t) (offset : Int64.t) : ASymb.t =
 
 let process_sstore (c : t) (offset : Int64.t) (v : ASymb.t) : t =
   match c with
+  | Top -> Top
   | InitHoleMap m -> InitHoleMap (AddrMap.add offset v m)
   | Bottom -> Bottom

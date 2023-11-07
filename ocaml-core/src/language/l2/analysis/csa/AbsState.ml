@@ -15,6 +15,7 @@ let init =
     stack = AStack.InitHoleMap AddrMap.empty;
   }
 
+let top = { regs = ARegFile.top; stack = AStack.top }
 let le c1 c2 = ARegFile.le c1.regs c2.regs && AStack.le c1.stack c2.stack
 let widen = join
 
@@ -46,12 +47,12 @@ let post_single_instr (i : Inst.t) (c : t) : t =
   | Inst.Isload (offset, o) -> process_sload c offset o
   | Inst.Isstore (offset, i) -> process_sstore c offset (eval_varnode c i)
 
-let post_single_jmp (i : Jmp.t) (c : t) (sp_num : int64) : t =
+let post_single_jmp (i : Jmp.t) (c : t) : t =
   match i with
   | Jmp.Jcall (d, _, _) | Jmp.Jcall_ind (d, _, _) ->
       { c with regs = ARegFile.top }
   | _ -> c
 
-let post_single_block (b : Block.t) (c : t) (sp_num : int64) : t =
+let post_single_block (b : Block.t) (c : t) : t =
   Block.fold_left (fun c i -> post_single_instr i.ins c) c b |> fun c ->
-  post_single_jmp b.jmp.jmp c sp_num
+  post_single_jmp b.jmp.jmp c
