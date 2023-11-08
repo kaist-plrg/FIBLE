@@ -32,3 +32,8 @@ let get_bb (f : t) (loc : Loc.t) : Block.t option =
 
 let get_preds (f : t) (b : Block.t) : Block.t list =
   List.filter (fun (b' : Block.t) -> List.mem b.loc (Block.succ b')) f.blocks
+
+let get_ret_blocks (f : t) : Block.t list =
+  List.filter
+    (fun (b : Block.t) -> match b.jmp.jmp with Jret -> true | _ -> false)
+    f.blocks

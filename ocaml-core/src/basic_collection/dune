@@ -2,4 +2,4 @@
  (name basic_collection)
  (flags -w -20-33-3)
  (libraries basic stdlibExt)
- (modules LocSet MemRefMap RegIdMap AddrMap))
+ (modules LocSet LocMap MemRefMap RegIdMap AddrMap))

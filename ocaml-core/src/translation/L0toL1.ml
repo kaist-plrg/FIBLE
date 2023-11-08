@@ -37,13 +37,14 @@ let translate_jmp (p : L0.Prog.t) (loc : Loc.t) (i : L0.Inst.t_full)
   | Iunimplemented -> { loc; jmp = Junimplemented; mnem = i.mnem }
   | _ -> { loc; jmp = Jfallthrough next; mnem = i.mnem }
 
-let translate_block (p0 : L0.Prog.t) (entry : Loc.t) (cf : L0.CFA.Immutable.t)
-    (entries : LocSetD.t) : L1.Block.t =
+let translate_block (p0 : L0.Prog.t) (fentry : Loc.t) (entry : Loc.t)
+    (cf : L0.CFA.Immutable.t) (entries : LocSetD.t) : L1.Block.t =
   let rec aux (loc : Loc.t) (acc : L1.Inst.t_full list) : L1.Block.t =
     let ninst = L0.Prog.get_ins_full p0 loc in
     match ninst with
     | None ->
         {
+          fLoc = fentry;
           loc = entry;
           body = List.rev acc;
           jmp = { loc; jmp = Junimplemented; mnem = "" };
@@ -52,6 +53,7 @@ let translate_block (p0 : L0.Prog.t) (entry : Loc.t) (cf : L0.CFA.Immutable.t)
         match L0.JumpD.find_opt loc cf.sound_jump with
         | None ->
             {
+              fLoc = fentry;
               loc = entry;
               body = List.rev (translate_stmt loc i :: acc);
               jmp = { loc; jmp = Junimplemented; mnem = i.mnem };
@@ -61,6 +63,7 @@ let translate_block (p0 : L0.Prog.t) (entry : Loc.t) (cf : L0.CFA.Immutable.t)
               let jmp = LocSetD.choose jmps in
               if LocSetD.mem jmp entries then
                 {
+                  fLoc = fentry;
                   loc = entry;
                   body = List.rev (translate_stmt loc i :: acc);
                   jmp = translate_jmp p0 loc i jmp jmps;
@@ -68,6 +71,7 @@ let translate_block (p0 : L0.Prog.t) (entry : Loc.t) (cf : L0.CFA.Immutable.t)
               else aux jmp (translate_stmt loc i :: acc)
             else
               {
+                fLoc = fentry;
                 loc = entry;
                 body = List.rev (translate_stmt loc i :: acc);
                 jmp = translate_jmp p0 loc i (L0.Prog.fallthru p0 loc) jmps;
@@ -92,7 +96,7 @@ let translate_func (p0 : L0.Prog.t) (nameo : String.t option) (entry : Addr.t)
   let entries = LocSetD.add_seq other_block_entires boundary_entries in
   let blocks =
     LocSetD.to_seq entries
-    |> Seq.map (fun e -> translate_block p0 e cf entries)
+    |> Seq.map (fun e -> translate_block p0 (entry, 0) e cf entries)
     |> List.of_seq
   in
   { nameo; entry = (entry, 0); boundaries = boundary_entries; blocks }

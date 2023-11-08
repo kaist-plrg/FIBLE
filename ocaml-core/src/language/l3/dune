@@ -5,7 +5,14 @@
  (flags -w -20-33-3)
  (preprocess
   (pps ppx_log))
- (libraries stdlibExt ppx_log basic basic_domain common_language l2)
+ (libraries
+  ocamlgraph
+  stdlibExt
+  ppx_log
+  basic
+  basic_domain
+  common_language
+  l2)
  (modules
   Block
   Func
@@ -26,4 +33,5 @@
   Store
   State
   Init
-  Interp))
+  Interp
+  LVA))

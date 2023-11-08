@@ -12,7 +12,7 @@ end) (Jmp : sig
   val pp : Format.formatter -> t -> unit
 end) =
 struct
-  type t = { loc : Loc.t; body : Inst.t list; jmp : Jmp.t }
+  type t = { fLoc : Loc.t; loc : Loc.t; body : Inst.t list; jmp : Jmp.t }
 
   let fold_left f acc { body; jmp; _ } = List.fold_left f acc body
 

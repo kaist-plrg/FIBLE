@@ -76,9 +76,15 @@ let main () =
         let l2 : L2.Prog.t =
           Translation.L1toL2.translate_prog_from_spfa l1 spfa_res 32L
         in
+        let csa_res : (L2.Func.t * L2.CSA.Immutable.t) list =
+          l2.funcs |> List.map (fun x -> (x, L2.CSA.Immutable.analyze x))
+        in
+        let l3 : L3.Prog.t =
+          Translation.L2toL3.translate_prog_from_csa l2 csa_res
+        in
         (match
-           L2.Interp.interp l2
-             (L2.Init.from_signature l2
+           L3.Interp.interp l3
+             (L3.Init.from_signature l3
                 (List.find (fun x -> fst x = "main") func_with_addrs |> snd))
          with
         | Ok _ -> Format.printf "Success\n"

@@ -41,7 +41,7 @@ let translate_block (b : L2.Block.t) (ga : L2.CSA.Immutable.t) : L3.Block.t =
         ( List.map (fun i -> translate_inst i L2.AbsState.top) b.body,
           L2.AbsState.top )
   in
-  { loc = b.loc; body; jmp = translate_jmp b.jmp final_a }
+  { fLoc = b.fLoc; loc = b.loc; body; jmp = translate_jmp b.jmp final_a }
 
 let translate_func (f : L2.Func.t) (a : L2.CSA.Immutable.t) : L3.Func.t =
   {

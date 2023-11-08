@@ -29,7 +29,7 @@ let pp (fmt : Format.formatter) (p : t) =
   | Ipstore (i0, i1) ->
       Format.fprintf fmt "param[%a] = %a;" Const.pp i0 VarNode.pp i1
   | Iassignment (i0, o) ->
-      Format.fprintf fmt "%a = %a;" Assignable.pp i0 RegId.pp_width o
+      Format.fprintf fmt "%a = %a;" RegId.pp_width o Assignable.pp i0
   | INop -> Format.fprintf fmt "nop;"
 
 let pp_full (fmt : Format.formatter) (p : t_full) =
