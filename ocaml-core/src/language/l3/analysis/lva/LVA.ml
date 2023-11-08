@@ -8,6 +8,9 @@ module G = Graph.Persistent.Digraph.Concrete (struct
   let equal (a : t) (b : t) = a.fLoc = b.fLoc && a.loc = b.loc
 end)
 
+module Oper = Graph.Oper.P (G)
+module WTO = Graph.WeakTopological.Make (G)
+
 let to_graph (p : Prog.t) : G.t =
   let fMap : Func.t LocMap.t =
     List.fold_left
@@ -84,3 +87,36 @@ let to_graph (p : Prog.t) : G.t =
       fMap g
   in
   g
+
+module LiveVariableDomain = struct
+  type t = Unit.t
+
+  let join (a : t) (b : t) = ()
+  let widening (a : t) (b : t) = ()
+  let le (prev : t) (generated : t) : bool = true
+  let analyze (e : G.E.t) (a : t) : t = ()
+end
+
+module LiveVariableAnalysis =
+  Graph.ChaoticIteration.Make
+    (G)
+    (struct
+      type t = LiveVariableDomain.t
+      type edge = G.E.t
+      type vertex = G.V.t
+      type g = G.t
+
+      let join = LiveVariableDomain.join
+      let widening = LiveVariableDomain.widening
+      let equal a b = LiveVariableDomain.le b a && LiveVariableDomain.le a b
+      let analyze = LiveVariableDomain.analyze
+    end)
+
+let analysis (p : Prog.t) =
+  let init_data b = () in
+  let pgraph = to_graph p in
+  let pmirror = Oper.mirror pgraph in
+  LiveVariableAnalysis.recurse pmirror
+    (WTO.recursive_scc pmirror
+       (p.funcs |> List.hd |> (fun x -> x.blocks) |> List.hd))
+    init_data FromWto 0
