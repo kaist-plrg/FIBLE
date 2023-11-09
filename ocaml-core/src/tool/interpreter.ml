@@ -82,9 +82,15 @@ let main () =
         let l3 : L3.Prog.t =
           Translation.L2toL3.translate_prog_from_csa l2 csa_res
         in
+        let lva_res : (L3.Func.t * L3.REA.astate) List.t =
+          L3.REA.compute_all l3
+        in
+        let l4 : L4.Prog.t =
+          Translation.L3toL4.translate_prog_from_rea l3 lva_res
+        in
         (match
-           L3.Interp.interp l3
-             (L3.Init.from_signature l3
+           L4.Interp.interp l4
+             (L4.Init.from_signature l4
                 (List.find (fun x -> fst x = "main") func_with_addrs |> snd))
          with
         | Ok _ -> Format.printf "Success\n"

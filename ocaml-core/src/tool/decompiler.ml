@@ -16,6 +16,10 @@ type dump_flag_type = {
   basic_block : bool ref;
   spfa : bool ref;
   l2 : bool ref;
+  csa : bool ref;
+  l3 : bool ref;
+  rea : bool ref;
+  l4 : bool ref;
 }
 
 let dump_flag =
@@ -25,6 +29,10 @@ let dump_flag =
     basic_block = ref false;
     spfa = ref false;
     l2 = ref false;
+    csa = ref false;
+    l3 = ref false;
+    rea = ref false;
+    l4 = ref false;
   }
 
 let cwd = ref ""
@@ -38,6 +46,10 @@ let speclist =
     ("-dump-basic-block", Arg.Set dump_flag.basic_block, ": dump basic block");
     ("-dump-spfa", Arg.Set dump_flag.spfa, ": dump spfa");
     ("-dump-l2", Arg.Set dump_flag.l2, ": dump l2");
+    ("-dump-csa", Arg.Set dump_flag.csa, ": dump csa");
+    ("-dump-l3", Arg.Set dump_flag.l3, ": dump l3");
+    ("-dump-rea", Arg.Set dump_flag.rea, ": dump rea");
+    ("-dump-l4", Arg.Set dump_flag.l4, ": dump l4");
     ("-func-path", Arg.Set_string func_path, ": target funcs path");
     ("-project-cwd", Arg.Set_string cwd, ": set cwd");
     ("-debug", Arg.Unit (fun _ -> Logger.set_level Logger.Debug), ": debug mode");
@@ -147,6 +159,18 @@ let main () =
         let l2 : L2.Prog.t =
           Translation.L1toL2.translate_prog_from_spfa l1 spfa_res 32L
         in
+        let csa_res : (L2.Func.t * L2.CSA.Immutable.t) list =
+          l2.funcs |> List.map (fun x -> (x, L2.CSA.Immutable.analyze x))
+        in
+        let l3 : L3.Prog.t =
+          Translation.L2toL3.translate_prog_from_csa l2 csa_res
+        in
+        let lva_res : (L3.Func.t * L3.REA.astate) List.t =
+          L3.REA.compute_all l3
+        in
+        let l4 : L4.Prog.t =
+          Translation.L3toL4.translate_prog_from_rea l3 lva_res
+        in
         if
           (!(dump_flag.cfa) || !(dump_flag.l1) || !(dump_flag.spfa)
          || !(dump_flag.l2))
@@ -169,6 +193,23 @@ let main () =
         if !(dump_flag.l2) then
           L2.Prog.dump_prog l2 !dump_path
             (Filename.basename !ifile |> Filename.remove_extension)
-        else ()
+        else ();
+        (* if !(dump_flag.csa) then
+             dump_csa csa_res !dump_path
+               (Filename.basename !ifile |> Filename.remove_extension)
+           else (); *)
+        if !(dump_flag.l3) then
+          L3.Prog.dump_prog l3 !dump_path
+            (Filename.basename !ifile |> Filename.remove_extension)
+        else ();
+        (* if !(dump_flag.rea) then
+             dump_rea lva_res !dump_path
+               (Filename.basename !ifile |> Filename.remove_extension)
+           else (); *)
+        if !(dump_flag.l4) then
+          L4.Prog.dump_prog l4 !dump_path
+            (Filename.basename !ifile |> Filename.remove_extension)
+        else ();
+        ()
 
 let () = Global.run_main main

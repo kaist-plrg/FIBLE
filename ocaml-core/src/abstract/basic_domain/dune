@@ -1,6 +1,6 @@
 (library
  (name basic_domain)
- (libraries basic)
+ (libraries basic basic_collection)
  (modules
   DomainSpec
   BotMapD
@@ -10,6 +10,7 @@
   FlatBoolD
   FlatInt64D
   Int64SetD
+  RegIdSetD
   TupleD
   TripleD
   LocBotMapD

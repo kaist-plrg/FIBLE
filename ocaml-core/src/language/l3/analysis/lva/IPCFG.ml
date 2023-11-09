@@ -1,15 +1,31 @@
 open Basic_collection
 
-module G = Graph.Persistent.Digraph.Concrete (struct
-  type t = Block.t
+type time_t = Pre | Post
+type vertex_t = { block : Block.t; time : time_t }
 
-  let compare (a : t) (b : t) = compare (a.fLoc, a.loc) (b.fLoc, b.loc)
-  let hash (a : t) = Hashtbl.hash (a.fLoc, a.loc)
-  let equal (a : t) (b : t) = a.fLoc = b.fLoc && a.loc = b.loc
-end)
+module Vertex = struct
+  type t = vertex_t
 
+  let compare (a : t) (b : t) =
+    compare
+      (a.block.fLoc, a.block.loc, a.time)
+      (b.block.fLoc, b.block.loc, b.time)
+
+  let hash (a : t) = Hashtbl.hash (a.block.fLoc, a.block.loc, a.time)
+
+  let equal (a : t) (b : t) =
+    a.block.fLoc = b.block.fLoc && a.block.loc = b.block.loc && a.time = b.time
+end
+
+module EdgeLabel = struct
+  type t = Inner | Flow | Call | Ret
+
+  let compare : t -> t -> int = Stdlib.compare
+  let default : t = Flow
+end
+
+module G = Graph.Persistent.Digraph.ConcreteLabeled (Vertex) (EdgeLabel)
 module Oper = Graph.Oper.P (G)
-module WTO = Graph.WeakTopological.Make (G)
 
 let to_graph (p : Prog.t) : G.t =
   let fMap : Func.t LocMap.t =
@@ -31,7 +47,15 @@ let to_graph (p : Prog.t) : G.t =
   let g =
     List.fold_left
       (fun g (f : Func.t) ->
-        List.fold_left (fun g b -> G.add_vertex g b) g f.blocks)
+        List.fold_left
+          (fun g b ->
+            g
+            |> Fun.flip G.add_vertex { block = b; time = Pre }
+            |> Fun.flip G.add_vertex { block = b; time = Post }
+            |> fun g ->
+            G.add_edge_e g
+              ({ block = b; time = Pre }, Inner, { block = b; time = Post }))
+          g f.blocks)
       g p.funcs
   in
   let g =
@@ -40,7 +64,13 @@ let to_graph (p : Prog.t) : G.t =
         LocMap.fold
           (fun _ (b : Block.t) g ->
             List.fold_left
-              (fun g (b' : Block.t) -> G.add_edge g b b')
+              (fun g (b' : Block.t) ->
+                G.add_edge_e g
+                  ( { block = b; time = Post },
+                    (match b.jmp.jmp with
+                    | Jcall _ | Jcall_ind _ -> Call
+                    | _ -> Flow),
+                    { block = b'; time = Pre } ))
               g
               (match b.jmp.jmp with
               | Jcall (_, t, _) ->
@@ -69,54 +99,23 @@ let to_graph (p : Prog.t) : G.t =
         let rets = Func.get_ret_blocks f in
         let entry = LocMap.find f.entry (LocMap.find f.entry bbMap) in
         let ret_afters =
-          G.pred g entry
-          |> List.filter_map (fun (b : Block.t) ->
-                 match b.jmp.jmp with
+          G.pred g { block = entry; time = Pre }
+          |> List.filter_map (fun (b : vertex_t) ->
+                 match b.block.jmp.jmp with
                  | Jcall (_, _, r) | Jcall_ind (_, _, r) ->
-                     LocMap.find_opt b.fLoc bbMap
+                     LocMap.find_opt b.block.fLoc bbMap
                      |> Fun.flip Option.bind (fun (bbs : Block.t LocMap.t) ->
-                            LocMap.find_opt b.loc bbs)
+                            LocMap.find_opt b.block.loc bbs)
                  | _ -> None)
         in
         List.fold_left
           (fun g (b : Block.t) ->
             List.fold_left
-              (fun g (b' : Block.t) -> G.add_edge g b b')
+              (fun g (b' : Block.t) ->
+                G.add_edge_e g
+                  ({ block = b; time = Post }, Ret, { block = b'; time = Pre }))
               g ret_afters)
           g rets)
       fMap g
   in
   g
-
-module LiveVariableDomain = struct
-  type t = Unit.t
-
-  let join (a : t) (b : t) = ()
-  let widening (a : t) (b : t) = ()
-  let le (prev : t) (generated : t) : bool = true
-  let analyze (e : G.E.t) (a : t) : t = ()
-end
-
-module LiveVariableAnalysis =
-  Graph.ChaoticIteration.Make
-    (G)
-    (struct
-      type t = LiveVariableDomain.t
-      type edge = G.E.t
-      type vertex = G.V.t
-      type g = G.t
-
-      let join = LiveVariableDomain.join
-      let widening = LiveVariableDomain.widening
-      let equal a b = LiveVariableDomain.le b a && LiveVariableDomain.le a b
-      let analyze = LiveVariableDomain.analyze
-    end)
-
-let analysis (p : Prog.t) =
-  let init_data b = () in
-  let pgraph = to_graph p in
-  let pmirror = Oper.mirror pgraph in
-  LiveVariableAnalysis.recurse pmirror
-    (WTO.recursive_scc pmirror
-       (p.funcs |> List.hd |> (fun x -> x.blocks) |> List.hd))
-    init_data FromWto 0

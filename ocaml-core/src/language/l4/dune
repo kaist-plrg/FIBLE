@@ -1,7 +1,7 @@
 (include_subdirs unqualified)
 
 (library
- (name l3)
+ (name l4)
  (flags -w -20-33-3)
  (preprocess
   (pps ppx_log))
@@ -12,7 +12,7 @@
   basic
   basic_domain
   common_language
-  l2)
+  l3)
  (modules
   Block
   Func
@@ -33,8 +33,4 @@
   Store
   State
   Init
-  Interp
-  CG
-  IPCFG
-  ICFG
-  REA))
+  Interp))

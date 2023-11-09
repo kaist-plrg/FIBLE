@@ -15,7 +15,19 @@
  (name interpreter)
  (public_name multi-step-decomp)
  (package multi-step-decomp)
- (libraries zarith unix stdlibExt ppx_log basic l0 world l1 l2 translation)
+ (libraries
+  zarith
+  unix
+  stdlibExt
+  ppx_log
+  basic
+  l0
+  world
+  l1
+  l2
+  l3
+  l4
+  translation)
  (modules interpreter))
 
 (executable
@@ -25,7 +37,19 @@
  (name decompiler)
  (public_name multi-step-decomp)
  (package multi-step-decomp)
- (libraries zarith unix stdlibExt ppx_log basic l0 world l1 l2 translation)
+ (libraries
+  zarith
+  unix
+  stdlibExt
+  ppx_log
+  basic
+  l0
+  world
+  l1
+  l2
+  l3
+  l4
+  translation)
  (modules decompiler))
 
 (executable
