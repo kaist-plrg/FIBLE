@@ -130,6 +130,9 @@ let compute_dd_block (b : Block.t) : astate =
     b.body
   |> Fun.flip accumulate_astate (compute_dd_jmp b.jmp.jmp)
 
+module ICFG = Common_language.ICFG.Make (Block)
+module CG = Common_language.CG.Make (Func)
+
 module RegAnalysisDomain = struct
   type t = astate
   type data = astate LocMap.t * astate
@@ -195,7 +198,7 @@ let compute_dd_func (f : Func.t) (m : astate LocMap.t) : astate =
       (fun v ->
         if v.block.loc = f.entry && v.time = Pre then (m, RegAnalysisDomain.init)
         else (m, RegAnalysisDomain.bot))
-      (ICFG.to_graph f)
+      (ICFG.to_graph f.blocks)
   in
   Func.get_ret_blocks f
   |> List.fold_left
@@ -232,7 +235,7 @@ let rec compute_funcs_fixpoint (m : astate LocMap.t)
     compute_funcs_fixpoint nm nfuncs
 
 let compute_all (p : Prog.t) : (Func.t * astate) List.t =
-  let scc_list = CG.CG_Components.scc_list (CG.to_cg p) in
+  let scc_list = CG.CG_Components.scc_list (CG.to_cg p.funcs) in
   let analysis_res =
     List.fold_left
       (fun m scc ->

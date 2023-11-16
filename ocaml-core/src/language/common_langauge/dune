@@ -5,7 +5,7 @@
  (flags -w -20-33-3)
  (preprocess
   (pps ppx_log))
- (libraries ppx_log stdlibExt basic basic_collection)
+ (libraries ocamlgraph ppx_log stdlibExt basic basic_collection)
  (modules
   NumericValue
   ValueF
@@ -20,4 +20,6 @@
   NumericBop
   NumericUop
   Block
-  RawInst))
+  RawInst
+  ICFG
+  CG))

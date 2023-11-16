@@ -34,7 +34,5 @@
   State
   Init
   Interp
-  CG
   IPCFG
-  ICFG
   REA))

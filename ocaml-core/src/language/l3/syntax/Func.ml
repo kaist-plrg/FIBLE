@@ -27,6 +27,8 @@ let pp fmt { nameo; entry; boundaries; sp_boundary; sp_diff; blocks } =
     (Format.pp_print_list Block.pp)
     blocks
 
+let get_entry (f : t) : Loc.t = f.entry
+
 let get_bb (f : t) (loc : Loc.t) : Block.t option =
   List.find_opt (fun (b : Block.t) -> compare b.loc loc = 0) f.blocks
 
@@ -37,3 +39,9 @@ let get_ret_blocks (f : t) : Block.t list =
   List.filter
     (fun (b : Block.t) -> match b.jmp.jmp with Jret -> true | _ -> false)
     f.blocks
+
+let get_call_targets (f : t) : Loc.t list =
+  List.fold_left
+    (fun acc (b : Block.t) ->
+      match b.jmp.jmp with Jcall (_, loc, _) -> loc :: acc | _ -> acc)
+    [] f.blocks

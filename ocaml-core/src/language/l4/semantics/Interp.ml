@@ -103,7 +103,9 @@ let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
     match (param_tags, regs) with
     | [], _ -> List.rev acc
     | tag :: param_tags, reg :: regs ->
-        let v = RegFile.get_reg s.regs { id = RegId.Register reg; width = 8l } in
+        let v =
+          RegFile.get_reg s.regs { id = RegId.Register reg; width = 8l }
+        in
         aux (build_arg s tag v :: acc) param_tags regs
     | _ -> [%log fatal "Not enough registers"]
   in
@@ -197,14 +199,14 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
         {
           State.timestamp = Int64Ext.succ s.timestamp;
           cont = ncont;
-          stack = (s.func, currf.outputs, s.regs, sp_saved, retn) :: s.stack;
+          stack = (s.func, outputs, s.regs, sp_saved, retn) :: s.stack;
           regs =
             RegFile.add_reg
               (List.fold_left
-                 (fun r i -> RegFile.add_reg r i (RegFile.get_reg s.regs i))
+                 (fun r (i, v) ->
+                   RegFile.add_reg r { id = i; width = 8l } (eval_vn v s))
                  RegFile.empty
-                 (currf.inputs
-                 |> List.map (fun x -> { RegId.id = x; width = 8l })))
+                 (List.combine f.inputs inputs))
               { id = RegId.Register 32L; width = 8l }
               (Value.sp { func = calln; timestamp = Int64Ext.succ s.timestamp });
           func = (calln, Int64Ext.succ s.timestamp);

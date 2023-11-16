@@ -22,4 +22,6 @@ struct
       body Jmp.pp jmp
 
   let succ { jmp; _ } = Jmp.succ jmp
+  let get_fLoc { fLoc; _ } = fLoc
+  let get_loc { loc; _ } = loc
 end
