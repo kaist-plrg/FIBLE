@@ -1,4 +1,5 @@
 (alias
  (name default)
  (deps
+  (file multi-step-decomp.opam)
   (alias_rec ocaml-core/src/default)))
