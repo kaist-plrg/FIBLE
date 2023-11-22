@@ -230,7 +230,7 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
              ~none:(Format.asprintf "No external function %s" name)
       in
       let args = build_args s fsig in
-      let retv = World.Environment.request_call name args in
+      let _, retv = World.Environment.request_call name args in
 
       let sp_curr =
         Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }

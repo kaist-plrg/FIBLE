@@ -6,6 +6,9 @@ open Common_language
 
 type hidden_fn = Hide : ('a -> 'b) fn -> hidden_fn
 
+let cgc_funcs : String.t List.t =
+  [ "_terminate"; "transmit"; "receive"; "fdwait"; "allocate"; "deallocate" ]
+
 let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
   StringMap.of_list
     [
@@ -36,6 +39,61 @@ let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
       ( "fopen",
         ( { Interop.params = [ Interop.TString; Interop.TString ]; result = T64 },
           Hide (string @-> string @-> returning int64_t) ) );
+      ( "_terminate",
+        ( { Interop.params = [ Interop.T32 ]; result = T32 },
+          Hide (int @-> returning int) ) );
+      ( "transmit",
+        ( {
+            Interop.params =
+              [
+                Interop.T32;
+                Interop.TIBuffer_dep 2;
+                Interop.T64;
+                Interop.TBuffer 8L;
+              ];
+            result = T32;
+          },
+          Hide
+            (int @-> ocaml_string @-> int64_t @-> ocaml_bytes @-> returning int)
+        ) );
+      ( "receive",
+        ( {
+            Interop.params =
+              [
+                Interop.T32;
+                Interop.TBuffer_dep 2;
+                Interop.T64;
+                Interop.TBuffer 8L;
+              ];
+            result = T32;
+          },
+          Hide
+            (int @-> ocaml_bytes @-> int64_t @-> ocaml_bytes @-> returning int)
+        ) );
+      ( "fdwait",
+        ( {
+            Interop.params =
+              [
+                Interop.T32;
+                Interop.TBuffer 128L;
+                Interop.TBuffer 128L;
+                Interop.TIBuffer 8L;
+                Interop.TBuffer 4L;
+              ];
+            result = T32;
+          },
+          Hide
+            (int @-> ocaml_bytes @-> ocaml_bytes @-> ocaml_string
+           @-> ocaml_bytes @-> returning int) ) );
+      ( "allocate",
+        ( {
+            Interop.params = [ Interop.T64; Interop.T32; Interop.TBuffer 8L ];
+            result = T32;
+          },
+          Hide (int64_t @-> int @-> ocaml_bytes @-> returning int) ) );
+      ( "deallocate",
+        ( { Interop.params = [ Interop.T64; Interop.T64 ]; result = T32 },
+          Hide (int64_t @-> int64_t @-> returning int) ) );
     ]
 
 let to_ctype : type t. t typ -> Interop.t -> t =
@@ -58,6 +116,10 @@ let to_ctype : type t. t typ -> Interop.t -> t =
         { ty = Ctypes_static.Pointer (Ctypes_static.Primitive Char) },
       Interop.VString x ) ->
       Obj.magic x
+  | Ctypes_static.OCaml Ctypes_static.Bytes, Interop.VBuffer x ->
+      Ctypes.ocaml_bytes_start x
+  | Ctypes_static.OCaml Ctypes_static.String, Interop.VIBuffer x ->
+      Ctypes.ocaml_string_start x
   | _ -> [%log fatal "Not implemented"]
 
 let to_interop : type t. t typ -> t -> Interop.t =
@@ -90,7 +152,30 @@ let rec call_with_signature : type a. a fn -> a -> Interop.t list -> Interop.t =
       call_with_signature b (f (to_ctype a h)) rest
   | _ -> [%log fatal "Not implemented"]
 
-let request_call (fname : String.t) (arg : Interop.t list) : Interop.t =
-  match StringMap.find_opt fname signature_map with
-  | Some (_, Hide fn) -> call_with_signature fn (Foreign.foreign fname fn) arg
-  | None -> [%log fatal "Not implemented"]
+let request_call (fname : String.t) (arg : Interop.t list) :
+    (Int.t * Interop.t) list * Interop.t =
+  if List.mem fname cgc_funcs then (
+    Global.initialize_cgc_lib ();
+    match fname with
+    | "_terminate" -> ([], Interop.V32 0l)
+    | "transmit" ->
+        let _, Hide fn = StringMap.find_opt fname signature_map |> Option.get in
+        ( [ (3, List.nth arg 3) ],
+          call_with_signature fn
+            (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
+            arg )
+    | "receive" ->
+        let _, Hide fn = StringMap.find_opt fname signature_map |> Option.get in
+        ( [ (1, List.nth arg 1); (3, List.nth arg 3) ],
+          call_with_signature fn
+            (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
+            arg )
+    | "fdwait" -> ([], Interop.V32 0l)
+    | "allocate" -> ([], Interop.V32 0l)
+    | "deallocate" -> ([], Interop.V32 0l)
+    | _ -> [%log fatal "Not reacahble"])
+  else
+    match StringMap.find_opt fname signature_map with
+    | Some (_, Hide fn) ->
+        ([], call_with_signature fn (Foreign.foreign fname fn) arg)
+    | None -> [%log fatal "Not implemented"]

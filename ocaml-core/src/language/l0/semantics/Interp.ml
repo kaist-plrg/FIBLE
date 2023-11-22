@@ -66,6 +66,10 @@ let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :
   | TDouble -> VDouble (Int64.float_of_bits v.value)
   | TVoid -> VUnit
   | TList _ -> [%log fatal "List not supported"]
+  | TBuffer _ -> [%log fatal "Buffer not supported"]
+  | TBuffer_dep _ -> [%log fatal "Buffer_dep not supported"]
+  | TIBuffer _ -> [%log fatal "IBuffer not supported"]
+  | TIBuffer_dep _ -> [%log fatal "IBuffer_dep not supported"]
 
 let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
   match v with
@@ -134,7 +138,7 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
         |> Option.to_result ~none:"No external function"
       in
       let args = build_args s fsig in
-      let retv = World.Environment.request_call name args in
+      let _, retv = World.Environment.request_call name args in
       Ok
         (build_ret
            {

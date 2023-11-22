@@ -128,8 +128,7 @@ let main () =
             lines)
           else [ "main" ]
         in
-        let cwd = if String.equal !cwd "" then Sys.getcwd () else !cwd in
-        Global.projectd := Some cwd;
+        let cwd = if String.equal !cwd "" then [%pwd] else !cwd in
         let tmp_path = Filename.concat cwd "tmp" in
         [%log debug "Input file is %s" !ifile];
         let server = Ghidra.make_server !ifile !ghidra_path tmp_path cwd in

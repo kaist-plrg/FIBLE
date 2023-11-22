@@ -36,9 +36,24 @@ let load_string (s : t) (addr : Addr.t) : (string, String.t) Result.t =
       | Undef -> Error "Undefined memory"
     in
     if c = Char.chr 0 then Ok acc
-    else aux (Addr.succ addr) (acc ^ Char.escaped c)
+    else aux (Addr.succ addr) (acc ^ String.make 1 c)
   in
   aux addr ""
+
+let load_bytes (s : t) (addr : Addr.t) (length : Int32.t) :
+    (String.t, String.t) Result.t =
+  let rec aux (addr : Addr.t) (length : Int32.t) (acc : string) :
+      (String.t, String.t) Result.t =
+    if length = 0l then Ok acc
+    else
+      let* c =
+        find s addr |> function
+        | Byte c -> Ok c
+        | Undef -> Error "Undefined memory"
+      in
+      aux (Addr.succ addr) (Int32.pred length) (acc ^ String.make 1 c)
+  in
+  aux addr length ""
 
 let store_mem (s : t) (addr : Addr.t) (v : NumericValue.t) : t =
   let chars = NumericValue.to_chars v in
@@ -51,6 +66,18 @@ let store_mem (s : t) (addr : Addr.t) (v : NumericValue.t) : t =
         aux (Addr.succ addr) chars acc
   in
   { s with ram = aux addr chars s.ram }
+
+let store_bytes (s : t) (addr : Addr.t) (bytes : string) : t =
+  let rec aux (addr : Addr.t) (bytes : string) (acc : storable AddrMap.t) :
+      storable AddrMap.t =
+    match bytes with
+    | "" -> acc
+    | bytes ->
+        let c = String.get bytes 0 in
+        let acc = AddrMap.add addr (Byte c) acc in
+        aux (Addr.succ addr) (String.sub bytes 1 (String.length bytes - 1)) acc
+  in
+  { s with ram = aux addr bytes s.ram }
 
 let undef_mem (s : t) (addr : Addr.t) (length : Int32.t) : t =
   let rec aux (addr : Addr.t) (length : Int32.t) (acc : storable AddrMap.t) :

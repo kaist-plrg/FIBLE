@@ -44,6 +44,22 @@ let load_string_local (s : t) (addr : LPVal.t) : (String.t, String.t) Result.t =
       addr.offset
   else Ok ""
 
+let load_bytes_param (s : t) (addr : PPVal.t) (len : Int32.t) :
+    (String.t, String.t) Result.t =
+  if FuncTimestampMap.mem (Param, addr.func, addr.timestamp) s then
+    Frame.load_bytes
+      (FuncTimestampMap.find (Param, addr.func, addr.timestamp) s)
+      addr.offset len
+  else Ok ""
+
+let load_bytes_local (s : t) (addr : LPVal.t) (len : Int32.t) :
+    (String.t, String.t) Result.t =
+  if FuncTimestampMap.mem (Local, addr.func, addr.timestamp) s then
+    Frame.load_bytes
+      (FuncTimestampMap.find (Local, addr.func, addr.timestamp) s)
+      addr.offset len
+  else Ok ""
+
 let store_mem_param (s : t) (addr : PPVal.t) (v : Value.t) : t =
   if FuncTimestampMap.mem (Param, addr.func, addr.timestamp) s then
     FuncTimestampMap.add
@@ -70,4 +86,32 @@ let store_mem_local (s : t) (addr : LPVal.t) (v : Value.t) : t =
     FuncTimestampMap.add
       (Local, addr.func, addr.timestamp)
       (Frame.store_mem Frame.empty addr.offset v)
+      s
+
+let store_bytes_param (s : t) (addr : PPVal.t) (v : String.t) : t =
+  if FuncTimestampMap.mem (Param, addr.func, addr.timestamp) s then
+    FuncTimestampMap.add
+      (Param, addr.func, addr.timestamp)
+      (Frame.store_bytes
+         (FuncTimestampMap.find (Param, addr.func, addr.timestamp) s)
+         addr.offset v)
+      s
+  else
+    FuncTimestampMap.add
+      (Param, addr.func, addr.timestamp)
+      (Frame.store_bytes Frame.empty addr.offset v)
+      s
+
+let store_bytes_local (s : t) (addr : LPVal.t) (v : String.t) : t =
+  if FuncTimestampMap.mem (Local, addr.func, addr.timestamp) s then
+    FuncTimestampMap.add
+      (Local, addr.func, addr.timestamp)
+      (Frame.store_bytes
+         (FuncTimestampMap.find (Local, addr.func, addr.timestamp) s)
+         addr.offset v)
+      s
+  else
+    FuncTimestampMap.add
+      (Local, addr.func, addr.timestamp)
+      (Frame.store_bytes Frame.empty addr.offset v)
       s

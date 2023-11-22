@@ -42,18 +42,18 @@ let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :
   | T64 ->
       V64
         (match v with
-        | Num { value; _ } ->
-            if value < 0x1000L then value
-            else
-              Foreign.foreign "strdup"
-                (Ctypes_static.( @-> ) Ctypes.string
-                   (Ctypes.returning Ctypes_static.int64_t))
-                "[null]"
+        | Num { value; _ } -> value
         | _ ->
             Foreign.foreign "strdup"
               (Ctypes_static.( @-> ) Ctypes.string
                  (Ctypes.returning Ctypes_static.int64_t))
               "[null]")
+  | TBuffer n ->
+      let v = Store.load_bytes s.sto v (Int64.to_int32 n) |> Result.get_ok in
+      VBuffer (v |> String.to_bytes)
+  | TIBuffer n ->
+      let v = Store.load_bytes s.sto v (Int64.to_int32 n) |> Result.get_ok in
+      VIBuffer v
   | _ -> [%log fatal "Not supported"]
 
 let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
@@ -92,24 +92,52 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
       }
   | _ -> [%log fatal "Unsupported return type"]
 
-let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
-    Common_language.Interop.t list =
+let build_args (s : State.t) (fsig : Interop.func_sig) :
+    (Value.t * Interop.t) list =
   if List.length fsig.params > 6 then
     [%log fatal "At most 6 argument is supported for external functions"];
   let reg_list = [ 56L; 48L; 16L; 8L; 128L; 136L ] in
-  let rec aux (acc : Common_language.Interop.t list)
-      (param_tags : Common_language.Interop.tag list) (regs : Int64.t list) :
-      Common_language.Interop.t list =
-    match (param_tags, regs) with
-    | [], _ -> List.rev acc
-    | tag :: param_tags, reg :: regs ->
-        let v =
-          RegFile.get_reg s.regs { id = RegId.Register reg; width = 8l }
-        in
-        aux (build_arg s tag v :: acc) param_tags regs
-    | _ -> [%log fatal "Not enough registers"]
+  let val_list =
+    List.map
+      (fun r -> RegFile.get_reg s.regs { id = RegId.Register r; width = 8l })
+      reg_list
   in
-  aux [] fsig.params reg_list
+  let nondep_tags =
+    List.map
+      (fun (tag : Interop.tag) ->
+        match tag with
+        | TBuffer_dep n ->
+            let k =
+              Interop.extract_64
+                (build_arg s (List.nth fsig.params n) (List.nth val_list n))
+            in
+            Interop.TBuffer k
+        | TIBuffer_dep n ->
+            let k =
+              Interop.extract_64
+                (build_arg s (List.nth fsig.params n) (List.nth val_list n))
+            in
+            Interop.TIBuffer k
+        | _ -> tag)
+      fsig.params
+  in
+  List.combine nondep_tags (ListExt.take (List.length nondep_tags) val_list)
+  |> List.map (fun (t, v) -> (v, build_arg s t v))
+
+let build_side (s : State.t) (value : Value.t) (t : Interop.t) :
+    (State.t, String.t) Result.t =
+  match t with
+  | Interop.VBuffer v ->
+      let* sto = Store.store_bytes s.sto value (Bytes.to_string v) in
+      Ok { s with sto }
+  | _ -> Error "Unreachable"
+
+let build_sides (s : State.t) (values : Value.t List.t)
+    (sides : (Int.t * Interop.t) List.t) : (State.t, String.t) Result.t =
+  List.fold_left
+    (fun s (i, t) ->
+      Result.bind s (fun s -> build_side s (List.nth values i) t))
+    (Ok s) sides
 
 let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) (func : Loc.t * Int64.t)
     : (State.t, String.t) Result.t =
@@ -230,8 +258,8 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
         |> Option.to_result
              ~none:(Format.asprintf "No external function %s" name)
       in
-      let args = build_args s fsig in
-      let retv = World.Environment.request_call name args in
+      let values, args = build_args s fsig |> List.split in
+      let sides, retv = World.Environment.request_call name args in
 
       let sp_curr =
         RegFile.get_reg s.regs { id = RegId.Register 32L; width = 8l }
@@ -243,16 +271,17 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
       in
 
       let* ncont = Cont.of_block_loc p (fst s.func) retn in
+      let* s_side = build_sides s values sides in
       Ok
         (build_ret
            {
-             s with
+             s_side with
              regs =
-               RegFile.add_reg s.regs
+               RegFile.add_reg s_side.regs
                  { id = RegId.Register 32L; width = 8l }
                  sp_saved;
              cont = ncont;
-             stack = s.stack;
+             stack = s_side.stack;
            }
            retv)
 
@@ -273,6 +302,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
       else Error "jump_ind: Not a valid jump"
   | Jcbranch (vn, ift, iff) ->
       let v = eval_vn vn s in
+      [%log debug "Jcbranch %a" Value.pp v];
       let* iz = Value.try_isZero v in
       if iz then
         let* ncont = Cont.of_block_loc p (fst s.func) iff in

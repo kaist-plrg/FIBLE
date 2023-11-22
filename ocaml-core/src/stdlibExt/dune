@@ -9,6 +9,7 @@
   StringMap
   Int64Set
   Int64Hashtbl
+  ListExt
   MutMap
   MutSet
   Logger

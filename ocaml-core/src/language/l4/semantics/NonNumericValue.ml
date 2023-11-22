@@ -78,6 +78,12 @@ let eval_bop (b : Bop.t)
       if (match v1 with Undef _ -> false | _ -> true) && v1 = v2 then
         Left (NumericValue.zero outwidth)
       else Right (Undef outwidth)
+  | Bop.Bint_equal, First (LocalP o1, LocalP o2) -> Right (Undef outwidth)
+  | Bop.Bint_equal, Second _ | Bop.Bint_equal, Third _ ->
+      Left { value = 0L; width = 1l }
+  | Bop.Bint_notequal, First (LocalP o1, LocalP o2) -> Right (Undef outwidth)
+  | Bop.Bint_notequal, Second _ | Bop.Bint_notequal, Third _ ->
+      Left { value = 1L; width = 1l }
   | _ -> Right (Undef outwidth)
 
 let refine_width (v : t) (width : int32) : t =

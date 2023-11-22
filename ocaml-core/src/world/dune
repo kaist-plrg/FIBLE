@@ -1,7 +1,7 @@
 (library
  (name world)
  (preprocess
-  (pps ppx_log))
+  (pps ppx_log ppx_cwd))
  (libraries
   unix
   stdlibExt

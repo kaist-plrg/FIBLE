@@ -1,4 +1,11 @@
 (library
  (name ppx_log)
  (kind ppx_rewriter)
- (libraries ppxlib))
+ (libraries ppxlib)
+ (modules Ppx_log))
+
+(library
+ (name ppx_cwd)
+ (kind ppx_rewriter)
+ (libraries str ppxlib)
+ (modules Ppx_cwd))

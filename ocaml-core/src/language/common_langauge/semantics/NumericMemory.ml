@@ -18,7 +18,7 @@ let load_mem (s : t) (addr : Addr.t) (width : Int32.t) : NumericValue.t =
 let load_string (s : t) (addr : Addr.t) : string =
   let rec aux (addr : Addr.t) (acc : string) : string =
     let c = AddrMap.find_opt addr s |> Option.value ~default:(Char.chr 0) in
-    if c = Char.chr 0 then acc else aux (Addr.succ addr) (acc ^ Char.escaped c)
+    if c = Char.chr 0 then acc else aux (Addr.succ addr) (acc ^ String.make 1 c)
   in
   aux addr ""
 

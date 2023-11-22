@@ -46,6 +46,10 @@ struct
   let load_string (s : t) (addr : Addr.t) : (String.t, String.t) Result.t =
     ROMCombinedFailableMemory.load_string s.left addr
 
+  let load_bytes (s : t) (addr : Addr.t) (size : Int32.t) :
+      (String.t, String.t) Result.t =
+    ROMCombinedFailableMemory.load_bytes s.left addr size
+
   let store_mem (s : t) (addr : Addr.t) (v : Value.t) : t =
     match Value.to_either v with
     | Right v ->
@@ -58,4 +62,10 @@ struct
           left = ROMCombinedFailableMemory.store_mem s.left addr v;
           right = AddrMap.remove addr s.right;
         }
+
+  let store_bytes (s : t) (addr : Addr.t) (v : String.t) : t =
+    {
+      left = ROMCombinedFailableMemory.store_bytes s.left addr v;
+      right = AddrMap.remove addr s.right;
+    }
 end
