@@ -21,7 +21,7 @@ module I64D = struct
     | _, Bot -> a
     | I64 a, I64 b ->
         if a = b then I64 a
-        else if Int64.max a b > 10L then Top
+        else if Int64.max a b > 100L then Top
         else I64 (Int64.max a b)
     | _, _ -> Top
 
@@ -31,7 +31,7 @@ module I64D = struct
     | _, Top -> a
     | I64 a, I64 b ->
         if a = b then I64 a
-        else if Int64.min a b < -10L then Bot
+        else if Int64.min a b < -100L then Bot
         else I64 (Int64.min a b)
     | _, _ -> Bot
 

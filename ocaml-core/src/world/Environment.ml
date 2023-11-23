@@ -7,7 +7,15 @@ open Common_language
 type hidden_fn = Hide : ('a -> 'b) fn -> hidden_fn
 
 let cgc_funcs : String.t List.t =
-  [ "_terminate"; "transmit"; "receive"; "fdwait"; "allocate"; "deallocate" ]
+  [
+    "_terminate";
+    "transmit";
+    "receive";
+    "fdwait";
+    "allocate";
+    "deallocate";
+    "cgc_random";
+  ]
 
 let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
   StringMap.of_list
@@ -94,6 +102,13 @@ let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
       ( "deallocate",
         ( { Interop.params = [ Interop.T64; Interop.T64 ]; result = T32 },
           Hide (int64_t @-> int64_t @-> returning int) ) );
+      ( "cgc_random",
+        ( {
+            Interop.params =
+              [ Interop.TBuffer_dep 1; Interop.T64; Interop.TBuffer 8L ];
+            result = T32;
+          },
+          Hide (ocaml_bytes @-> int64_t @-> ocaml_bytes @-> returning int) ) );
     ]
 
 let to_ctype : type t. t typ -> Interop.t -> t =
@@ -157,7 +172,7 @@ let request_call (fname : String.t) (arg : Interop.t list) :
   if List.mem fname cgc_funcs then (
     Global.initialize_cgc_lib ();
     match fname with
-    | "_terminate" -> ([], Interop.V32 0l)
+    | "_terminate" -> failwith "Terminate"
     | "transmit" ->
         let _, Hide fn = StringMap.find_opt fname signature_map |> Option.get in
         ( [ (3, List.nth arg 3) ],
@@ -170,9 +185,26 @@ let request_call (fname : String.t) (arg : Interop.t list) :
           call_with_signature fn
             (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
             arg )
-    | "fdwait" -> ([], Interop.V32 0l)
-    | "allocate" -> ([], Interop.V32 0l)
+    | "fdwait" ->
+        let _, Hide fn = StringMap.find_opt fname signature_map |> Option.get in
+        ( [ (1, List.nth arg 1); (2, List.nth arg 2); (4, List.nth arg 4) ],
+          call_with_signature fn
+            (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
+            arg )
+    | "allocate" -> (match List.nth arg 0, List.nth arg 2 with
+      | Interop.V64 v, Interop.VBuffer b ->
+          Bytes.set_int64_le b 0 !Global.global_blk_offset;
+          Global.global_blk_offset := Int64.add v !Global.global_blk_offset;
+        [ (2, Interop.VBuffer b) ], Interop.V32 0l
+      | _ -> [%log fatal "Not reacahble"]
+      )
     | "deallocate" -> ([], Interop.V32 0l)
+    | "cgc_random" ->
+        let _, Hide fn = StringMap.find_opt fname signature_map |> Option.get in
+        ( [ (0, List.nth arg 0); (2, List.nth arg 2) ],
+          call_with_signature fn
+            (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
+            arg )
     | _ -> [%log fatal "Not reacahble"])
   else
     match StringMap.find_opt fname signature_map with

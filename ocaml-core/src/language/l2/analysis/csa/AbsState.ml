@@ -23,6 +23,7 @@ let eval_varnode (c : t) (vn : VarNode.t) : ASymb.t =
   match vn with
   | VarNode.Const c -> ASymb.Top
   | VarNode.Register r -> ARegFile.get c.regs r.id
+  | VarNode.Ram _ -> ASymb.Top
 
 let process_assignment (c : t) (a : Assignable.t) (i : RegId.t_width) : t =
   match a with

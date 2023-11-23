@@ -21,7 +21,8 @@ let translate_jmp (p : L0.Prog.t) (loc : Loc.t) (i : L0.Inst.t_full)
              && (String.starts_with ~prefix:"J" i.mnem
                 || String.starts_with ~prefix:"M" i.mnem)
            then Jjump l
-           else Jcall (l, next));
+           else if L0.Prog.get_ins p l |> Option.is_some then Jcall (l, next)
+           else Jtailcall l);
         mnem = i.mnem;
       }
   | Ijump_ind vn ->

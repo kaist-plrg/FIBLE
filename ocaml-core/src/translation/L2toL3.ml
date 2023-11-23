@@ -8,6 +8,8 @@ let translate_jmp (j : L2.Jmp.t_full) (la : L2.AbsState.t) : L3.Jmp.t_full =
     | Jcbranch (vn, lt, lf) -> Jcbranch (vn, lt, lf)
     | Jcall (spdiff, l, lret) -> Jcall (spdiff, l, lret)
     | Jcall_ind (spdiff, vn, lret) -> Jcall_ind (spdiff, vn, lret)
+    | Jtailcall (spdiff, l) -> Jtailcall (spdiff, l)
+    | Jtailcall_ind (spdiff, vn) -> Jtailcall_ind (spdiff, vn)
     | Jret vn -> Jret
   in
 

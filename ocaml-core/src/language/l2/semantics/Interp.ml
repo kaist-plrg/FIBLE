@@ -9,6 +9,9 @@ let eval_vn (vn : VarNode.t) (s : Store.t) : Value.t =
   match vn with
   | Register r -> Store.get_reg s r
   | Const v -> Num { value = v.value; width = v.width }
+  | Ram v ->
+      Store.load_mem s (Num { value = v.value; width = v.width }) v.width
+      |> Result.get_ok
 
 let eval_assignment (a : Assignable.t) (s : Store.t) (outwidth : Int32.t) :
     (Value.t, String.t) Result.t =

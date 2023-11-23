@@ -21,7 +21,7 @@ let pp (fmt : Format.formatter) (p : t) =
   | Isload (i, o) ->
       Format.fprintf fmt "%a = stack[%a];" RegId.pp_width o Const.pp i
   | Isstore (i, o) ->
-      Format.fprintf fmt "stack[%a] = %a;" VarNode.pp o Const.pp i
+      Format.fprintf fmt "stack[%a] = %a;" Const.pp i VarNode.pp o
   | Iassignment (i, o) ->
       Format.fprintf fmt "%a = %a;" RegId.pp_width o Assignable.pp i
   | INop -> Format.fprintf fmt "nop;"

@@ -20,6 +20,7 @@ let eval_varnode (a : t) (d : OctagonD.t) (vn : VarNode.t) =
           AbsNumeric.meet
             (AbsNumeric.of_interval (OctagonD.request_interval d (MemRef.R r)))
             v)
+  | Ram _ -> AbsNumeric.top
 
 let process_load (p : Prog.t) (a : t) (d : OctagonD.t) (pointerv : VarNode.t)
     (outv : RegId.t_width) =

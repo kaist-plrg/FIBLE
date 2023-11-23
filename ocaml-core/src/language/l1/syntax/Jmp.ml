@@ -9,6 +9,8 @@ type t =
   | Jcbranch of (VarNode.t * Loc.t * Loc.t)
   | Jcall of (Loc.t * Loc.t)
   | Jcall_ind of (VarNode.t * Loc.t)
+  | Jtailcall of Loc.t
+  | Jtailcall_ind of VarNode.t
   | Jret of VarNode.t
 
 type t_full = { jmp : t; loc : Loc.t; mnem : Mnemonic.t }
@@ -30,12 +32,16 @@ let pp fmt (a : t) =
   | Jcall (t, f) -> Format.fprintf fmt "call %a; -> %a" Loc.pp t Loc.pp f
   | Jcall_ind (t, f) ->
       Format.fprintf fmt "call *%a; -> %a" VarNode.pp t Loc.pp f
+  | Jtailcall f -> Format.fprintf fmt "tailcall %a;" Loc.pp f
+  | Jtailcall_ind f -> Format.fprintf fmt "tailcall *%a;" VarNode.pp f
   | Jret i -> Format.fprintf fmt "return %a;" VarNode.pp i
 
 let succ jmp =
   match jmp with
   | Jcall (_, n) -> [ n ]
   | Jcall_ind (_, n) -> [ n ]
+  | Jtailcall _ -> [ ]
+  | Jtailcall_ind _ -> [ ]
   | Jcbranch (_, n, m) -> [ n; m ]
   | Jfallthrough n -> [ n ]
   | Jjump n -> [ n ]

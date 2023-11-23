@@ -8,6 +8,10 @@ let eval_vn (vn : VarNode.t) (s : Store.t) : Value.t =
   match vn with
   | Register r -> Store.get_reg s r
   | Const v -> { value = v.value; width = v.width }
+  | Ram v ->
+      Store.load_mem s
+        (Value.to_addr { value = v.value; width = v.width })
+        v.width
 
 let eval_assignment (a : Assignable.t) (s : Store.t) (outwidth : Int32.t) :
     (Value.t, String.t) Result.t =
@@ -99,6 +103,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
               (Format.asprintf "ret to %a: Expected %a" Value.pp retn Loc.pp
                  retn'))
   | Junimplemented -> Error "unimplemented jump"
+ 
 
 let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match s.cont with

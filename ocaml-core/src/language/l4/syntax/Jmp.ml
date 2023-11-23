@@ -10,6 +10,14 @@ type t =
   | Jcall of (Int64.t * RegId.t List.t * VarNode.t List.t * Loc.t * Loc.t)
   | Jcall_ind of
       (Int64.t * RegId.t List.t * VarNode.t List.t * VarNode.t * Loc.t)
+  | Jtailcall of
+      (Int64.t * VarNode.t List.t * RegId.t List.t * VarNode.t List.t * Loc.t)
+  | Jtailcall_ind of
+      (Int64.t
+      * VarNode.t List.t
+      * RegId.t List.t
+      * VarNode.t List.t
+      * VarNode.t)
   | Jret of VarNode.t List.t
 
 type t_full = { jmp : t; loc : Loc.t; mnem : Mnemonic.t }
@@ -48,6 +56,34 @@ let pp fmt (a : t) =
            ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
            VarNode.pp)
         inputs Loc.pp f
+  | Jtailcall (spdiff, retouts, callouts, inputs, t) ->
+      Format.fprintf fmt "%a = tailcall (+%Lx) %a(%a) -> ret %a"
+        (Format.pp_print_list
+           ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
+           RegId.pp)
+        callouts spdiff Loc.pp t
+        (Format.pp_print_list
+           ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
+           VarNode.pp)
+        inputs
+        (Format.pp_print_list
+           ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
+           VarNode.pp)
+        retouts
+  | Jtailcall_ind (spdiff, retouts, callouts, inputs, t) ->
+      Format.fprintf fmt "%a = tailcall_ind (+%Lx) %a(%a) -> ret %a"
+        (Format.pp_print_list
+           ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
+           RegId.pp)
+        callouts spdiff VarNode.pp t
+        (Format.pp_print_list
+           ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
+           VarNode.pp)
+        inputs
+        (Format.pp_print_list
+           ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
+           VarNode.pp)
+        retouts
   | Jret outputs ->
       Format.fprintf fmt "return %a;"
         (Format.pp_print_list
@@ -59,6 +95,8 @@ let succ jmp =
   match jmp with
   | Jcall (_, _, _, _, n) -> [ n ]
   | Jcall_ind (_, _, _, _, n) -> [ n ]
+  | Jtailcall (_, _, _, _, _) -> []
+  | Jtailcall_ind (_, _, _, _, _) -> []
   | Jcbranch (_, n, m) -> [ n; m ]
   | Jfallthrough n -> [ n ]
   | Jjump n -> [ n ]

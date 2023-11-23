@@ -50,27 +50,28 @@ let varnode_raw_to_varnode (si : SpaceInfo.t) (v : VarNode_Raw.t) : VarNode.t =
   else if v.space = si.register then
     Register { id = Register v.offset; width = v.size }
   else if v.space = si.const then Const { value = v.offset; width = v.size }
-  else if v.space = si.ram then Const { value = v.offset; width = v.size }
+  else if v.space = si.ram then Ram { value = v.offset; width = v.size }
   else [%log fatal "Unknown space %ld" v.space]
 
 let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : RawInst.t_full =
   [%log debug "Converting %a" PCode_Raw.pp p];
   let inputs i = varnode_raw_to_varnode si p.inputs.(i) in
+  let output_raw () =
+    varnode_raw_to_varnode si
+      ((p.output |> Option.map Fun.const
+       |> Option.value ~default:(fun () ->
+              [%log raise (Invalid_argument "option is None")]))
+         ())
+  in
   let output () =
-    match
-      varnode_raw_to_varnode si
-        ((p.output |> Option.map Fun.const
-         |> Option.value ~default:(fun () ->
-                [%log raise (Invalid_argument "option is None")]))
-           ())
-    with
+    match output_raw () with
     | Register r -> r
     | _ -> [%log raise (Invalid_argument "Output is not a register")]
   in
   let mkJump _ =
     RawInst.Ijump
       (match inputs 0 with
-      | Const { value = a; _ } -> (a, 0)
+      | Ram { value = a; _ } -> (a, 0)
       | _ -> [%log fatal "Jump target is not a constant"])
   in
   let mkJIump _ = RawInst.Ijump_ind (inputs 0) in
@@ -81,7 +82,15 @@ let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : RawInst.t_full =
   let (inst : RawInst.t) =
     match p.opcode with
     | 0l -> Iunimplemented
-    | 1l -> Iassignment (Avar (inputs 0), output ())
+    | 1l -> (
+        match output_raw () with
+        | Register r -> Iassignment (Avar (inputs 0), r)
+        | Ram { value = a; width = w } ->
+            Istore
+              ( Const { value = Int64.of_int32 si.ram; width = 8l },
+                Const { value = a; width = w },
+                inputs 0 )
+        | _ -> [%log fatal "Output is not a register or ram"])
     | 2l -> Iload (inputs 0, inputs 1, output ())
     | 3l -> Istore (inputs 0, inputs 1, inputs 2)
     | 4l -> mkJump ()
@@ -89,7 +98,7 @@ let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : RawInst.t_full =
         Icbranch
           ( inputs 1,
             match inputs 0 with
-            | Const { value = a; _ } -> (a, 0)
+            | Ram { value = a; _ } -> (a, 0)
             | _ -> [%log fatal "Jump target is not a constant"] )
     | 6l -> mkJIump ()
     | 7l -> mkJump ()

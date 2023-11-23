@@ -9,6 +9,9 @@ let eval_vn (vn : VarNode.t) (s : State.t) : Value.t =
   match vn with
   | Register r -> RegFile.get_reg s.regs r
   | Const v -> Num { value = v.value; width = v.width }
+  | Ram v ->
+      Store.load_mem s.sto (Num { value = v.value; width = v.width }) v.width
+      |> Result.get_ok
 
 let eval_assignment (a : Assignable.t) (s : State.t) (outwidth : Int32.t) :
     (Value.t, String.t) Result.t =
@@ -259,8 +262,15 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
              ~none:(Format.asprintf "No external function %s" name)
       in
       let values, args = build_args s fsig |> List.split in
+      [%log debug "Call values: %a" (Format.pp_print_list ~pp_sep:Format.pp_print_space Value.pp) values];
+      [%log debug "Call args: %a" (Format.pp_print_list ~pp_sep:Format.pp_print_space Interop.pp) args];
       let sides, retv = World.Environment.request_call name args in
-
+      [%log
+        debug "Side values: %a"
+          (Format.pp_print_list ~pp_sep:Format.pp_print_space
+          (fun fmt (i, v) ->
+               Format.fprintf fmt "%d: %a" i Interop.pp v))
+          sides];
       let sp_curr =
         RegFile.get_reg s.regs { id = RegId.Register 32L; width = 8l }
       in

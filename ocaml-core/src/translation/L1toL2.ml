@@ -9,6 +9,8 @@ let translate_jmp (j : L1.Jmp.t_full) (ga : L1.SPFA.Immutable.t)
     | Jcbranch (vn, lt, lf) -> Jcbranch (vn, lt, lf)
     | Jcall (l, lret) -> Jcall (8L, l, lret)
     | Jcall_ind (vn, lret) -> Jcall_ind (8L, vn, lret)
+    | Jtailcall l -> Jtailcall (8L, l)
+    | Jtailcall_ind vn -> Jtailcall_ind (8L, vn)
     | Jret vn -> Jret vn
   in
 
@@ -29,11 +31,11 @@ let translate_inst (i : L1.Inst.t_full) (ga : L1.SPFA.Immutable.t)
             | _ -> Iload (d, s, o))
         | _ -> Iload (d, s, o))
     | Istore (d, o, s) -> (
-        match s with
+        match o with
         | Register r -> (
             match L1.AbsState.find_opt r.id la with
             | Some { have_sp = Flat true; offset = Flat c } ->
-                Isstore ({ value = c; width = 8l }, o)
+                Isstore ({ value = c; width = 8l }, s)
             | _ -> Istore (d, o, s))
         | _ -> Istore (d, o, s))
   in

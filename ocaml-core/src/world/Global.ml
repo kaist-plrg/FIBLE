@@ -13,6 +13,7 @@ let os_type =
 
 let devnull = Unix.openfile "/dev/null" [ Unix.O_RDWR ] 0o666
 let kill_enabled = ref false
+let global_blk_offset = ref 0xbaaaffff00000000L
 let pid_list : int list ref = ref []
 let projectd : String.t = [%pwd]
 let cgc_lib : Dl.library option ref = ref None

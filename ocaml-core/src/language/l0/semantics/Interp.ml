@@ -8,6 +8,10 @@ let eval_vn (vn : VarNode.t) (s : State.t) : Value.t =
   match vn with
   | Register r -> State.get_reg s r
   | Const v -> { value = v.value; width = v.width }
+  | Ram v ->
+      State.load_mem s
+        (Value.to_addr { value = v.value; width = v.width })
+        v.width
 
 let eval_assignment (a : Assignable.t) (s : State.t) (outwidth : Int32.t) :
     (Value.t, String.t) Result.t =

@@ -321,7 +321,11 @@ module Immutable = struct
     | l :: ls ->
         let nc, newLs = post_worklist p c l in
         a_fixpoint_worklist p nc
-          (ls @ List.filter (fun l -> not (List.mem l ls)) newLs)
+          (ls
+          @ List.filter
+              (fun l ->
+                (not (List.mem l ls)) && Prog.get_ins p l |> Option.is_some)
+              newLs)
 
   let follow_flow (p : Prog.t) (e : Addr.t) : t =
     a_fixpoint_worklist p (init p (e, 0)) ((e, 0) :: [])

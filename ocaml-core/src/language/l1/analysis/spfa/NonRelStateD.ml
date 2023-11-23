@@ -8,6 +8,7 @@ let eval_varnode (a : t) (vn : VarNode.t) =
   | Const { value = c; _ } ->
       { SPVal.have_sp = FlatBoolD.Flat false; SPVal.offset = FlatInt64D.Flat c }
   | Register r -> Option.value (find_opt r.id a) ~default:SPVal.bottom
+  | Ram v -> SPVal.top
 
 let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_width) =
   match asn with

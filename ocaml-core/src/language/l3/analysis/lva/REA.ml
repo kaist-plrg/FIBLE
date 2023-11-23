@@ -31,11 +31,18 @@ let compute_dr_assignment (a : Assignable.t) : RegIdSet.t =
   | Assignable.Avar (VarNode.Register r)
   | Assignable.Auop (_, VarNode.Register r)
   | Assignable.Abop (_, VarNode.Register r, VarNode.Const _)
-  | Assignable.Abop (_, VarNode.Const _, VarNode.Register r) ->
+  | Assignable.Abop (_, VarNode.Register r, VarNode.Ram _)
+  | Assignable.Abop (_, VarNode.Const _, VarNode.Register r)
+  | Assignable.Abop (_, VarNode.Ram _, VarNode.Register r) ->
       RegIdSet.singleton r.id
   | Assignable.Avar (VarNode.Const _)
+  | Assignable.Avar (VarNode.Ram _)
   | Assignable.Auop (_, VarNode.Const _)
-  | Assignable.Abop (_, VarNode.Const _, VarNode.Const _) ->
+  | Assignable.Auop (_, VarNode.Ram _)
+  | Assignable.Abop (_, VarNode.Const _, VarNode.Const _)
+  | Assignable.Abop (_, VarNode.Const _, VarNode.Ram _)
+  | Assignable.Abop (_, VarNode.Ram _, VarNode.Const _)
+  | Assignable.Abop (_, VarNode.Ram _, VarNode.Ram _) ->
       RegIdSet.empty
   | Assignable.Abop (_, VarNode.Register r1, VarNode.Register r2) ->
       RegIdSet.of_list [ r1.id; r2.id ]
