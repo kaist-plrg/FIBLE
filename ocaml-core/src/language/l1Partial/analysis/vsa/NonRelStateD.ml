@@ -27,28 +27,29 @@ let eval_varnode (a : t) (d : OctagonD.t) (vn : VarNode.t) =
             v)
   | Ram _ -> AbsNumeric.top
 
-let process_load (p : Prog.t) (a : t) (d : OctagonD.t) (pointerv : VarNode.t)
-    (outv : RegId.t_width) =
-  match pointerv with
-  | Register r -> (
-      match
-        Option.bind
-          (Map.find_loc_opt { base = r.id; offset = 0L } a)
-          (fun x -> AbsNumeric.try_concretize x 20)
-      with
-      | Some vset ->
-          Map.add (KReg outv.id)
-            (AbsNumeric.of_limset
-               (LimSetD.LimSet
-                  (Int64Set.map
-                     (fun x -> (Prog.get_rom p x (RegId.width outv)).value)
-                     vset)))
-            a
-      | None ->
-          Map.add (KReg outv.id)
-            (AbsNumeric.of_interval (OctagonD.request_interval d r.id))
-            a)
-  | _ -> clear_mr a outv.id
+let process_load (rom : Addr.t -> Char.t) (a : t) (d : OctagonD.t)
+    (outv : RegId.t_width) (addrSet : AExprSet.t) =
+  let cv =
+    AExprSet.fold
+      (fun ae o ->
+        match o with
+        | None -> (
+            match ae with
+            | { base; offset = 0L } -> Map.find_opt (KReg base) a
+            | _ -> None)
+        | _ -> o)
+      addrSet None
+  in
+  match Option.bind cv (fun x -> AbsNumeric.try_concretize x 20) with
+  | Some vset ->
+      Map.add (KReg outv.id)
+        (AbsNumeric.of_limset
+           (LimSetD.LimSet
+              (Int64Set.map
+                 (fun x -> (Prog.get_rom_raw rom x (RegId.width outv)).value)
+                 vset)))
+        a
+  | None -> clear_mr a outv.id
 
 let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
     (outv : RegId.t_width) =
@@ -75,3 +76,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
         na
   | Auop (Uint_zext, vn) -> Map.add (KReg outv.id) (eval_varnode a d vn) na
   | Auop (_, _) -> na
+
+let process_store (a : t) (d : OctagonD.t) (vn : VarNode.t)
+    (addrSet : AExprSet.t) : t =
+  a

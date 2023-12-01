@@ -7,26 +7,33 @@ open Value_domain
 type heuristic_result = HrStop | HrSound of LocSetD.t | HrExit | HrFallthrough
 
 type flow_heurstic_type =
-  Prog.t -> Loc.t -> Inst.t -> Mnemonic.t -> heuristic_result
+  Prog.t ->
+  Loc.t ->
+  Inst.t ->
+  Mnemonic.t ->
+  LocSet.t LocMap.t ->
+  heuristic_result
 
 let gen_bb_single (h : flow_heurstic_type) (p : Prog.t) (l : Loc.t) (i : Inst.t)
-    (m : Mnemonic.t) : Loc.t option * Loc.t option =
-  match h p l i m with
+    (m : Mnemonic.t) (known_addrs : LocSet.t LocMap.t) :
+    Loc.t option * Loc.t option =
+  match h p l i m known_addrs with
   | HrStop -> (None, None)
   | HrSound s -> (None, None)
   | HrExit -> (None, Some l)
   | HrFallthrough -> (Some (Prog.fallthru p l), Some l)
 
 let gen_jump_single (h : flow_heurstic_type) (p : Prog.t) (l : Loc.t)
-    (i : Inst.t) (m : Mnemonic.t) : LocSetD.t =
-  match h p l i m with
+    (i : Inst.t) (m : Mnemonic.t) (known_addrs : LocSet.t LocMap.t) : LocSetD.t
+    =
+  match h p l i m known_addrs with
   | HrStop -> LocSetD.empty
   | HrSound s -> s
   | HrExit -> LocSetD.empty
   | HrFallthrough -> LocSetD.empty
 
 let flow_heuristic_simple (p : Prog.t) (l : Loc.t) (i : Inst.t) (m : Mnemonic.t)
-    : heuristic_result =
+    (known_addrs : LocSet.t LocMap.t) : heuristic_result =
   match (i, m) with
   | Ijump v, "CALL" -> HrFallthrough
   | Ijump a, m ->
@@ -37,7 +44,10 @@ let flow_heuristic_simple (p : Prog.t) (l : Loc.t) (i : Inst.t) (m : Mnemonic.t)
       else HrExit
   | Ijump_ind vn, "RET" -> HrExit
   | Ijump_ind vn, "CALL" -> HrFallthrough
-  | Ijump_ind vn, _ -> HrStop
+  | Ijump_ind vn, _ ->
+      LocMap.find_opt l known_addrs
+      |> Option.map (fun s -> HrSound s)
+      |> Option.value ~default:HrStop
   | Icbranch (cn, a), _ -> HrSound (LocSetD.of_list [ a; Prog.fallthru p l ])
   | Iunimplemented, _ -> HrExit
   | _ -> HrSound (LocSetD.singleton (Prog.fallthru p l))
@@ -55,12 +65,15 @@ let init (p : Prog.t) (l : Loc.t) : t =
     visited = LocSetD.empty;
   }
 
-let post_worklist (p : Prog.t) (ca : t) (l : Loc.t) : t * Loc.t List.t =
+let post_worklist (p : Prog.t) (ca : t) (l : Loc.t)
+    (known_addrs : LocSet.t LocMap.t) : t * Loc.t List.t =
   if LocSetD.mem l ca.visited then (ca, [])
   else
     match Prog.get_ins_full p l with
     | Some { ins = i; mnem = m } ->
-        let eno, exo = gen_bb_single flow_heuristic_simple p l i m in
+        let eno, exo =
+          gen_bb_single flow_heuristic_simple p l i m known_addrs
+        in
         let nb =
           Option.map (fun l -> BoundaryPointD.add_entry ca.boundary_point l) eno
           |> Option.value ~default:ca.boundary_point
@@ -69,7 +82,9 @@ let post_worklist (p : Prog.t) (ca : t) (l : Loc.t) : t * Loc.t List.t =
           Option.map (fun l -> BoundaryPointD.add_exit nb l) exo
           |> Option.value ~default:nb
         in
-        let nextJumpSet = gen_jump_single flow_heuristic_simple p l i m in
+        let nextJumpSet =
+          gen_jump_single flow_heuristic_simple p l i m known_addrs
+        in
         let nj =
           LocSetD.fold
             (fun ln g -> JumpG.G.add_edge (JumpG.G.add_vertex g ln) l ln)
@@ -88,7 +103,8 @@ let post_worklist (p : Prog.t) (ca : t) (l : Loc.t) : t * Loc.t List.t =
         ({ boundary_point = nb; sound_jump = nj; visited = nvisited }, ulist)
     | _ -> (ca, [])
 
-let rec a_fixpoint_worklist (p : Prog.t) (c : t) (ls : Loc.t List.t) : t =
+let rec a_fixpoint_worklist (p : Prog.t) (c : t) (ls : Loc.t List.t)
+    (known_addrs : LocSet.t LocMap.t) : t =
   [%log
     debug "ls: %a"
       (Format.pp_print_list ~pp_sep:Format.pp_print_space Loc.pp)
@@ -96,14 +112,20 @@ let rec a_fixpoint_worklist (p : Prog.t) (c : t) (ls : Loc.t List.t) : t =
   match ls with
   | [] -> c
   | l :: ls ->
-      let nc, newLs = post_worklist p c l in
+      let nc, newLs = post_worklist p c l known_addrs in
       a_fixpoint_worklist p nc
         (ls
         @ List.filter
             (fun l ->
               (not (List.mem l ls)) && Prog.get_ins p l |> Option.is_some)
             newLs)
+        known_addrs
 
 let follow_flow (p : Prog.t) (e : Addr.t) : t =
   [%log debug "entry: %a" Addr.pp e];
-  a_fixpoint_worklist p (init p (e, 0)) ((e, 0) :: [])
+  a_fixpoint_worklist p (init p (e, 0)) ((e, 0) :: []) LocMap.empty
+
+let follow_flow_with_known_addr (p : Prog.t) (e : Addr.t)
+    (known_addrs : LocSet.t LocMap.t) : t =
+  [%log debug "entry: %a" Addr.pp e];
+  a_fixpoint_worklist p (init p (e, 0)) ((e, 0) :: []) known_addrs

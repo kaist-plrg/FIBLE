@@ -9,6 +9,9 @@ end) =
 struct
   include TopMapD.MakeLatticeWithTop (Key) (A)
 
+  let find_filter_opt (f : Key.t -> bool) (a : t) : (Key.t * A.t) Option.t =
+    fold (fun k v acc -> if f k then Some (k, v) else acc) a None
+
   let pp (fmt : Format.formatter) (m : t) : unit =
     let pp_pair fmt (k, v) = Format.fprintf fmt "%a -> %a" Key.pp k A.pp v in
     Format.fprintf fmt "{%a}" (Format.pp_print_list pp_pair) (bindings m)
@@ -82,7 +85,7 @@ struct
         join (refine_memrefs a final_inters) (refine_memrefs b final_inters)
 
   let find_loc_opt (r : AExpr.t) (a : t) : A.t option =
-    find_first_opt
+    find_filter_opt
       (fun (k : Key.t) ->
         match k with KMemLoc v -> AExprSet.mem r v | _ -> false)
       a

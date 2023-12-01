@@ -66,10 +66,13 @@ let main () =
           |> List.map (fun (fname, e) ->
                  (fname, e, L0.Shallow_CFA.follow_flow l0 e))
         in
-        let l1 : L1.Prog.t =
-          Translation.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
-          |> L1.Prog.from_partial
+        let l1_init : L1Partial.Prog.t =
+          L1Partial.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
         in
+        let l1_refine : L1Partial.Prog.t =
+          L1Partial.Refine.apply_prog l0 l1_init
+        in
+        let l1 : L1.Prog.t = l1_refine |> L1.Prog.from_partial in
         let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
           l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32L))
         in

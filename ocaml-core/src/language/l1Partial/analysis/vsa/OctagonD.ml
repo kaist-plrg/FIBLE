@@ -51,8 +51,12 @@ end
 module Map = struct
   include TopMapD.MakeLatticeWithTop (KeyPair) (UpperD)
 
+  let find_filter_opt (f : KeyPair.t -> bool) (a : t) :
+      (KeyPair.t * UpperD.t) Option.t =
+    fold (fun k v acc -> if f k then Some (k, v) else acc) a None
+
   let find_loc_opt_1 (a : t) (r1 : AExpr.t) (r2 : RegId.t) : UpperD.t option =
-    find_first_opt
+    find_filter_opt
       (fun (k1, k2) ->
         match (k1, k2) with
         | KMemLoc v, KReg r -> AExprSet.mem r1 v && r = r2
@@ -61,7 +65,7 @@ module Map = struct
     |> Option.map snd
 
   let find_loc_opt_2 (a : t) (r1 : RegId.t) (r2 : AExpr.t) : UpperD.t option =
-    find_first_opt
+    find_filter_opt
       (fun (k1, k2) ->
         match (k1, k2) with
         | KReg r, KMemLoc v -> r = r1 && AExprSet.mem r2 v
@@ -90,7 +94,7 @@ let clear_mr a (r : RegId.t) =
 
 let keys (a : t) =
   let sk, dk = Map.bindings a |> List.map fst |> List.split in
-  List.sort_uniq compare (sk @ dk)
+  List.sort_uniq Key.compare (sk @ dk)
 
 let refine_memrefs (a : t) (rs : RegIdSet.t) : t =
   Map.to_list a
@@ -195,17 +199,50 @@ let pp fmt (a : t) =
       | _ -> ())
     a
 
-let add_single_eq (a : t) (orig : Key.t) (newk : Key.t) (offset : Int64.t) =
+let find_all_equiv (a : t) (r : RegId.t) : AExprSet.t =
+  let keys = keys a in
+  List.fold_left
+    (fun acc (k : Key.t) ->
+      match k with
+      | KReg r' -> (
+          match (Map.find_opt (KReg r, k) a, Map.find_opt (k, KReg r) a) with
+          | Some (UpperD.Bounded i), Some (UpperD.Bounded j) ->
+              if i = Int64.neg j then AExprSet.add { base = r'; offset = i } acc
+              else acc
+          | _ -> acc)
+      | _ -> acc)
+    AExprSet.empty keys
+  |> AExprSet.add { base = r; offset = 0L }
+
+let rewrite_alias (a : t) : t =
+  let regs = memory_base_regs a in
+  if RegIdSet.is_empty regs then a
+  else
+    let reg = RegIdSet.choose regs in
+    let aset = find_all_equiv a reg in
+    Map.to_list a
+    |> List.map (fun ((k1, k2), v) ->
+           let k1' = Key.shift_aset k1 aset in
+           let k2' = Key.shift_aset k2 aset in
+           ((k1', k2'), v))
+    |> Map.of_list
+
+let add_single_eq (a : t) (newk : Key.t) (orig : Key.t) (offset : Int64.t) =
   let keys = keys a in
   let x =
     List.fold_left
       (fun acc k ->
         if Key.compare k orig = 0 then acc
         else
-          Map.add (k, newk)
-            (match Map.find_opt (k, orig) a with
-            | Some (UpperD.Bounded i) -> UpperD.Bounded (Int64.add i offset)
-            | _ -> UpperD.Top)
+          Map.update (k, newk)
+            (fun vo ->
+              match (vo, Map.find_opt (k, orig) a) with
+              | Some v, Some (UpperD.Bounded i) ->
+                  Some (UpperD.meet v (UpperD.Bounded (Int64.sub i offset)))
+              | Some v, _ -> Some v
+              | _, Some (UpperD.Bounded i) ->
+                  Some (UpperD.Bounded (Int64.sub i offset))
+              | _ -> Some UpperD.Top)
             acc)
       a keys
   in
@@ -214,16 +251,21 @@ let add_single_eq (a : t) (orig : Key.t) (newk : Key.t) (offset : Int64.t) =
       (fun acc k ->
         if Key.compare k orig = 0 then acc
         else
-          Map.add (newk, k)
-            (match Map.find_opt (orig, k) a with
-            | Some (UpperD.Bounded i) -> UpperD.Bounded (Int64.sub i offset)
-            | _ -> UpperD.Top)
+          Map.update (newk, k)
+            (fun vo ->
+              match (vo, Map.find_opt (orig, k) a) with
+              | Some v, Some (UpperD.Bounded i) ->
+                  Some (UpperD.meet v (UpperD.Bounded (Int64.add i offset)))
+              | Some v, _ -> Some v
+              | _, Some (UpperD.Bounded i) ->
+                  Some (UpperD.Bounded (Int64.add i offset))
+              | _ -> Some UpperD.Top)
             acc)
       x keys
   in
   y
-  |> Map.add (orig, newk) (UpperD.Bounded offset)
-  |> Map.add (newk, orig) (UpperD.Bounded (Int64.neg offset))
+  |> Map.add (orig, newk) (UpperD.Bounded (Int64.neg offset))
+  |> Map.add (newk, orig) (UpperD.Bounded offset)
 
 let update_single_reg (a : t) (orig : RegId.t) (offset : Int64.t) : t =
   let mem_updated =
@@ -258,17 +300,25 @@ let gen_single_lt (a : t) (r : RegId.t) (c : int64) : t =
   let x =
     List.fold_left
       (fun (acc : t) k ->
-        Map.update (k, KZero)
-          (fun vo ->
-            match Map.find_opt (k, KReg r) a with
-            | Some (UpperD.Bounded i) -> (
-                let nv = Int64.add i (Int64.pred c) in
-                match vo with
-                | Some (UpperD.Bounded j) ->
-                    Some (UpperD.Bounded (Int64.min j nv))
-                | _ -> Some (UpperD.Bounded nv))
-            | _ -> vo)
-          acc)
+        acc
+        |> Map.update (k, KZero) (fun vo ->
+               match Map.find_opt (k, KReg r) a with
+               | Some (UpperD.Bounded i) -> (
+                   let nv = Int64.add i (Int64.pred c) in
+                   match vo with
+                   | Some (UpperD.Bounded j) ->
+                       Some (UpperD.Bounded (Int64.min j nv))
+                   | _ -> Some (UpperD.Bounded nv))
+               | _ -> vo)
+        |> Map.update (KReg r, k) (fun vo ->
+               match Map.find_opt (KZero, k) a with
+               | Some (UpperD.Bounded i) -> (
+                   let nv = Int64.add i c in
+                   match vo with
+                   | Some (UpperD.Bounded j) ->
+                       Some (UpperD.Bounded (Int64.min j nv))
+                   | _ -> Some (UpperD.Bounded nv))
+               | _ -> vo))
       a keys
   in
   x |> Map.add (KReg r, KZero) (UpperD.Bounded (Int64.pred c))
@@ -278,17 +328,25 @@ let gen_single_ge (a : t) (r : RegId.t) (c : int64) : t =
   let x =
     List.fold_left
       (fun (acc : t) k ->
-        Map.update (KZero, k)
-          (fun vo ->
-            match Map.find_opt (KReg r, k) a with
-            | Some (UpperD.Bounded i) -> (
-                let nv = Int64.add i (Int64.neg c) in
-                match vo with
-                | Some (UpperD.Bounded j) ->
-                    Some (UpperD.Bounded (Int64.min j nv))
-                | _ -> Some (UpperD.Bounded nv))
-            | _ -> vo)
-          acc)
+        acc
+        |> Map.update (KZero, k) (fun vo ->
+               match Map.find_opt (KReg r, k) a with
+               | Some (UpperD.Bounded i) -> (
+                   let nv = Int64.add i (Int64.neg c) in
+                   match vo with
+                   | Some (UpperD.Bounded j) ->
+                       Some (UpperD.Bounded (Int64.min j nv))
+                   | _ -> Some (UpperD.Bounded nv))
+               | _ -> vo)
+        |> Map.update (k, KReg r) (fun vo ->
+               match Map.find_opt (k, KZero) a with
+               | Some (UpperD.Bounded i) -> (
+                   let nv = Int64.add i c in
+                   match vo with
+                   | Some (UpperD.Bounded j) ->
+                       Some (UpperD.Bounded (Int64.min j nv))
+                   | _ -> Some (UpperD.Bounded nv))
+               | _ -> vo))
       a keys
   in
   x |> Map.add (KZero, KReg r) (UpperD.Bounded (Int64.neg c))
@@ -313,72 +371,51 @@ let request_interval (a : t) (r : RegId.t) =
   in
   (minv, maxv)
 
-let process_load (_ : Prog.t) (a : t) (pointerv : VarNode.t)
-    (outv : RegId.t_width) =
-  match pointerv with
-  | Register r -> (
-      match
-        ( Map.find_loc_opt_2 a outv.id { base = r.id; offset = 0L },
-          Map.find_loc_opt_1 a { base = r.id; offset = 0L } outv.id )
-      with
-      | Some (UpperD.Bounded 0L), Some (UpperD.Bounded 0L) -> a
-      | _ ->
-          clear_mr a outv.id
-          (* |> Map.add
-                  (KReg outv.id, KReg (MemRef.ROffset (u, 0L)))
-                  (UpperD.Bounded 0L)
-             |> Map.add
-                  (KReg (MemRef.ROffset (u, 0L)), KReg outv.id)
-                  (UpperD.Bounded 0L) *))
-  | _ -> clear_mr a outv.id
-
-let find_all_equiv (a : t) (r : RegId.t) : AExprSet.t =
-  let keys = keys a in
-  List.fold_left
-    (fun acc (k : Key.t) ->
-      match k with
-      | KReg r' -> (
-          match (Map.find_opt (KReg r, k) a, Map.find_opt (k, KReg r) a) with
-          | Some (UpperD.Bounded i), Some (UpperD.Bounded j) ->
-              if i = Int64.neg j then AExprSet.add { base = r'; offset = i } acc
-              else acc
-          | _ -> acc)
-      | _ -> acc)
-    AExprSet.empty keys
-  |> AExprSet.add { base = r; offset = 0L }
+let process_load (_ : Addr.t -> Char.t) (a : t) (outv : RegId.t_width)
+    (addrSet : AExprSet.t) =
+  [%log debug "process_load: %a <- %a" RegId.pp outv.id AExprSet.pp addrSet];
+  let retv =
+    let a = clear_mr a outv.id in
+    add_single_eq a (KReg outv.id) (KMemLoc addrSet) 0L
+  in
+  retv |> rewrite_alias
 
 let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_width) =
-  let na = clear_mr a outv.id in
-  match asn with
-  | Avar (Register r) ->
-      na
-      |> Map.add (KReg outv.id, KReg r.id) (UpperD.Bounded 0L)
-      |> Map.add (KReg r.id, KReg outv.id) (UpperD.Bounded 0L)
-  | Avar _ -> na
-  | Abop (Bint_add, op1v, op2v) -> (
-      match (op1v, op2v) with
-      | Register r, Const { value = c; _ } -> (
-          if RegId.compare r.id outv.id = 0 then update_single_reg a r.id c
-          else
-            match
-              ( Map.find_opt (KReg outv.id, KReg r.id) a,
-                Map.find_opt (KReg r.id, KReg outv.id) a )
-            with
-            | Some (UpperD.Bounded i1), Some (UpperD.Bounded i2) ->
-                if c = i1 && c = Int64.neg i2 then a
-                else add_single_eq na (KReg outv.id) (KReg r.id) c
-            | _ -> add_single_eq na (KReg outv.id) (KReg r.id) c)
-      | _ -> na)
-  | Abop (Bint_sub, op1v, op2v) -> (
-      match (op1v, op2v) with
-      | Register r, Const { value = c; _ } ->
-          if RegId.compare r.id outv.id = 0 then
-            update_single_reg a r.id (Int64.neg c)
-          else add_single_eq na (KReg outv.id) (KReg r.id) (Int64.neg c)
-      | _ -> na)
-  | Abop (_, _, _) -> na
-  | Auop (Uint_zext, Register r) ->
-      add_single_eq na (KReg outv.id) (KReg r.id) 0L
-  | Auop (Uint_sext, Register r) ->
-      add_single_eq na (KReg outv.id) (KReg r.id) 0L
-  | Auop (_, _) -> na
+  (let na = clear_mr a outv.id in
+   match asn with
+   | Avar (Register r) -> add_single_eq na (KReg outv.id) (KReg r.id) 0L
+   | Avar _ -> na
+   | Abop (Bint_add, op1v, op2v) -> (
+       match (op1v, op2v) with
+       | Register r, Const { value = c; _ } -> (
+           if RegId.compare r.id outv.id = 0 then update_single_reg a r.id c
+           else
+             match
+               ( Map.find_opt (KReg outv.id, KReg r.id) a,
+                 Map.find_opt (KReg r.id, KReg outv.id) a )
+             with
+             | Some (UpperD.Bounded i1), Some (UpperD.Bounded i2) ->
+                 if c = i1 && c = Int64.neg i2 then a
+                 else add_single_eq na (KReg outv.id) (KReg r.id) c
+             | _ -> add_single_eq na (KReg outv.id) (KReg r.id) c)
+       | _ -> na)
+   | Abop (Bint_sub, op1v, op2v) -> (
+       match (op1v, op2v) with
+       | Register r, Const { value = c; _ } ->
+           if RegId.compare r.id outv.id = 0 then
+             update_single_reg a r.id (Int64.neg c)
+           else add_single_eq na (KReg outv.id) (KReg r.id) (Int64.neg c)
+       | _ -> na)
+   | Abop (_, _, _) -> na
+   | Auop (Uint_zext, Register r) ->
+       add_single_eq na (KReg outv.id) (KReg r.id) 0L
+   | Auop (Uint_sext, Register r) ->
+       add_single_eq na (KReg outv.id) (KReg r.id) 0L
+   | Auop (_, _) -> na)
+  |> rewrite_alias
+
+let process_store (a : t) (vn : VarNode.t) (addrSet : AExprSet.t) : t =
+  (match vn with
+  | Register r -> add_single_eq a (KMemLoc addrSet) (KReg r.id) 0L
+  | _ -> a)
+  |> rewrite_alias

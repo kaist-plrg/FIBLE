@@ -1,5 +1,6 @@
 open StdlibExt
 open Basic
+open Basic_collection
 open Basic_domain
 open Value_domain
 
@@ -38,7 +39,15 @@ module Lattice_noBot = struct
     | Register r -> OctagonD.find_all_equiv o r.id
     | _ -> AExprSet.empty
 
-  let post_single (p : Prog.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
+  let clear_memref (a : t) : t =
+    {
+      value_nonrel = NonRelStateD.clear_memref a.value_nonrel;
+      value_octagon = OctagonD.clear_memref a.value_octagon;
+      value_boolpower = BoolPowerD.clear_memref a.value_boolpower;
+    }
+
+  let post_single (rom : Addr.t -> Char.t) (ls : Loc.t) (a : t) (i : Inst.t) : t
+      =
     match i with
     | Iassignment (asn, outputv) ->
         {
@@ -52,22 +61,54 @@ module Lattice_noBot = struct
               outputv;
         }
     | Iload (_, pointerv, outputv) ->
+        let addrSet = gen_aexpr_set a.value_octagon pointerv in
+        let regSet = AExprSet.used_regs addrSet in
+        let inter_regSet =
+          RegIdSet.inter regSet (OctagonD.memory_base_regs a.value_octagon)
+        in
+        let inter_addrSet =
+          AExprSet.filter
+            (fun { base; offset } -> RegIdSet.mem base inter_regSet)
+            addrSet
+        in
+        let a, addrSet =
+          if AExprSet.is_empty inter_addrSet then (clear_memref a, addrSet)
+          else (a, inter_addrSet)
+        in
+
         {
           value_nonrel =
-            NonRelStateD.process_load p a.value_nonrel a.value_octagon pointerv
-              outputv;
+            NonRelStateD.process_load rom a.value_nonrel a.value_octagon outputv
+              addrSet;
           value_octagon =
-            OctagonD.process_load p a.value_octagon pointerv outputv;
+            OctagonD.process_load rom a.value_octagon outputv addrSet;
           value_boolpower =
-            BoolPowerD.process_load p a.value_boolpower a.value_octagon pointerv
-              outputv;
+            BoolPowerD.process_load rom a.value_boolpower a.value_octagon
+              outputv addrSet;
         }
     | Istore (_, pointerv, storev) ->
         let addrSet = gen_aexpr_set a.value_octagon pointerv in
+        let regSet = AExprSet.used_regs addrSet in
+        let inter_regSet =
+          RegIdSet.inter regSet (OctagonD.memory_base_regs a.value_octagon)
+        in
+        let inter_addrSet =
+          AExprSet.filter
+            (fun { base; offset } -> RegIdSet.mem base inter_regSet)
+            addrSet
+        in
+        let a, addrSet =
+          if AExprSet.is_empty inter_addrSet then (clear_memref a, addrSet)
+          else (a, inter_addrSet)
+        in
         {
-          value_nonrel = NonRelStateD.clear_memref a.value_nonrel;
-          value_octagon = OctagonD.clear_memref a.value_octagon;
-          value_boolpower = BoolPowerD.clear_memref a.value_boolpower;
+          value_nonrel =
+            NonRelStateD.process_store a.value_nonrel a.value_octagon storev
+              addrSet;
+          value_octagon = OctagonD.process_store a.value_octagon storev addrSet;
+          value_boolpower =
+            BoolPowerD.process_store a.value_boolpower a.value_octagon storev
+              addrSet;
         }
     | INop -> a
 
@@ -80,13 +121,13 @@ module Lattice_noBot = struct
             if compare trueloc targetloc = 0 then
               {
                 value_nonrel = a.value_nonrel;
-                value_octagon = OctagonD.meet a.value_octagon (fst b);
+                value_octagon = fst b;
                 value_boolpower = a.value_boolpower;
               }
             else
               {
                 value_nonrel = a.value_nonrel;
-                value_octagon = OctagonD.meet a.value_octagon (snd b);
+                value_octagon = snd b;
                 value_boolpower = a.value_boolpower;
               }
         | _ -> a)
@@ -102,7 +143,7 @@ module Lattice_noBot = struct
     | _ -> None
 end
 
-type t = LV of (Lattice_noBot.t * Prog.t) | Bottom
+type t = LV of (Lattice_noBot.t * (Addr.t -> Char.t)) | Bottom
 type edge = ICFG.G.E.t
 
 let join a b =
@@ -123,7 +164,7 @@ let pp fmt (a : t) =
   | Bottom -> Format.fprintf fmt "Bottom"
 
 let bot = Bottom
-let init (p : Prog.t) = LV (Lattice_noBot.top, p)
+let init (rom : Addr.t -> Char.t) = LV (Lattice_noBot.top, rom)
 
 let equal a b =
   match (a, b) with
@@ -131,12 +172,12 @@ let equal a b =
   | Bottom, Bottom -> true
   | _ -> false
 
-let analyze_noBot (e : edge) (a : Lattice_noBot.t) (p : Prog.t) :
+let analyze_noBot (e : edge) (a : Lattice_noBot.t) (rom : Addr.t -> Char.t) :
     Lattice_noBot.t =
   match ICFG.G.E.label e with
   | Inner ->
       List.fold_left
-        (fun a (i : Inst.t_full) -> Lattice_noBot.post_single p i.loc a i.ins)
+        (fun a (i : Inst.t_full) -> Lattice_noBot.post_single rom i.loc a i.ins)
         a (ICFG.G.E.src e).block.body
   | Flow -> (
       let srcBlock = ICFG.G.E.src e in

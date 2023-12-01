@@ -1,3 +1,4 @@
+open StdlibExt
 open Basic
 open Basic_collection
 module PC = Graph.Path.Check (ICFG.G)
@@ -65,21 +66,49 @@ let extract_dep_loc (f : Func.t) (b : Block.t) : Func.t =
   let dep_locs = gen_dep_locs pdg init_locs in
   extract_loc f dep_locs
 
-let do_analysis (p : Prog.t) (f : Func.t) (b : Block.t) : Unit.t =
+let do_analysis (rom : Addr.t -> Char.t) (f : Func.t) (b : Block.t) :
+    Int64Set.t option =
   let g = ICFG.to_graph f.blocks in
-  let vsa = VSA.compute_astate_with_graph p f g in
-  [%log info "VSA: %a" VSAnalysisDomain.pp (LocMap.find f.entry vsa)];
-  [%log info "VSA: %a" VSAnalysisDomain.pp (LocMap.find b.loc vsa)]
+  let vsa = VSA.compute_astate_with_graph rom f g in
+  [%log debug "VSA: %a" VSAnalysisDomain.pp (LocMap.find f.entry vsa)];
+  [%log debug "VSA: %a" VSAnalysisDomain.pp (LocMap.find b.loc vsa)];
+  match (b.jmp.jmp, LocMap.find_opt b.loc vsa) with
+  | JswitchStop v, Some (VSAnalysisDomain.LV (a, _)) ->
+      VSAnalysisDomain.Lattice_noBot.try_concretize_vn a v 20
+  | _ -> None
 
-let apply (p : Prog.t) (f : Func.t) : Func.t Option.t =
-  Func.find_switchstop_opt f
-  |> Option.map (fun (b : Block.t) ->
-         let x = extract_dep_loc f b in
-         do_analysis p x b;
-         x)
+let apply (p0 : L0.Prog.t) (f : Func.t) : Func.t =
+  let rec aux (f : Func.t) (known_addrs : LocSet.t LocMap.t) : Func.t =
+    let b = Func.find_switchstop_opt f in
+    match b with
+    | None -> f
+    | Some b ->
+        let x = extract_dep_loc f b in
+        let addrs = do_analysis p0.rom x b in
 
-let apply_prog_once (p : Prog.t) : Prog.t =
+        let new_known_addrs =
+          match addrs with
+          | None -> LocMap.add b.jmp.loc LocSet.empty known_addrs
+          | Some addrs ->
+              LocMap.add b.jmp.loc
+                (addrs |> Int64Set.to_list
+                |> List.map (fun (a : Addr.t) -> (a, 0))
+                |> LocSet.of_list)
+                known_addrs
+        in
+        let ncfa =
+          L0.Shallow_CFA.follow_flow_with_known_addr p0 (Loc.to_addr f.entry)
+            new_known_addrs
+        in
+        let new_f =
+          L0toL1_shallow.translate_func p0 f.nameo (Loc.to_addr f.entry) ncfa
+            new_known_addrs
+        in
+        aux new_f new_known_addrs
+  in
+  aux f LocMap.empty
+
+let apply_prog (p0 : L0.Prog.t) (p : Prog.t) : Prog.t =
   let funcs = p.funcs in
-  let funcs' = List.map (apply p) funcs in
-  let funcs'' = List.filter_map (fun x -> x) funcs' in
-  { p with funcs = funcs'' }
+  let funcs' = List.map (apply p0) funcs in
+  { p with funcs = funcs' }

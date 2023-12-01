@@ -11,4 +11,9 @@ let pp (fmt : Format.formatter) (v : t) =
 let pp_width (fmt : Format.formatter) (v : t_width) =
   Format.fprintf fmt "%a:%ld" pp v.id v.width
 
-let compare = compare
+let compare (a : t) (b : t) =
+  match (a, b) with
+  | Register a, Register b -> Int64.compare a b
+  | Unique a, Unique b -> Int64.compare a b
+  | Register _, Unique _ -> -1
+  | Unique _, Register _ -> 1

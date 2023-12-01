@@ -2,7 +2,7 @@ open Basic
 open Basic_domain
 open Basic_collection
 
-let translate_stmt (loc : Loc.t) (i : L0.Inst.t_full) : L1Partial.Inst.t_full =
+let translate_stmt (loc : Loc.t) (i : L0.Inst.t_full) : Inst.t_full =
   match i.ins with
   | Iassignment (x, e) -> { loc; ins = Iassignment (x, e); mnem = i.mnem }
   | Iload (i0, i1, o) -> { loc; ins = Iload (i0, i1, o); mnem = i.mnem }
@@ -10,7 +10,8 @@ let translate_stmt (loc : Loc.t) (i : L0.Inst.t_full) : L1Partial.Inst.t_full =
   | _ -> { loc; ins = INop; mnem = i.mnem }
 
 let translate_jmp (p : L0.Prog.t) (loc : Loc.t) (i : L0.Inst.t_full)
-    (next : Loc.t) (jmps : Loc.t List.t) : L1Partial.Jmp.t_full =
+    (next : Loc.t) (jmps : Loc.t List.t) (known_addrs : LocSet.t LocMap.t) :
+    Jmp.t_full =
   match i.ins with
   | Ijump l ->
       {
@@ -31,6 +32,8 @@ let translate_jmp (p : L0.Prog.t) (loc : Loc.t) (i : L0.Inst.t_full)
         jmp =
           (if String.equal i.mnem "RET" then Jret vn
            else if String.equal i.mnem "CALL" then Jcall_ind (vn, next)
+           else if LocMap.mem loc known_addrs then
+             Jjump_ind (vn, LocMap.find loc known_addrs, false)
            else JswitchStop vn);
         mnem = i.mnem;
       }
@@ -39,9 +42,9 @@ let translate_jmp (p : L0.Prog.t) (loc : Loc.t) (i : L0.Inst.t_full)
   | _ -> { loc; jmp = Jfallthrough next; mnem = i.mnem }
 
 let translate_block (p0 : L0.Prog.t) (fentry : Loc.t) (entry : Loc.t)
-    (cf : L0.Shallow_CFA.t) (entries : LocSetD.t) : L1Partial.Block.t =
-  let rec aux (loc : Loc.t) (acc : L1Partial.Inst.t_full list) :
-      L1Partial.Block.t =
+    (cf : L0.Shallow_CFA.t) (entries : LocSetD.t)
+    (known_addrs : LocSet.t LocMap.t) : Block.t =
+  let rec aux (loc : Loc.t) (acc : Inst.t_full list) : Block.t =
     let ninst = L0.Prog.get_ins_full p0 loc in
     match ninst with
     | None ->
@@ -60,7 +63,7 @@ let translate_block (p0 : L0.Prog.t) (fentry : Loc.t) (entry : Loc.t)
                   fLoc = fentry;
                   loc = entry;
                   body = List.rev (translate_stmt loc i :: acc);
-                  jmp = translate_jmp p0 loc i jmp [ jmp ];
+                  jmp = translate_jmp p0 loc i jmp [ jmp ] known_addrs;
                 }
               else aux jmp (translate_stmt loc i :: acc)
           | jmps ->
@@ -68,7 +71,9 @@ let translate_block (p0 : L0.Prog.t) (fentry : Loc.t) (entry : Loc.t)
                 fLoc = fentry;
                 loc = entry;
                 body = List.rev (translate_stmt loc i :: acc);
-                jmp = translate_jmp p0 loc i (L0.Prog.fallthru p0 loc) jmps;
+                jmp =
+                  translate_jmp p0 loc i (L0.Prog.fallthru p0 loc) jmps
+                    known_addrs;
               }
         else
           {
@@ -82,7 +87,7 @@ let translate_block (p0 : L0.Prog.t) (fentry : Loc.t) (entry : Loc.t)
   aux entry []
 
 let translate_func (p0 : L0.Prog.t) (nameo : String.t option) (entry : Addr.t)
-    (cf : L0.Shallow_CFA.t) : L1Partial.Func.t =
+    (cf : L0.Shallow_CFA.t) (known_addrs : LocSet.t LocMap.t) : Func.t =
   let boundary_entries = fst cf.boundary_point in
   let other_block_entires =
     L0.JumpG.G.fold_vertex
@@ -97,22 +102,25 @@ let translate_func (p0 : L0.Prog.t) (nameo : String.t option) (entry : Addr.t)
   let entries = LocSetD.union other_block_entires boundary_entries in
   let blocks =
     LocSetD.to_seq entries
-    |> Seq.map (fun e -> translate_block p0 (entry, 0) e cf entries)
+    |> Seq.map (fun e -> translate_block p0 (entry, 0) e cf entries known_addrs)
     |> List.of_seq
   in
   { nameo; entry = (entry, 0); boundaries = boundary_entries; blocks }
 
-let translate_prog (p0 : L0.Prog.t) (entries : Addr.t list) : L1Partial.Prog.t =
+let translate_prog (p0 : L0.Prog.t) (entries : Addr.t list) : Prog.t =
   let funcs =
     List.map
-      (fun e -> translate_func p0 None e (L0.Shallow_CFA.follow_flow p0 e))
+      (fun e ->
+        translate_func p0 None e (L0.Shallow_CFA.follow_flow p0 e) LocMap.empty)
       entries
   in
   { funcs; rom = p0.rom; externs = p0.externs }
 
 let translate_prog_from_cfa (p0 : L0.Prog.t)
-    (cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list) : L1Partial.Prog.t =
+    (cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list) : Prog.t =
   let funcs =
-    List.map (fun (fname, e, cf) -> translate_func p0 (Some fname) e cf) cfa_res
+    List.map
+      (fun (fname, e, cf) -> translate_func p0 (Some fname) e cf LocMap.empty)
+      cfa_res
   in
   { funcs; rom = p0.rom; externs = p0.externs }

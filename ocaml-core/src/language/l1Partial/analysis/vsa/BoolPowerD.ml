@@ -41,7 +41,8 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
           OctagonD.process_assignment vf asn outv ))
       a
   in
-  let na = clear_mr a outv.id in
+  (* NOTE: should use Map.clear_mr to not delete outv.id inside of map *)
+  let na = Map.clear_mr a outv.id in
   match asn with
   | Avar (Register r) ->
       Map.find_opt (KReg r.id) na
@@ -87,6 +88,17 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
       | _ -> na)
   | Auop (_, _) -> na
 
-let process_load (p : Prog.t) (a : t) (d : OctagonD.t) (pointerv : VarNode.t)
-    (outv : RegId.t_width) =
+let process_load (rom : Addr.t -> Char.t) (a : t) (d : OctagonD.t)
+    (outv : RegId.t_width) (addrSet : AExprSet.t) : t =
   clear_mr a outv.id
+  |> Map.map (fun (vt, vf) ->
+         ( OctagonD.process_load rom vt outv addrSet,
+           OctagonD.process_load rom vf outv addrSet ))
+
+let process_store (a : t) (d : OctagonD.t) (vn : VarNode.t)
+    (addrSet : AExprSet.t) : t =
+  Map.map
+    (fun (vt, vf) ->
+      ( OctagonD.process_store vt vn addrSet,
+        OctagonD.process_store vf vn addrSet ))
+    a
