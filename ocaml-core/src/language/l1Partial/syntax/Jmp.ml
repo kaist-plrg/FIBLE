@@ -3,22 +3,23 @@ open Basic_collection
 
 type t =
   | Junimplemented
+  | JswitchStop of VarNode.t
   | Jfallthrough of Loc.t
   | Jjump of Loc.t
-  | Jjump_ind of (VarNode.t * LocSet.t)
+  | Jjump_ind of (VarNode.t * LocSet.t * Bool.t)
   | Jcbranch of (VarNode.t * Loc.t * Loc.t)
-  | Jcall of (Int64.t * Loc.t * Loc.t)
-  | Jcall_ind of (Int64.t * VarNode.t * Loc.t)
-  | Jtailcall of (Int64.t * Loc.t)
-  | Jtailcall_ind of (Int64.t * VarNode.t)
-  | Jret
+  | Jcall of (Loc.t * Loc.t)
+  | Jcall_ind of (VarNode.t * Loc.t)
+  | Jtailcall of Loc.t
+  | Jtailcall_ind of VarNode.t
+  | Jret of VarNode.t
 
 type t_full = { jmp : t; loc : Loc.t; mnem : Mnemonic.t }
 
 let pp fmt (a : t) =
   match a with
   | Jjump i -> Format.fprintf fmt "goto %a;" Loc.pp i
-  | Jjump_ind (i, s) ->
+  | Jjump_ind (i, s, b) ->
       Format.fprintf fmt "goto *%a (from %a);" VarNode.pp i
         (Format.pp_print_list
            ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
@@ -29,28 +30,27 @@ let pp fmt (a : t) =
         Loc.pp i2
   | Jfallthrough i -> Format.fprintf fmt "fallthrough %a;" Loc.pp i
   | Junimplemented -> Format.fprintf fmt "unimplemented"
-  | Jcall (spdiff, t, f) ->
-      Format.fprintf fmt "call (+%Lx) %a; -> %a" spdiff Loc.pp t Loc.pp f
-  | Jcall_ind (spdiff, t, f) ->
-      Format.fprintf fmt "call (+%Lx) *%a; -> %a" spdiff VarNode.pp t Loc.pp f
-  | Jtailcall (spdiff, f) ->
-      Format.fprintf fmt "tailcall (+%Lx) %a;" spdiff Loc.pp f
-  | Jtailcall_ind (spdiff, f) ->
-      Format.fprintf fmt "tailcall (+%Lx) *%a;" spdiff VarNode.pp f
-  | Jret -> Format.fprintf fmt "return;"
+  | JswitchStop vn -> Format.fprintf fmt "switch stop %a;" VarNode.pp vn
+  | Jcall (t, f) -> Format.fprintf fmt "call %a; -> %a" Loc.pp t Loc.pp f
+  | Jcall_ind (t, f) ->
+      Format.fprintf fmt "call *%a; -> %a" VarNode.pp t Loc.pp f
+  | Jtailcall f -> Format.fprintf fmt "tailcall %a;" Loc.pp f
+  | Jtailcall_ind f -> Format.fprintf fmt "tailcall *%a;" VarNode.pp f
+  | Jret i -> Format.fprintf fmt "return %a;" VarNode.pp i
 
 let succ jmp =
   match jmp with
-  | Jcall (_, _, n) -> [ n ]
-  | Jcall_ind (_, _, n) -> [ n ]
-  | Jtailcall (_, _) -> []
-  | Jtailcall_ind (_, _) -> []
+  | Jcall (_, n) -> [ n ]
+  | Jcall_ind (_, n) -> [ n ]
+  | Jtailcall _ -> []
+  | Jtailcall_ind _ -> []
   | Jcbranch (_, n, m) -> [ n; m ]
   | Jfallthrough n -> [ n ]
   | Jjump n -> [ n ]
-  | Jjump_ind (_, s) -> LocSet.to_seq s |> List.of_seq
-  | Jret -> []
+  | Jjump_ind (_, s, b) -> LocSet.to_seq s |> List.of_seq
+  | Jret _ -> []
   | Junimplemented -> []
+  | JswitchStop _ -> []
 
 let succ_full jmp = succ jmp.jmp
 

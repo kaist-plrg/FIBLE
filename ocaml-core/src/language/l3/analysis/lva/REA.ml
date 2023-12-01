@@ -256,3 +256,7 @@ let compute_all (p : Prog.t) : (Func.t * astate) List.t =
         LocMap.find_opt f.entry analysis_res
         |> Option.value ~default:RegAnalysisDomain.bot ))
     p.funcs
+
+(* 1. REA 하고 vararg인지 분석을 한번 함
+   2. vararg의 경우에는 해당 call-site에서 모든 path에서 set된 register 확인해서 callvararg instruction 추가
+*)

@@ -253,7 +253,10 @@ module Immutable = struct
     let i =
       (Prog.get_ins p l |> Option.map Fun.const
       |> Option.value ~default:(fun () ->
-             [%log raise (Invalid_argument "option is None")]))
+             [%log
+               raise
+                 (Invalid_argument
+                    (Format.asprintf "option is None for %a" Loc.pp l))]))
         ()
     in
     let sj = ca.sound_jump in
@@ -316,6 +319,10 @@ module Immutable = struct
     (nc, newList)
 
   let rec a_fixpoint_worklist (p : Prog.t) (c : t) (ls : Loc.t List.t) : t =
+    [%log
+      debug "ls: %a"
+        (Format.pp_print_list ~pp_sep:Format.pp_print_space Loc.pp)
+        ls];
     match ls with
     | [] -> c
     | l :: ls ->
@@ -328,6 +335,7 @@ module Immutable = struct
               newLs)
 
   let follow_flow (p : Prog.t) (e : Addr.t) : t =
+    [%log debug "entry: %a" Addr.pp e];
     a_fixpoint_worklist p (init p (e, 0)) ((e, 0) :: [])
 end
 

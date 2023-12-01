@@ -105,26 +105,29 @@ let build_args (s : State.t) (fsig : Interop.func_sig) :
       (fun r -> RegFile.get_reg s.regs { id = RegId.Register r; width = 8l })
       reg_list
   in
-  let nondep_tags =
-    List.map
-      (fun (tag : Interop.tag) ->
-        match tag with
-        | TBuffer_dep n ->
-            let k =
-              Interop.extract_64
-                (build_arg s (List.nth fsig.params n) (List.nth val_list n))
-            in
-            Interop.TBuffer k
-        | TIBuffer_dep n ->
-            let k =
-              Interop.extract_64
-                (build_arg s (List.nth fsig.params n) (List.nth val_list n))
-            in
-            Interop.TIBuffer k
-        | _ -> tag)
-      fsig.params
-  in
-  List.combine nondep_tags (ListExt.take (List.length nondep_tags) val_list)
+  (let nondep_tags =
+     List.map
+       (fun (tag : Interop.tag) ->
+         match tag with
+         | TBuffer_dep n ->
+             let k =
+               Interop.extract_64
+                 (build_arg s (List.nth fsig.params n) (List.nth val_list n))
+             in
+             Interop.TBuffer k
+         | TIBuffer_dep n ->
+             let k =
+               Interop.extract_64
+                 (build_arg s (List.nth fsig.params n) (List.nth val_list n))
+             in
+             Interop.TIBuffer k
+         | _ -> tag)
+       fsig.params
+   in
+   try
+     List.combine nondep_tags (ListExt.take (List.length nondep_tags) val_list)
+   with Invalid_argument _ ->
+     [%log fatal "Mismatched number of arguments for external functions"])
   |> List.map (fun (t, v) -> (v, build_arg s t v))
 
 let build_side (s : State.t) (value : Value.t) (t : Interop.t) :
@@ -237,7 +240,16 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
                  (fun r (i, v) ->
                    RegFile.add_reg r { id = i; width = 8l } (eval_vn v s))
                  RegFile.empty
-                 (List.combine f.inputs inputs))
+                 (try List.combine f.inputs inputs
+                  with Invalid_argument _ ->
+                    [%log
+                      fatal
+                        "Mismatched number of arguments for call inputs,\n\
+                        \                      %d for %s and %d for call \
+                         instruction"
+                        (List.length f.inputs)
+                        (f.nameo |> Option.value ~default:"noname")
+                        (List.length inputs)]))
               { id = RegId.Register 32L; width = 8l }
               (Value.sp { func = calln; timestamp = Int64Ext.succ s.timestamp });
           func = (calln, Int64Ext.succ s.timestamp);
@@ -262,13 +274,18 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
              ~none:(Format.asprintf "No external function %s" name)
       in
       let values, args = build_args s fsig |> List.split in
-      [%log debug "Call values: %a" (Format.pp_print_list ~pp_sep:Format.pp_print_space Value.pp) values];
-      [%log debug "Call args: %a" (Format.pp_print_list ~pp_sep:Format.pp_print_space Interop.pp) args];
+      [%log
+        debug "Call values: %a"
+          (Format.pp_print_list ~pp_sep:Format.pp_print_space Value.pp)
+          values];
+      [%log
+        debug "Call args: %a"
+          (Format.pp_print_list ~pp_sep:Format.pp_print_space Interop.pp)
+          args];
       let sides, retv = World.Environment.request_call name args in
       [%log
         debug "Side values: %a"
-          (Format.pp_print_list ~pp_sep:Format.pp_print_space
-          (fun fmt (i, v) ->
+          (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun fmt (i, v) ->
                Format.fprintf fmt "%d: %a" i Interop.pp v))
           sides];
       let sp_curr =
@@ -338,7 +355,11 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
               [] values
             |> List.rev
           in
-          let output_values = List.combine outputs values in
+          let output_values =
+            try List.combine outputs values
+            with Invalid_argument _ ->
+              [%log fatal "Mismatched number of outputs for call outputs"]
+          in
           Ok
             {
               State.cont = ncont;
@@ -355,7 +376,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
                   { id = RegId.Register 32L; width = 8l }
                   sp_saved;
             })
-  | Junimplemented -> Error "unimplemented jump"
+  | Jtailcall _ | Jtailcall_ind _ | Junimplemented -> Error "unimplemented jump"
 
 let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match s.cont with

@@ -14,6 +14,3 @@ include
       let pp = Jmp.pp_full
       let succ = Jmp.succ_full
     end)
-
-let from_partial (b : L1Partial.Block.t) : t =
-  { fLoc = b.fLoc; loc = b.loc; body = b.body; jmp = Jmp.from_partial b.jmp }

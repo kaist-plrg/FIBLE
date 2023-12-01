@@ -5,7 +5,7 @@ let translate_jmp (j : L1.Jmp.t_full) (ga : L1.SPFA.Immutable.t)
     | Junimplemented -> Junimplemented
     | Jfallthrough l -> Jfallthrough l
     | Jjump l -> Jjump l
-    | Jjump_ind (vn, ls) -> Jjump_ind (vn, ls)
+    | Jjump_ind (vn, ls, _) -> Jjump_ind (vn, ls)
     | Jcbranch (vn, lt, lf) -> Jcbranch (vn, lt, lf)
     | Jcall (l, lret) -> Jcall (8L, l, lret)
     | Jcall_ind (vn, lret) -> Jcall_ind (8L, vn, lret)

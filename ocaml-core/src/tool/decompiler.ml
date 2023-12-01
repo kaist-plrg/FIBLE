@@ -55,19 +55,23 @@ let speclist =
     ("-debug", Arg.Unit (fun _ -> Logger.set_level Logger.Debug), ": debug mode");
   ]
 
-let dump_cfa (cfa_res : (String.t * Addr.t * L0.CFA.Immutable.t) list)
+let dump_cfa (cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list)
     (dump_path : string) =
   List.iter
     (fun (fname, _, x) ->
       let dump_cfa_path = Filename.concat dump_path (fname ^ ".boundary") in
-      let { L0.CFA.Immutable.abs_state } = x in
-      let contained_addrs = abs_state.pre_state in
+      let { L0.Shallow_CFA.sound_jump } = x in
+      let contained_addrs =
+        L0.JumpG.G.fold_vertex
+          (fun l s -> LocSetD.add l s)
+          sound_jump LocSetD.empty
+      in
       let oc = open_out dump_cfa_path in
       let ofmt = Format.formatter_of_out_channel oc in
       let sorted_fboundary =
-        L0.FSAbsD.AbsLocMapD.to_seq contained_addrs
-        |> Seq.filter (fun x -> snd (fst x) == 0)
-        |> Seq.map (fun x -> fst (fst x))
+        LocSetD.to_seq contained_addrs
+        |> Seq.filter (fun x -> snd x == 0)
+        |> Seq.map (fun x -> fst x)
         |> List.of_seq |> List.sort compare
       in
       List.iter (fun x -> Format.fprintf ofmt "%Lx\n" x) sorted_fboundary;
@@ -144,14 +148,18 @@ let main () =
             externs = Util.ExternalFunction.to_addrMap server.external_function;
           }
         in
-        let cfa_res : (String.t * Addr.t * L0.CFA.Immutable.t) list =
+        let cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list =
           func_with_addrs
           |> List.map (fun (fname, e) ->
-                 (fname, e, L0.CFA.Immutable.follow_flow l0 e))
+                 (fname, e, L0.Shallow_CFA.follow_flow l0 e))
         in
-        let l1 : L1.Prog.t =
-          Translation.L0toL1.translate_prog_from_cfa l0 cfa_res
+        let l1_init : L1Partial.Prog.t =
+          Translation.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
         in
+        let l1_refine : L1Partial.Prog.t =
+          L1Partial.Refine.apply_prog_once l1_init
+        in
+        let l1 : L1.Prog.t = l1_init |> L1.Prog.from_partial in
         let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
           l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32L))
         in
@@ -180,9 +188,11 @@ let main () =
               "Dump path is not specified. Please specify dump path with \
                -dump-path"];
         if !(dump_flag.cfa) then dump_cfa cfa_res !dump_path else ();
-        if !(dump_flag.l1) then
+        if !(dump_flag.l1) then (
           L1.Prog.dump_prog l1 !dump_path
-            (Filename.basename !ifile |> Filename.remove_extension)
+            (Filename.basename !ifile |> Filename.remove_extension);
+          L1Partial.Prog.dump_prog l1_refine !dump_path
+            (Filename.basename !ifile |> Filename.remove_extension))
         else ();
         if !(dump_flag.basic_block) then
           L1.Prog.dump_basic_block l1 !dump_path

@@ -61,13 +61,14 @@ let main () =
             externs = Util.ExternalFunction.to_addrMap server.external_function;
           }
         in
-        let cfa_res : (String.t * Addr.t * L0.CFA.Immutable.t) list =
+        let cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list =
           func_with_addrs
           |> List.map (fun (fname, e) ->
-                 (fname, e, L0.CFA.Immutable.follow_flow l0 e))
+                 (fname, e, L0.Shallow_CFA.follow_flow l0 e))
         in
         let l1 : L1.Prog.t =
-          Translation.L0toL1.translate_prog_from_cfa l0 cfa_res
+          Translation.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
+          |> L1.Prog.from_partial
         in
         let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
           l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32L))

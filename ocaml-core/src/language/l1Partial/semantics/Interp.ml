@@ -63,44 +63,6 @@ let step_call (p : Prog.t) (calln : Loc.t) (retn : Loc.t) (s : State.t) :
           stack = s.stack;
         }
 
-let step_tailcall (p : Prog.t) (calln : Loc.t) (s : State.t) :
-    (State.t, String.t) Result.t =
-  match AddrMap.find_opt (Loc.to_addr calln) p.externs with
-  | None ->
-      let* ncont = Cont.of_func_entry_loc p calln in
-      Ok { s with cont = ncont; stack = s.stack; func = calln }
-  | Some name -> (
-      [%log debug "Calling %s" name];
-      let retpointer =
-        Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }
-      in
-      let s_after =
-        {
-          s with
-          sto =
-            Store.add_reg s.sto
-              { id = RegId.Register 32L; width = 8l }
-              { value = Int64.add retpointer.value 8L; width = 8l };
-        }
-      in
-      match s_after.stack with
-      | [] -> Error (Format.asprintf "ret to Empty stack")
-      | (calln, retn') :: stack' ->
-          let* ncont = Cont.of_block_loc p calln retn' in
-          Ok { s with cont = ncont; stack = stack'; func = calln })
-
-let step_ret (p : Prog.t) (retn : Value.t) (s : State.t) :
-    (State.t, String.t) Result.t =
-  match s.stack with
-  | [] -> Error (Format.asprintf "ret to %a: Empty stack" Value.pp retn)
-  | (calln, retn') :: stack' ->
-      if Loc.compare (Value.to_loc retn) retn' = 0 then
-        let* ncont = Cont.of_block_loc p calln (Value.to_loc retn) in
-        Ok { s with cont = ncont; stack = stack'; func = calln }
-      else
-        Error
-          (Format.asprintf "ret to %a: Expected %a" Value.pp retn Loc.pp retn')
-
 let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
     (State.t, String.t) Result.t =
   match jmp.jmp with
@@ -128,14 +90,20 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
   | Jcall_ind (callvn, retn) ->
       let calln = eval_vn callvn s.sto in
       step_call p (Value.to_loc calln) retn s
-  | Jtailcall calln -> step_tailcall p calln s
-  | Jtailcall_ind callvn ->
-      let calln = eval_vn callvn s.sto in
-      step_tailcall p (Value.to_loc calln) s
-  | Jret retvn ->
+  | Jret retvn -> (
       let retn = eval_vn retvn s.sto in
-      step_ret p retn s
+      match s.stack with
+      | [] -> Error (Format.asprintf "ret to %a: Empty stack" Value.pp retn)
+      | (calln, retn') :: stack' ->
+          if Loc.compare (Value.to_loc retn) retn' = 0 then
+            let* ncont = Cont.of_block_loc p calln (Value.to_loc retn) in
+            Ok { s with cont = ncont; stack = stack'; func = calln }
+          else
+            Error
+              (Format.asprintf "ret to %a: Expected %a" Value.pp retn Loc.pp
+                 retn'))
   | Junimplemented -> Error "unimplemented jump"
+  | JswitchStop _ -> Error "switch stop"
 
 let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match s.cont with

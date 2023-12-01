@@ -42,9 +42,8 @@ let dump_basic_block (f : t) (path : String.t) (filename : String.t) : unit =
   Format.fprintf fmt "%!";
   close_out oc
 
-let from_partial (p : L1Partial.Func.t) : t =
-  let entry = p.entry in
-  let boundaries = p.boundaries in
-  let blocks = List.map Block.from_partial p.blocks in
-  let nameo = p.nameo in
-  { nameo; entry; boundaries; blocks }
+let find_switchstop_opt (f : t) : Block.t option =
+  List.find_opt
+    (fun (b : Block.t) ->
+      match b.jmp.jmp with JswitchStop _ -> true | _ -> false)
+    f.blocks

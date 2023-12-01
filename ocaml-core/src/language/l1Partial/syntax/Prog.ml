@@ -28,7 +28,7 @@ let pp fmt p =
   Format.fprintf fmt "@]"
 
 let dump_prog (p : t) (path : String.t) (filename : String.t) : unit =
-  let oc = open_out (Filename.concat path (filename ^ ".l1")) in
+  let oc = open_out (Filename.concat path (filename ^ ".l1_partial")) in
   let fmt = Format.formatter_of_out_channel oc in
   Format.fprintf fmt "%a@.%!" pp p;
   close_out oc
@@ -44,9 +44,3 @@ let dump_basic_block (p : t) (path : String.t) (filename : String.t) : unit =
 
 let get_func_opt (p : t) (loc : Loc.t) : Func.t option =
   List.find_opt (fun (f : Func.t) -> Loc.compare f.entry loc = 0) p.funcs
-
-let from_partial (p : L1Partial.Prog.t) : t =
-  let funcs = List.map Func.from_partial p.funcs in
-  let rom = p.rom in
-  let externs = p.externs in
-  { funcs; rom; externs }

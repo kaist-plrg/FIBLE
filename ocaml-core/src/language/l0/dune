@@ -29,6 +29,7 @@
   AbsState
   UJumpD
   JumpD
+  JumpG
   BoundaryPointD
   ContourD
   FSAbsD
@@ -37,5 +38,6 @@
   BoundaryPointD_Mut
   ContourD_Mut
   FSAbsD_Mut
+  Shallow_CFA
   CFA
   CFA_repl))

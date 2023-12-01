@@ -191,13 +191,13 @@ let request_call (fname : String.t) (arg : Interop.t list) :
           call_with_signature fn
             (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
             arg )
-    | "allocate" -> (match List.nth arg 0, List.nth arg 2 with
-      | Interop.V64 v, Interop.VBuffer b ->
-          Bytes.set_int64_le b 0 !Global.global_blk_offset;
-          Global.global_blk_offset := Int64.add v !Global.global_blk_offset;
-        [ (2, Interop.VBuffer b) ], Interop.V32 0l
-      | _ -> [%log fatal "Not reacahble"]
-      )
+    | "allocate" -> (
+        match (List.nth arg 0, List.nth arg 2) with
+        | Interop.V64 v, Interop.VBuffer b ->
+            Bytes.set_int64_le b 0 !Global.global_blk_offset;
+            Global.global_blk_offset := Int64.add v !Global.global_blk_offset;
+            ([ (2, Interop.VBuffer b) ], Interop.V32 0l)
+        | _ -> [%log fatal "Not reacahble"])
     | "deallocate" -> ([], Interop.V32 0l)
     | "cgc_random" ->
         let _, Hide fn = StringMap.find_opt fname signature_map |> Option.get in
