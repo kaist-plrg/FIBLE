@@ -6,7 +6,7 @@ let width v = v.width
 let pp (fmt : Format.formatter) (v : t) =
   match v with
   | Register n -> Format.fprintf fmt "$%Ld" n
-  | Unique n -> Format.fprintf fmt "#%Ld" n
+  | Unique n -> Format.fprintf fmt "$U%Lx" n
 
 let pp_width (fmt : Format.formatter) (v : t_width) =
   Format.fprintf fmt "%a:%ld" pp v.id v.width
