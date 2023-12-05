@@ -102,8 +102,8 @@ let main () =
              (L4.Init.from_signature l4
                 (List.find (fun x -> fst x = "main") func_with_addrs |> snd))
          with
-        | Ok _ -> Format.printf "Success\n"
-        | Error e -> Format.printf "Error: %s\n" e);
+        | Ok _ -> [%log info "Success"]
+        | Error e -> [%log error "Error: %s\n" e]);
         Unix.kill server.pid Sys.sigterm
 
 let () = Global.run_main main
