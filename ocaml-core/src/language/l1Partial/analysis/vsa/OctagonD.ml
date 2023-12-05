@@ -408,11 +408,11 @@ let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_width) =
        | _ -> na)
    | Abop (_, _, _) -> na
    | Auop (Uint_zext, Register r) ->
-       if RegId.compare r.id outv.id = 0 then a else
-       add_single_eq na (KReg outv.id) (KReg r.id) 0L
+       if RegId.compare r.id outv.id = 0 then a
+       else add_single_eq na (KReg outv.id) (KReg r.id) 0L
    | Auop (Uint_sext, Register r) ->
-        if RegId.compare r.id outv.id = 0 then a else
-       add_single_eq na (KReg outv.id) (KReg r.id) 0L
+       if RegId.compare r.id outv.id = 0 then a
+       else add_single_eq na (KReg outv.id) (KReg r.id) 0L
    | Auop (_, _) -> na)
   |> rewrite_alias
 

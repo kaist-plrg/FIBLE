@@ -17,6 +17,7 @@ let speclist =
     ("-project-cwd", Arg.Set_string cwd, ": set cwd");
     ("-func", Arg.Set_string func_name, ": target func name");
     ("-debug", Arg.Unit (fun _ -> Logger.set_level Logger.Debug), ": debug mode");
+    ("-log-path", Arg.String (fun x -> Logger.set_log_file x), ": log path");
     ("-repl", Arg.Set repl, ": repl mode");
   ]
 
