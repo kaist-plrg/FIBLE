@@ -86,11 +86,10 @@ let filter_single (_ : Prog.t) (_ : Loc.t) (lf : Loc.t) (a : t) (i : Inst.t) : t
       | _ -> a)
   | _ -> a
 
-let try_concretize_vn (a : t) (vn : VarNode.t) (limit : int) : Int64Set.t option
-    =
+let try_concretize_vn (a : t) (vn : VarNode.t) : Int64Set.t option =
   match vn with
   | Register u -> (
       match NonRelStateD.find_opt (MemRef.R u.id) a.value_nonrel with
-      | Some a -> AbsNumeric.try_concretize a limit
+      | Some a -> AbsNumeric.try_concretize a
       | None -> None)
   | _ -> None

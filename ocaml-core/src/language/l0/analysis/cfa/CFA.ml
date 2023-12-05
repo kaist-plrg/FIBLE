@@ -51,7 +51,7 @@ let flow_heuristic_simple (p : Prog.t) (l : Loc.t) (a : AbsState.t) (i : Inst.t)
   | Ijump_ind vn, "RET" -> HrExit
   | Ijump_ind vn, "CALL" -> HrFallthrough
   | Ijump_ind vn, _ -> (
-      match AbsState.try_concretize_vn a vn 20 with
+      match AbsState.try_concretize_vn a vn with
       | Some a ->
           HrSound
             (LocSetD.of_seq (Int64Set.to_seq a |> Seq.map (fun a -> (a, 0))))

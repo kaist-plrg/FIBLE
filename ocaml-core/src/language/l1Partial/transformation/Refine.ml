@@ -74,7 +74,7 @@ let do_analysis (rom : Addr.t -> Char.t) (f : Func.t) (b : Block.t) :
   [%log debug "VSA: %a" VSAnalysisDomain.pp (LocMap.find b.loc vsa)];
   match (b.jmp.jmp, LocMap.find_opt b.loc vsa) with
   | JswitchStop v, Some (VSAnalysisDomain.LV (a, _)) ->
-      VSAnalysisDomain.Lattice_noBot.try_concretize_vn a v 20
+      VSAnalysisDomain.Lattice_noBot.try_concretize_vn a v
   | _ -> None
 
 let apply (p0 : L0.Prog.t) (f : Func.t) : Func.t =

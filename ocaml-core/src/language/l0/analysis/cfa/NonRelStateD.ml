@@ -28,7 +28,7 @@ let process_load (p : Prog.t) (a : t) (d : OctagonD.t) (pointerv : VarNode.t)
   | Register { id = RegId.Unique _ as u; _ }, outmr -> (
       match
         Option.bind (find_opt (MemRef.R u) a) (fun x ->
-            AbsNumeric.try_concretize x 20)
+            AbsNumeric.try_concretize x)
       with
       | Some vset ->
           add outmr

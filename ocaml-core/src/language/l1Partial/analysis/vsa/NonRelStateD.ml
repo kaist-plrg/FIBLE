@@ -40,7 +40,7 @@ let process_load (rom : Addr.t -> Char.t) (a : t) (d : OctagonD.t)
         | _ -> o)
       addrSet None
   in
-  match Option.bind cv (fun x -> AbsNumeric.try_concretize x 20) with
+  match Option.bind cv (fun x -> AbsNumeric.try_concretize x) with
   | Some vset ->
       Map.add (KReg outv.id)
         (AbsNumeric.of_limset

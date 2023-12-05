@@ -64,9 +64,11 @@ let sext v in_width out_width =
     a_limset = LimSetD.sext v.a_limset in_width out_width;
   }
 
-let try_concretize (a : t) (limit : int) : Int64Set.t option =
-  let s1 = IntervalD.try_concretize a.a_interval (limit * 8) in
-  let s2 = LimSetD.try_concretize a.a_limset (limit * 8) in
+let try_concretize (a : t) : Int64Set.t option =
+  let s1 =
+    IntervalD.try_concretize a.a_interval (LimSetD.limiting_carindal * 8)
+  in
+  let s2 = LimSetD.try_concretize a.a_limset (LimSetD.limiting_carindal * 8) in
   let ns =
     match (s1, s2) with
     | None, None -> None
@@ -78,4 +80,5 @@ let try_concretize (a : t) (limit : int) : Int64Set.t option =
     ns |> Option.map (Int64Set.filter (fun x -> Mod8D.contains a.a_mod8 x))
   with
   | None -> None
-  | Some s -> if Int64Set.cardinal s > limit then None else Some s
+  | Some s ->
+      if Int64Set.cardinal s > LimSetD.limiting_carindal then None else Some s

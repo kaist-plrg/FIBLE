@@ -3,7 +3,7 @@ open StdlibExt
 type t = Top | LimSet of Int64Set.t
 
 let top = Top
-let limiting_carindal = 20
+let limiting_carindal = 1000
 
 let lift_set c =
   if Int64Set.cardinal c > limiting_carindal then Top else LimSet c
