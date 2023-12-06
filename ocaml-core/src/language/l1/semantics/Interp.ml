@@ -49,7 +49,7 @@ let step_call (p : Prog.t) (calln : Loc.t) (retn : Loc.t) (s : State.t) :
   | Some name ->
       [%log debug "Calling %s" name];
       let retpointer =
-        Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }
+        Store.get_reg s.sto { id = RegId.Register 32l; offset = 0l; width = 8l }
       in
       let* ncont = Cont.of_block_loc p s.func retn in
       Ok
@@ -57,7 +57,7 @@ let step_call (p : Prog.t) (calln : Loc.t) (retn : Loc.t) (s : State.t) :
           s with
           sto =
             Store.add_reg s.sto
-              { id = RegId.Register 32L; width = 8l }
+              { id = RegId.Register 32l; offset = 0l; width = 8l }
               { value = Int64.add retpointer.value 8L; width = 8l };
           cont = ncont;
           stack = s.stack;
@@ -72,14 +72,14 @@ let step_tailcall (p : Prog.t) (calln : Loc.t) (s : State.t) :
   | Some name -> (
       [%log debug "Calling %s" name];
       let retpointer =
-        Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }
+        Store.get_reg s.sto { id = RegId.Register 32l; offset = 0l; width = 8l }
       in
       let s_after =
         {
           s with
           sto =
             Store.add_reg s.sto
-              { id = RegId.Register 32L; width = 8l }
+              { id = RegId.Register 32l; offset = 0l; width = 8l }
               { value = Int64.add retpointer.value 8L; width = 8l };
         }
       in

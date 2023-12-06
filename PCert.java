@@ -130,10 +130,18 @@ public class PCert extends GhidraScript {
 
     public void send_register_number(DataOutputStream out) throws IOException {
         List<Register> rs = currentProgram.getProgramContext().getRegisters();
+        List<Register> brs = rs.stream().filter(r -> r.getBaseRegister().getName().equals(r.getName())).toList();
+        out.writeInt(brs.size());
+        for (Register r : brs) {
+            out.writeInt(r.getOffset());
+            out.writeInt(r.getBitLength() / 8);
+        }
         out.writeInt(rs.size());
         for (Register r : rs) {
             writeString(out, r.getName());
-            out.writeInt(r.getOffset());
+            out.writeInt(r.getBaseRegister().getOffset());
+            out.writeInt(r.getOffset() - r.getBaseRegister().getOffset());
+            out.writeInt(r.getBitLength() / 8);
         }
     }
 

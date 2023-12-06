@@ -32,7 +32,7 @@ let clear_mr a (r : RegId.t) =
   |> Map.map (fun (vt, vf) -> (OctagonD.clear_mr vt r, OctagonD.clear_mr vf r))
 
 let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
-    (outv : RegId.t_width) =
+    (outv : RegId.t_full) =
   let outmr : Key.t = KReg outv.id in
   let a =
     Map.map
@@ -89,7 +89,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
   | Auop (_, _) -> na
 
 let process_load (rom : Addr.t -> Char.t) (a : t) (d : OctagonD.t)
-    (outv : RegId.t_width) (addrSet : AExprSet.t) : t =
+    (outv : RegId.t_full) (addrSet : AExprSet.t) : t =
   clear_mr a outv.id
   |> Map.map (fun (vt, vf) ->
          ( OctagonD.process_load rom vt outv addrSet,

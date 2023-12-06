@@ -1,3 +1,4 @@
+open StdlibExt
 open Basic
 
 let ( let* ) = Result.bind
@@ -22,11 +23,11 @@ let collect_errors (nl0 : (L0.State.t, String.t) Result.t)
   let l2_err = match nl2 with Ok _ -> "" | Error e -> e in
   String.concat "\n" [ "L0: " ^ l0_err; "L1: " ^ l1_err; "L2: " ^ l2_err ]
 
-let run (l0 : L0.Prog.t) (l1 : L1.Prog.t) (l2 : L2.Prog.t) (addr : Addr.t) :
-    (Unit.t, String.t) Result.t =
-  let l0_state = L0.Init.from_signature l0 addr in
-  let l1_state = L1.Init.from_signature l1 addr in
-  let l2_state = L2.Init.from_signature l2 addr in
+let run (rspec : Int32.t Int32Map.t) (l0 : L0.Prog.t) (l1 : L1.Prog.t)
+    (l2 : L2.Prog.t) (addr : Addr.t) : (Unit.t, String.t) Result.t =
+  let l0_state = L0.Init.from_signature rspec l0 addr in
+  let l1_state = L1.Init.from_signature rspec l1 addr in
+  let l2_state = L2.Init.from_signature rspec l2 addr in
   let rec aux (l0_state : L0.State.t) (l1_state : L1.State.t)
       (l2_state : L2.State.t) : (Unit.t, String.t) Result.t =
     let* _ = check_simu_state l0_state l1_state l2_state in

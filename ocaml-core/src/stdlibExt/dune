@@ -6,8 +6,10 @@
   Int64Ext
   HashtblExt
   Int64Map
+  Int32Map
   StringMap
   Int64Set
+  Int32Set
   Int64Hashtbl
   ListExt
   MutMap

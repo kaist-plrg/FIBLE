@@ -69,7 +69,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
             s.sto with
             regs =
               RegFile.add_reg s.sto.regs
-                { id = RegId.Register 0L; width = 8l }
+                { id = RegId.Register 0l; offset = 0l; width = 8l }
                 (Value.Num { value = Int64.of_int (Char.code c); width = 8l });
           };
       }
@@ -81,7 +81,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
             s.sto with
             regs =
               RegFile.add_reg s.sto.regs
-                { id = RegId.Register 0L; width = 8l }
+                { id = RegId.Register 0l; offset = 0l; width = 8l }
                 (Value.Num { value = Int64.of_int32 i; width = 8l });
           };
       }
@@ -93,7 +93,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
             s.sto with
             regs =
               RegFile.add_reg s.sto.regs
-                { id = RegId.Register 0L; width = 8l }
+                { id = RegId.Register 0l; offset = 0l; width = 8l }
                 (Value.Num { value = Int64.of_int32 i; width = 8l });
           };
       }
@@ -105,7 +105,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
             s.sto with
             regs =
               RegFile.add_reg s.sto.regs
-                { id = RegId.Register 0L; width = 8l }
+                { id = RegId.Register 0l; offset = 0l; width = 8l }
                 (Value.Num { value = i; width = 8l });
           };
       }
@@ -115,14 +115,17 @@ let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
     Common_language.Interop.t list =
   if List.length fsig.params > 6 then
     [%log fatal "At most 6 argument is supported for external functions"];
-  let reg_list = [ 56L; 48L; 16L; 8L; 128L; 136L ] in
+  let reg_list = [ 56l; 48l; 16l; 8l; 128l; 136l ] in
   let rec aux (acc : Common_language.Interop.t list)
-      (param_tags : Common_language.Interop.tag list) (regs : Int64.t list) :
+      (param_tags : Common_language.Interop.tag list) (regs : Int32.t list) :
       Common_language.Interop.t list =
     match (param_tags, regs) with
     | [], _ -> List.rev acc
     | tag :: param_tags, reg :: regs ->
-        let v = Store.get_reg s.sto { id = RegId.Register reg; width = 8l } in
+        let v =
+          Store.get_reg s.sto
+            { id = RegId.Register reg; offset = 0l; width = 8l }
+        in
         aux (build_arg s tag v :: acc) param_tags regs
     | _ -> [%log fatal "Not enough registers"]
   in
@@ -176,7 +179,7 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
       in
       let* ncont = Cont.of_func_entry_loc p calln in
       let sp_curr =
-        Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }
+        Store.get_reg s.sto { id = RegId.Register 32l; offset = 0l; width = 8l }
       in
       let* passing_val = Store.load_mem s.sto sp_curr 8l in
       let nlocal = Frame.store_mem Frame.empty 0L passing_val in
@@ -196,7 +199,7 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
               s.sto with
               regs =
                 RegFile.add_reg s.sto.regs
-                  { id = RegId.Register 32L; width = 8l }
+                  { id = RegId.Register 32l; offset = 0l; width = 8l }
                   (NonNum
                      (SP
                         {
@@ -221,7 +224,7 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
       let _, retv = World.Environment.request_call name args in
 
       let sp_curr =
-        Store.get_reg s.sto { id = RegId.Register 32L; width = 8l }
+        Store.get_reg s.sto { id = RegId.Register 32l; offset = 0l; width = 8l }
       in
       let* sp_saved =
         Value.eval_bop Bop.Bint_add sp_curr
@@ -239,7 +242,7 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
                  s.sto with
                  regs =
                    RegFile.add_reg s.sto.regs
-                     { id = RegId.Register 32L; width = 8l }
+                     { id = RegId.Register 32l; offset = 0l; width = 8l }
                      sp_saved;
                };
              cont = ncont;
@@ -294,7 +297,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
               func = calln;
               sto =
                 Store.add_reg s.sto
-                  { id = RegId.Register 32L; width = 8l }
+                  { id = RegId.Register 32l; offset = 0l; width = 8l }
                   sp_saved;
             })
   | Junimplemented -> Error "unimplemented jump"

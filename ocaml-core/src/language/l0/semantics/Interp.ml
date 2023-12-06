@@ -82,7 +82,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         s with
         regs =
           RegFile.add_reg s.regs
-            { id = RegId.Register 0L; width = 8l }
+            { id = RegId.Register 0l; offset = 0l; width = 8l }
             { value = Int64.of_int (Char.code c); width = 8l };
       }
   | V16 i ->
@@ -90,7 +90,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         s with
         regs =
           RegFile.add_reg s.regs
-            { id = RegId.Register 0L; width = 8l }
+            { id = RegId.Register 0l; offset = 0l; width = 8l }
             { value = Int64.of_int32 i; width = 8l };
       }
   | V32 i ->
@@ -98,7 +98,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         s with
         regs =
           RegFile.add_reg s.regs
-            { id = RegId.Register 0L; width = 8l }
+            { id = RegId.Register 0l; offset = 0l; width = 8l }
             { value = Int64.of_int32 i; width = 8l };
       }
   | V64 i ->
@@ -106,7 +106,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         s with
         regs =
           RegFile.add_reg s.regs
-            { id = RegId.Register 0L; width = 8l }
+            { id = RegId.Register 0l; offset = 0l; width = 8l }
             { value = i; width = 8l };
       }
   | _ -> [%log fatal "Unsupported return type"]
@@ -115,14 +115,16 @@ let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
     Common_language.Interop.t list =
   if List.length fsig.params > 6 then
     [%log fatal "At most 6 argument is supported for external functions"];
-  let reg_list = [ 56L; 48L; 16L; 8L; 128L; 136L ] in
+  let reg_list = [ 56l; 48l; 16l; 8l; 128l; 136l ] in
   let rec aux (acc : Common_language.Interop.t list)
-      (param_tags : Common_language.Interop.tag list) (regs : Int64.t list) :
+      (param_tags : Common_language.Interop.tag list) (regs : Int32.t list) :
       Common_language.Interop.t list =
     match (param_tags, regs) with
     | [], _ -> List.rev acc
     | tag :: param_tags, reg :: regs ->
-        let v = State.get_reg s { id = RegId.Register reg; width = 8l } in
+        let v =
+          State.get_reg s { id = RegId.Register reg; offset = 0l; width = 8l }
+        in
         aux (build_arg s tag v :: acc) param_tags regs
     | _ -> [%log fatal "Not enough registers"]
   in
@@ -134,7 +136,7 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   | Some name ->
       [%log debug "Calling %s" name];
       let retpointer =
-        State.get_reg s { id = RegId.Register 32L; width = 8l }
+        State.get_reg s { id = RegId.Register 32l; offset = 0l; width = 8l }
       in
       let retaddr = State.load_mem s (Value.to_addr retpointer) 8l in
       let* fsig, _ =
@@ -150,7 +152,7 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
              pc = Value.to_loc retaddr;
              regs =
                RegFile.add_reg s.regs
-                 { id = RegId.Register 32L; width = 8l }
+                 { id = RegId.Register 32l; offset = 0l; width = 8l }
                  { value = Int64.add retpointer.value 8L; width = 8l };
            }
            retv)

@@ -45,19 +45,26 @@ let run_ghidra ifile ghidra_path tmp_path cwd port =
   Global.install_pid ghidra_pid;
   ghidra_pid
 
-let varnode_raw_to_varnode (si : SpaceInfo.t) (v : VarNode_Raw.t) : VarNode.t =
-  if v.space = si.unique then Register { id = Unique v.offset; width = v.size }
+let varnode_raw_to_varnode (si : SpaceInfo.t) (rspec : RegSpec.t)
+    (v : VarNode_Raw.t) : VarNode.t =
+  if v.space = si.unique then
+    Register
+      { id = Unique (Int64.to_int32 v.offset); offset = 0l; width = v.size }
   else if v.space = si.register then
-    Register { id = Register v.offset; width = v.size }
+    let _, base, offset =
+      RegSpec.TMap.find (Int64.to_int32 v.offset, v.size) rspec.all_regs
+    in
+    Register { id = Register base; offset; width = v.size }
   else if v.space = si.const then Const { value = v.offset; width = v.size }
   else if v.space = si.ram then Ram { value = v.offset; width = v.size }
   else [%log fatal "Unknown space %ld" v.space]
 
-let pcode_raw_to_pcode (si : SpaceInfo.t) (p : PCode_Raw.t) : RawInst.t_full =
+let pcode_raw_to_pcode (si : SpaceInfo.t) (rspec : RegSpec.t) (p : PCode_Raw.t)
+    : RawInst.t_full =
   [%log debug "Converting %a" PCode_Raw.pp p];
-  let inputs i = varnode_raw_to_varnode si p.inputs.(i) in
+  let inputs i = varnode_raw_to_varnode si rspec p.inputs.(i) in
   let output_raw () =
-    varnode_raw_to_varnode si
+    varnode_raw_to_varnode si rspec
       ((p.output |> Option.map Fun.const
        |> Option.value ~default:(fun () ->
               [%log raise (Invalid_argument "option is None")]))
@@ -180,7 +187,7 @@ let get_pcode_list (fd : Unix.file_descr) : PCode_Raw.t list =
     in
     List.rev (loop [] (Int32.to_int num_pcodes))
 
-let tmpReg : RegId.t_width = { id = Unique 0L; width = 0l }
+let tmpReg : RegId.t_full = { id = Unique 0l; offset = 0l; width = 0l }
 
 let make_server ifile ghidra_path tmp_path cwd : t =
   let sfd, port = Util.create_server_socket () in
@@ -213,7 +220,7 @@ let make_server ifile ghidra_path tmp_path cwd : t =
       if inst_len = 0l then None
       else
         let pcodes =
-          List.map (pcode_raw_to_pcode spaceinfo) (get_pcode_list fd)
+          List.map (pcode_raw_to_pcode spaceinfo regspec) (get_pcode_list fd)
         in
         [%log debug "Received %d pcodes" (List.length pcodes)];
         List.iter (fun x -> [%log debug "%a\n" RawInst.pp_full x]) pcodes;

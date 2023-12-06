@@ -18,11 +18,11 @@ let default =
     must_def_regs =
       RegIdSetD.Set
         (RegIdSet.of_list
-           [ RegId.Register 0L; RegId.Register 144L; RegId.Register 152L ]);
+           [ RegId.Register 0l; RegId.Register 144l; RegId.Register 152l ]);
     may_def_regs =
       RegIdSetD.Set
         (RegIdSet.of_list
-           [ RegId.Register 0L; RegId.Register 144L; RegId.Register 152L ]);
+           [ RegId.Register 0l; RegId.Register 144l; RegId.Register 152l ]);
     dependent_regs = RegIdSetD.bot;
   }
 

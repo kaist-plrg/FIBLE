@@ -194,7 +194,7 @@ let request_interval (a : t) (mr : MemRef.t) =
   | _ -> (IntervalD.ETop, IntervalD.ETop)
 
 let process_load (_ : Prog.t) (a : t) (pointerv : VarNode.t)
-    (outv : RegId.t_width) =
+    (outv : RegId.t_full) =
   match (pointerv, MemRef.convert_regid outv.id) with
   | Register { id = RegId.Unique _ as u; _ }, outmr -> (
       match
@@ -213,7 +213,7 @@ let process_load (_ : Prog.t) (a : t) (pointerv : VarNode.t)
                (I64D.I64 0L))
   | _, _ -> a
 
-let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_width) =
+let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_full) =
   match MemRef.convert_regid outv.id with
   | outmr -> (
       let na = clear_mr a outmr in

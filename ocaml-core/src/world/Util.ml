@@ -79,22 +79,54 @@ module PCode_Raw = struct
 end
 
 module RegSpec = struct
-  type t = Int32.t StringMap.t
+  module TMap = Map.Make (struct
+    type t = Int32.t * Int32.t
+
+    let compare (a1, a2) (b1, b2) =
+      let c = Int32.compare a1 b1 in
+      if c <> 0 then c else Int32.compare a2 b2
+  end)
+
+  type t = {
+    base_size : Int32.t Int32Map.t;
+    all_regs : (String.t * Int32.t * Int32.t) TMap.t;
+  }
 
   let get (fd : Unix.file_descr) : t =
     [%log debug "RegSpec.get"];
     let num = Interaction.get_int fd in
-    [%log debug "RegSpec.get: num=%ld" num];
+    [%log debug "RegSpec.get: brs num=%ld" num];
+    let rec loop acc n =
+      if n = 0 then acc
+      else (
+        [%log debug "RegSpec.get: loop"];
+        let offset = Interaction.get_int fd in
+        let size = Interaction.get_int fd in
+        [%log debug "RegSpec.get: baseid=%ld" offset];
+        [%log debug "RegSpec.get: size=%ld" size];
+        loop (Int32Map.add offset size acc) (n - 1))
+    in
+    let bs = loop Int32Map.empty (Int32.to_int num) in
+    let num = Interaction.get_int fd in
+    [%log debug "RegSpec.get: rs num=%ld" num];
     let rec loop acc n =
       if n = 0 then acc
       else (
         [%log debug "RegSpec.get: loop"];
         let name = Interaction.get_string fd in
-        let id = Interaction.get_int fd in
-        [%log debug "RegSpec.get %d: name=%s; id=%ld" n name id];
-        loop (StringMap.add name id acc) (n - 1))
+        let baseid = Interaction.get_int fd in
+        let offset = Interaction.get_int fd in
+        let size = Interaction.get_int fd in
+        [%log debug "RegSpec.get: name=%s" name];
+        [%log debug "RegSpec.get: baseid=%ld" baseid];
+        [%log debug "RegSpec.get: offset=%ld" offset];
+        [%log debug "RegSpec.get: size=%ld" size];
+        loop
+          (TMap.add (Int32.add baseid offset, size) (name, baseid, offset) acc)
+          (n - 1))
     in
-    loop StringMap.empty (Int32.to_int num)
+    let rs = loop TMap.empty (Int32.to_int num) in
+    { base_size = bs; all_regs = rs }
 end
 
 module ExternalFunction = struct

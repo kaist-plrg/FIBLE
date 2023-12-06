@@ -16,7 +16,7 @@ let clear_memref a =
 let clear_mr a (mr : MemRef.t) = filter (fun k _ -> Stdlib.compare k mr <> 0) a
 
 let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
-    (outv : RegId.t_width) =
+    (outv : RegId.t_full) =
   match MemRef.convert_regid outv.id with
   | outmr -> (
       let na = clear_mr a outmr in

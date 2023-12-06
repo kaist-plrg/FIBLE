@@ -371,7 +371,7 @@ let request_interval (a : t) (r : RegId.t) =
   in
   (minv, maxv)
 
-let process_load (_ : Addr.t -> Char.t) (a : t) (outv : RegId.t_width)
+let process_load (_ : Addr.t -> Char.t) (a : t) (outv : RegId.t_full)
     (addrSet : AExprSet.t) =
   [%log debug "process_load: %a <- %a" RegId.pp outv.id AExprSet.pp addrSet];
   let retv =
@@ -380,7 +380,7 @@ let process_load (_ : Addr.t -> Char.t) (a : t) (outv : RegId.t_width)
   in
   retv |> rewrite_alias
 
-let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_width) =
+let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_full) =
   (let na = clear_mr a outv.id in
    match asn with
    | Avar (Register r) -> add_single_eq na (KReg outv.id) (KReg r.id) 0L

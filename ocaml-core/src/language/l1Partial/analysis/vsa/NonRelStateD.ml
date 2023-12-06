@@ -28,7 +28,7 @@ let eval_varnode (a : t) (d : OctagonD.t) (vn : VarNode.t) =
   | Ram _ -> AbsNumeric.top
 
 let process_load (rom : Addr.t -> Char.t) (a : t) (d : OctagonD.t)
-    (outv : RegId.t_width) (addrSet : AExprSet.t) =
+    (outv : RegId.t_full) (addrSet : AExprSet.t) =
   let cv =
     AExprSet.fold
       (fun ae o ->
@@ -52,7 +52,7 @@ let process_load (rom : Addr.t -> Char.t) (a : t) (d : OctagonD.t)
   | None -> clear_mr a outv.id
 
 let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
-    (outv : RegId.t_width) =
+    (outv : RegId.t_full) =
   let na = clear_mr a outv.id in
   match asn with
   | Avar vn -> Map.add (KReg outv.id) (eval_varnode a d vn) na

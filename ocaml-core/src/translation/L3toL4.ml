@@ -30,7 +30,8 @@ let translate_jmp (j : L3.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
           ( spdiff,
             outputs,
             inputs
-            |> List.map (fun n -> VarNode.Register { id = n; width = 8l }),
+            |> List.map (fun n ->
+                   VarNode.Register { id = n; offset = 0l; width = 8l }),
             target,
             retn )
     | L3.Jmp.Jcall_ind (spdiff, targetvn, retn) ->
@@ -39,7 +40,8 @@ let translate_jmp (j : L3.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
           ( spdiff,
             outputs,
             inputs
-            |> List.map (fun n -> VarNode.Register { id = n; width = 8l }),
+            |> List.map (fun n ->
+                   VarNode.Register { id = n; offset = 0l; width = 8l }),
             targetvn,
             retn )
     | L3.Jmp.Jtailcall (spdiff, target) ->
@@ -49,30 +51,38 @@ let translate_jmp (j : L3.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
           | None -> (default_input, default_output)
         in
         let retvs =
-          snd la |> List.map (fun n -> VarNode.Register { id = n; width = 8l })
+          snd la
+          |> List.map (fun n ->
+                 VarNode.Register { id = n; offset = 0l; width = 8l })
         in
         Jtailcall
           ( spdiff,
             retvs,
             outputs,
             inputs
-            |> List.map (fun n -> VarNode.Register { id = n; width = 8l }),
+            |> List.map (fun n ->
+                   VarNode.Register { id = n; offset = 0l; width = 8l }),
             target )
     | L3.Jmp.Jtailcall_ind (spdiff, targetvn) ->
         let inputs, outputs = (default_input, default_output) in
         let retvs =
-          snd la |> List.map (fun n -> VarNode.Register { id = n; width = 8l })
+          snd la
+          |> List.map (fun n ->
+                 VarNode.Register { id = n; offset = 0l; width = 8l })
         in
         Jtailcall_ind
           ( spdiff,
             retvs,
             outputs,
             inputs
-            |> List.map (fun n -> VarNode.Register { id = n; width = 8l }),
+            |> List.map (fun n ->
+                   VarNode.Register { id = n; offset = 0l; width = 8l }),
             targetvn )
     | L3.Jmp.Jret ->
         let retvs =
-          snd la |> List.map (fun n -> VarNode.Register { id = n; width = 8l })
+          snd la
+          |> List.map (fun n ->
+                 VarNode.Register { id = n; offset = 0l; width = 8l })
         in
         Jret retvs
   in

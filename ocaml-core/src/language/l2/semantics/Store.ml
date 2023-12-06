@@ -4,10 +4,10 @@ open Common_language
 
 type t = { regs : RegFile.t; mem : Memory.t; local : LocalMemory.t }
 
-let add_reg (s : t) (r : RegId.t_width) (v : Value.t) : t =
+let add_reg (s : t) (r : RegId.t_full) (v : Value.t) : t =
   { s with regs = RegFile.add_reg s.regs r v }
 
-let get_reg (s : t) (r : RegId.t_width) : Value.t = RegFile.get_reg s.regs r
+let get_reg (s : t) (r : RegId.t_full) : Value.t = RegFile.get_reg s.regs r
 
 let load_mem_global (s : t) (addr : Addr.t) (width : Int32.t) : Value.t =
   Memory.load_mem s.mem addr width

@@ -23,7 +23,7 @@ let eval_varnode (a : t) (d : OctagonD.t) (vn : VarNode.t) =
   | Ram _ -> AbsNumeric.top
 
 let process_load (p : Prog.t) (a : t) (d : OctagonD.t) (pointerv : VarNode.t)
-    (outv : RegId.t_width) =
+    (outv : RegId.t_full) =
   match (pointerv, MemRef.convert_regid outv.id) with
   | Register { id = RegId.Unique _ as u; _ }, outmr -> (
       match
@@ -45,7 +45,7 @@ let process_load (p : Prog.t) (a : t) (d : OctagonD.t) (pointerv : VarNode.t)
   | _, outmr -> clear_mr a outmr
 
 let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
-    (outv : RegId.t_width) =
+    (outv : RegId.t_full) =
   match MemRef.convert_regid outv.id with
   | outmr -> (
       let na = clear_mr a outmr in

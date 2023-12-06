@@ -10,7 +10,7 @@ let eval_varnode (a : t) (vn : VarNode.t) =
   | Register r -> Option.value (find_opt r.id a) ~default:SPVal.bottom
   | Ram v -> SPVal.top
 
-let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_width) =
+let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_full) =
   match asn with
   | Avar vn -> add outv.id (eval_varnode a vn) a
   | Abop (Bint_add, op1v, op2v) ->

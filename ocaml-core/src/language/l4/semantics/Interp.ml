@@ -66,7 +66,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         s with
         regs =
           RegFile.add_reg s.regs
-            { id = RegId.Register 0L; width = 8l }
+            { id = RegId.Register 0l; offset = 0l; width = 8l }
             (Value.Num { value = Int64.of_int (Char.code c); width = 8l });
       }
   | V16 i ->
@@ -74,7 +74,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         s with
         regs =
           RegFile.add_reg s.regs
-            { id = RegId.Register 0L; width = 8l }
+            { id = RegId.Register 0l; offset = 0l; width = 8l }
             (Value.Num { value = Int64.of_int32 i; width = 8l });
       }
   | V32 i ->
@@ -82,7 +82,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         s with
         regs =
           RegFile.add_reg s.regs
-            { id = RegId.Register 0L; width = 8l }
+            { id = RegId.Register 0l; offset = 0l; width = 8l }
             (Value.Num { value = Int64.of_int32 i; width = 8l });
       }
   | V64 i ->
@@ -90,7 +90,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         s with
         regs =
           RegFile.add_reg s.regs
-            { id = RegId.Register 0L; width = 8l }
+            { id = RegId.Register 0l; offset = 0l; width = 8l }
             (Value.Num { value = i; width = 8l });
       }
   | _ -> [%log fatal "Unsupported return type"]
@@ -99,10 +99,12 @@ let build_args (s : State.t) (fsig : Interop.func_sig) :
     (Value.t * Interop.t) list =
   if List.length fsig.params > 6 then
     [%log fatal "At most 6 argument is supported for external functions"];
-  let reg_list = [ 56L; 48L; 16L; 8L; 128L; 136L ] in
+  let reg_list = [ 56l; 48l; 16l; 8l; 128l; 136l ] in
   let val_list =
     List.map
-      (fun r -> RegFile.get_reg s.regs { id = RegId.Register r; width = 8l })
+      (fun r ->
+        RegFile.get_reg s.regs
+          { id = RegId.Register r; offset = 0l; width = 8l })
       reg_list
   in
   (let nondep_tags =
@@ -220,7 +222,8 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
       in
       let* ncont = Cont.of_func_entry_loc p calln in
       let sp_curr =
-        RegFile.get_reg s.regs { id = RegId.Register 32L; width = 8l }
+        RegFile.get_reg s.regs
+          { id = RegId.Register 32l; offset = 0l; width = 8l }
       in
       let* passing_val = Store.load_mem s.sto sp_curr 8l in
       let nlocal = Frame.store_mem Frame.empty 0L passing_val in
@@ -238,8 +241,10 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
             RegFile.add_reg
               (List.fold_left
                  (fun r (i, v) ->
-                   RegFile.add_reg r { id = i; width = 8l } (eval_vn v s))
-                 RegFile.empty
+                   RegFile.add_reg r
+                     { id = i; offset = 0l; width = 8l }
+                     (eval_vn v s))
+                 (RegFile.of_seq Seq.empty)
                  (try List.combine f.inputs inputs
                   with Invalid_argument _ ->
                     [%log
@@ -250,7 +255,7 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
                         (List.length f.inputs)
                         (f.nameo |> Option.value ~default:"noname")
                         (List.length inputs)]))
-              { id = RegId.Register 32L; width = 8l }
+              { id = RegId.Register 32l; offset = 0l; width = 8l }
               (Value.sp { func = calln; timestamp = Int64Ext.succ s.timestamp });
           func = (calln, Int64Ext.succ s.timestamp);
           sto =
@@ -289,7 +294,8 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
                Format.fprintf fmt "%d: %a" i Interop.pp v))
           sides];
       let sp_curr =
-        RegFile.get_reg s.regs { id = RegId.Register 32L; width = 8l }
+        RegFile.get_reg s.regs
+          { id = RegId.Register 32l; offset = 0l; width = 8l }
       in
       let* sp_saved =
         Value.eval_bop Bop.Bint_add sp_curr
@@ -305,7 +311,7 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
              s_side with
              regs =
                RegFile.add_reg s_side.regs
-                 { id = RegId.Register 32L; width = 8l }
+                 { id = RegId.Register 32l; offset = 0l; width = 8l }
                  sp_saved;
              cont = ncont;
              stack = s_side.stack;
@@ -371,9 +377,9 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
                 RegFile.add_reg
                   (List.fold_left
                      (fun r (o, v) ->
-                       RegFile.add_reg r { id = o; width = 8l } v)
+                       RegFile.add_reg r { id = o; offset = 0l; width = 8l } v)
                      regs' output_values)
-                  { id = RegId.Register 32L; width = 8l }
+                  { id = RegId.Register 32l; offset = 0l; width = 8l }
                   sp_saved;
             })
   | Jtailcall _ | Jtailcall_ind _ | Junimplemented -> Error "unimplemented jump"

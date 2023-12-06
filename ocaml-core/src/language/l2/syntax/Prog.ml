@@ -3,7 +3,7 @@ open Basic
 open Basic_collection
 
 type t = {
-  sp_num : int64;
+  sp_num : Int32.t;
   funcs : Func.t list;
   rom : Addr.t -> Char.t;
   externs : String.t AddrMap.t;

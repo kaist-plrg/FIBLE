@@ -78,13 +78,13 @@ let main () =
         in
         let l1 : L1.Prog.t = l1_refine |> L1.Prog.from_partial in
         let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
-          l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32L))
+          l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l))
         in
         let l2 : L2.Prog.t =
-          Translation.L1toL2.translate_prog_from_spfa l1 spfa_res 32L
+          Translation.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
         in
         (match
-           Simulation.Check_simulation.run l0 l1 l2
+           Simulation.Check_simulation.run server.regspec.base_size l0 l1 l2
              (List.find (fun x -> fst x = "main") func_with_addrs |> snd)
          with
         | Ok _ -> Format.printf "Success\n"

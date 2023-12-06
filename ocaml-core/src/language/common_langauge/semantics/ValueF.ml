@@ -91,4 +91,8 @@ struct
     | Num ov, Num nv -> Num (NumericValue.replace_width ov nv width)
     | _, Num nv -> Num nv
     | _, NonNum nv -> NonNum (NonNumericValue.refine_width nv width)
+
+  let get (x : t) (offset : Int32.t) (size : Int32.t) : t = x
+  let extend (x : t) (size : Int32.t) = x
+  let set (orig : t) (inserted : t) (offset : Int32.t) = orig
 end

@@ -1,13 +1,15 @@
+open StdlibExt
 open Basic
 open Basic_collection
 
-let from_signature (p : Prog.t) (a : Addr.t) : State.t =
+let from_signature (rspec : Int32.t Int32Map.t) (p : Prog.t) (a : Addr.t) :
+    State.t =
   let init_sp = { SPVal.func = (a, 0); timestamp = 0L } in
   {
     timestamp = 0L;
     regs =
-      RegFile.add_reg RegFile.empty
-        { id = RegId.Register 32L; width = 8l }
+      RegFile.add_reg (RegFile.empty rspec)
+        { id = RegId.Register 32l; offset = 0l; width = 8l }
         (Value.sp init_sp);
     sto = { mem = Memory.from_rom p.rom; local = LocalMemory.empty };
     func = ((a, 0), 0L);

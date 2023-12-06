@@ -25,14 +25,14 @@ let eval_varnode (c : t) (vn : VarNode.t) : ASymb.t =
   | VarNode.Register r -> ARegFile.get c.regs r.id
   | VarNode.Ram _ -> ASymb.Top
 
-let process_assignment (c : t) (a : Assignable.t) (i : RegId.t_width) : t =
+let process_assignment (c : t) (a : Assignable.t) (i : RegId.t_full) : t =
   match a with
   | Assignable.Avar vn ->
       { c with regs = ARegFile.add c.regs i.id (eval_varnode c vn) }
   | Auop _ -> { c with regs = ARegFile.add c.regs i.id Top }
   | Abop _ -> { c with regs = ARegFile.add c.regs i.id Top }
 
-let process_sload (c : t) (offset : Const.t) (o : RegId.t_width) =
+let process_sload (c : t) (offset : Const.t) (o : RegId.t_full) =
   let v = AStack.process_sload c.stack offset.value in
   { c with regs = ARegFile.add c.regs o.id v }
 

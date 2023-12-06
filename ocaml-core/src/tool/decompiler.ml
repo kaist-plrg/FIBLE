@@ -165,10 +165,10 @@ let main () =
         in
         let l1 : L1.Prog.t = l1_refine |> L1.Prog.from_partial in
         let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
-          l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32L))
+          l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l))
         in
         let l2 : L2.Prog.t =
-          Translation.L1toL2.translate_prog_from_spfa l1 spfa_res 32L
+          Translation.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
         in
         let csa_res : (L2.Func.t * L2.CSA.Immutable.t) list =
           l2.funcs |> List.map (fun x -> (x, L2.CSA.Immutable.analyze x))

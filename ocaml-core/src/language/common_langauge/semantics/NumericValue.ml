@@ -70,3 +70,7 @@ let replace_width (ov : t) (nv : t) (width : Int32.t) : t =
     value = Int64.logor rv (Int64Ext.cut_width nv.value width);
     width = ov.width;
   }
+
+let get (x : t) (offset : Int32.t) (size : Int32.t) : t = x
+let extend (x : t) (size : Int32.t) = x
+let set (orig : t) (inserted : t) (offset : Int32.t) = orig
