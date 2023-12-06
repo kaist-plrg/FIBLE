@@ -7,11 +7,8 @@ let ( let* ) = Result.bind
 let eval_vn (vn : VarNode.t) (s : State.t) : Value.t =
   match vn with
   | Register r -> State.get_reg s r
-  | Const v -> { value = v.value; width = v.width }
-  | Ram v ->
-      State.load_mem s
-        (Value.to_addr { value = v.value; width = v.width })
-        v.width
+  | Const v -> Value.of_int64 v.value v.width
+  | Ram v -> State.load_mem s v.value v.width
 
 let eval_assignment (a : Assignable.t) (s : State.t) (outwidth : Int32.t) :
     (Value.t, String.t) Result.t =
@@ -62,12 +59,12 @@ let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :
     Common_language.Interop.t =
   match tagv with
   | TString -> VString (Memory.load_string s.mem (Value.to_addr v))
-  | T8 -> V8 (Char.chr (Int64.to_int v.value))
-  | T16 -> V16 (Int64.to_int32 v.value)
-  | T32 -> V32 (Int64.to_int32 v.value)
-  | T64 -> V64 v.value
-  | TFloat -> VFloat (Int64.float_of_bits v.value)
-  | TDouble -> VDouble (Int64.float_of_bits v.value)
+  | T8 -> V8 (Char.chr (Int64.to_int (Value.value_64 v)))
+  | T16 -> V16 (Int64.to_int32 (Value.value_64 v))
+  | T32 -> V32 (Int64.to_int32 (Value.value_64 v))
+  | T64 -> V64 (Value.value_64 v)
+  | TFloat -> VFloat (Int64.float_of_bits (Value.value_64 v))
+  | TDouble -> VDouble (Int64.float_of_bits (Value.value_64 v))
   | TVoid -> VUnit
   | TList _ -> [%log fatal "List not supported"]
   | TBuffer _ -> [%log fatal "Buffer not supported"]
@@ -83,7 +80,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         regs =
           RegFile.add_reg s.regs
             { id = RegId.Register 0l; offset = 0l; width = 8l }
-            { value = Int64.of_int (Char.code c); width = 8l };
+            (Value.of_int64 (Int64.of_int (Char.code c)) 8l);
       }
   | V16 i ->
       {
@@ -91,7 +88,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         regs =
           RegFile.add_reg s.regs
             { id = RegId.Register 0l; offset = 0l; width = 8l }
-            { value = Int64.of_int32 i; width = 8l };
+            (Value.of_int64 (Int64.of_int32 i) 8l);
       }
   | V32 i ->
       {
@@ -99,7 +96,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         regs =
           RegFile.add_reg s.regs
             { id = RegId.Register 0l; offset = 0l; width = 8l }
-            { value = Int64.of_int32 i; width = 8l };
+            (Value.of_int64 (Int64.of_int32 i) 8l);
       }
   | V64 i ->
       {
@@ -107,7 +104,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         regs =
           RegFile.add_reg s.regs
             { id = RegId.Register 0l; offset = 0l; width = 8l }
-            { value = i; width = 8l };
+            (Value.of_int64 i 8l);
       }
   | _ -> [%log fatal "Unsupported return type"]
 
@@ -153,7 +150,7 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
              regs =
                RegFile.add_reg s.regs
                  { id = RegId.Register 32l; offset = 0l; width = 8l }
-                 { value = Int64.add retpointer.value 8L; width = 8l };
+                 (Value.of_int64 (Int64.add (Value.value_64 retpointer) 8L) 8l);
            }
            retv)
 

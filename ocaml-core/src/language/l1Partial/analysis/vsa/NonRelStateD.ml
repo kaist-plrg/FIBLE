@@ -46,7 +46,8 @@ let process_load (rom : Addr.t -> Char.t) (a : t) (d : OctagonD.t)
         (AbsNumeric.of_limset
            (LimSetD.LimSet
               (Int64Set.map
-                 (fun x -> (Prog.get_rom_raw rom x (RegId.width outv)).value)
+                 (fun x ->
+                   Value.value_64 (Prog.get_rom_raw rom x (RegId.width outv)))
                  vset)))
         a
   | None -> clear_mr a outv.id

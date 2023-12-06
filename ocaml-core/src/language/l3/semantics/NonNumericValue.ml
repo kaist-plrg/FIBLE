@@ -31,36 +31,54 @@ let eval_bop (b : Bop.t)
     (outwidth : Int32.t) : (NumericValue.t, t) Either.t =
   match (b, vs) with
   | Bop.Bint_add, Second (SP o, lv) | Bop.Bint_add, Third (lv, SP o) ->
-      Right (eval_sp_arith o (Int64Ext.sext lv.value lv.width 8l))
+      Right
+        (eval_sp_arith o
+           (Int64Ext.sext (NumericValue.value_64 lv) (NumericValue.width lv) 8l))
   | Bop.Bint_sub, Second (SP o, rv) ->
-      Right (eval_sp_arith o (Int64.neg (Int64Ext.sext rv.value rv.width 8l)))
+      Right
+        (eval_sp_arith o
+           (Int64.neg
+              (Int64Ext.sext (NumericValue.value_64 rv) (NumericValue.width rv)
+                 8l)))
   | Bop.Bint_add, Second (LocalP o, lv) | Bop.Bint_add, Third (lv, LocalP o) ->
       Right
         (LocalP
            {
              o with
-             offset = Int64.add o.offset (Int64Ext.sext lv.value lv.width 8l);
+             offset =
+               Int64.add o.offset
+                 (Int64Ext.sext (NumericValue.value_64 lv)
+                    (NumericValue.width lv) 8l);
            })
   | Bop.Bint_sub, Second (LocalP o, rv) ->
       Right
         (LocalP
            {
              o with
-             offset = Int64.sub o.offset (Int64Ext.sext rv.value rv.width 8l);
+             offset =
+               Int64.sub o.offset
+                 (Int64Ext.sext (NumericValue.value_64 rv)
+                    (NumericValue.width rv) 8l);
            })
   | Bop.Bint_add, Second (ParamP o, lv) | Bop.Bint_add, Third (lv, ParamP o) ->
       Right
         (ParamP
            {
              o with
-             offset = Int64.add o.offset (Int64Ext.sext lv.value lv.width 8l);
+             offset =
+               Int64.add o.offset
+                 (Int64Ext.sext (NumericValue.value_64 lv)
+                    (NumericValue.width lv) 8l);
            })
   | Bop.Bint_sub, Second (ParamP o, rv) ->
       Right
         (ParamP
            {
              o with
-             offset = Int64.sub o.offset (Int64Ext.sext rv.value rv.width 8l);
+             offset =
+               Int64.sub o.offset
+                 (Int64Ext.sext (NumericValue.value_64 rv)
+                    (NumericValue.width rv) 8l);
            })
   | Bop.Bint_sub, First (LocalP o1, LocalP o2) ->
       if (o1.timestamp, o1.func) = (o2.timestamp, o2.func) then

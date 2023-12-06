@@ -23,21 +23,30 @@ let eval_bop (b : Bop.t)
         (SP
            {
              o with
-             offset = Int64.add o.offset (Int64Ext.sext rv.value rv.width 8l);
+             offset =
+               Int64.add o.offset
+                 (Int64Ext.sext (NumericValue.value_64 rv)
+                    (NumericValue.width rv) 8l);
            })
   | Bop.Bint_add, Third (lv, SP o) ->
       Right
         (SP
            {
              o with
-             offset = Int64.add o.offset (Int64Ext.sext lv.value lv.width 8l);
+             offset =
+               Int64.add o.offset
+                 (Int64Ext.sext (NumericValue.value_64 lv)
+                    (NumericValue.width lv) 8l);
            })
   | Bop.Bint_sub, Second (SP o, rv) ->
       Right
         (SP
            {
              o with
-             offset = Int64.sub o.offset (Int64Ext.sext rv.value rv.width 8l);
+             offset =
+               Int64.sub o.offset
+                 (Int64Ext.sext (NumericValue.value_64 rv)
+                    (NumericValue.width rv) 8l);
            })
   | Bop.Bint_sub, First (SP o1, SP o2) ->
       if (o1.timestamp, o1.func) = (o2.timestamp, o2.func) then

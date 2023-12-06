@@ -8,9 +8,9 @@ let ( let* ) = Result.bind
 let eval_vn (vn : VarNode.t) (s : State.t) : Value.t =
   match vn with
   | Register r -> RegFile.get_reg s.regs r
-  | Const v -> Num { value = v.value; width = v.width }
+  | Const v -> Num (NumericValue.of_int64 v.value v.width)
   | Ram v ->
-      Store.load_mem s.sto (Num { value = v.value; width = v.width }) v.width
+      Store.load_mem s.sto (Num (NumericValue.of_int64 v.value v.width)) v.width
       |> Result.get_ok
 
 let eval_assignment (a : Assignable.t) (s : State.t) (outwidth : Int32.t) :
@@ -28,24 +28,24 @@ let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :
       V8
         (Char.chr
            (match v with
-           | Num { value; _ } -> Int64.to_int value
+           | Num value -> Int64.to_int (NumericValue.value_64 value)
            | _ -> [%log fatal "Not a number"]))
   | T16 ->
       V16
         (Int64.to_int32
            (match v with
-           | Num { value; _ } -> value
+           | Num value -> NumericValue.value_64 value
            | _ -> [%log fatal "Not a number"]))
   | T32 ->
       V32
         (Int64.to_int32
            (match v with
-           | Num { value; _ } -> value
+           | Num value -> NumericValue.value_64 value
            | _ -> [%log fatal "Not a number"]))
   | T64 ->
       V64
         (match v with
-        | Num { value; _ } -> value
+        | Num value -> NumericValue.value_64 value
         | _ ->
             Foreign.foreign "strdup"
               (Ctypes_static.( @-> ) Ctypes.string
@@ -67,7 +67,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         regs =
           RegFile.add_reg s.regs
             { id = RegId.Register 0l; offset = 0l; width = 8l }
-            (Value.Num { value = Int64.of_int (Char.code c); width = 8l });
+            (Value.Num (NumericValue.of_int64 (Int64.of_int (Char.code c)) 8l));
       }
   | V16 i ->
       {
@@ -75,7 +75,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         regs =
           RegFile.add_reg s.regs
             { id = RegId.Register 0l; offset = 0l; width = 8l }
-            (Value.Num { value = Int64.of_int32 i; width = 8l });
+            (Value.Num (NumericValue.of_int64 (Int64.of_int32 i) 8l));
       }
   | V32 i ->
       {
@@ -83,7 +83,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         regs =
           RegFile.add_reg s.regs
             { id = RegId.Register 0l; offset = 0l; width = 8l }
-            (Value.Num { value = Int64.of_int32 i; width = 8l });
+            (Value.Num (NumericValue.of_int64 (Int64.of_int32 i) 8l));
       }
   | V64 i ->
       {
@@ -91,7 +91,7 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
         regs =
           RegFile.add_reg s.regs
             { id = RegId.Register 0l; offset = 0l; width = 8l }
-            (Value.Num { value = i; width = 8l });
+            (Value.Num (NumericValue.of_int64 i 8l));
       }
   | _ -> [%log fatal "Unsupported return type"]
 
@@ -229,7 +229,7 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
       let nlocal = Frame.store_mem Frame.empty 0L passing_val in
       let* sp_saved =
         Value.eval_bop Bop.Bint_add sp_curr
-          (Num { value = spdiff; width = 8l })
+          (Num (NumericValue.of_int64 spdiff 8l))
           8l
       in
       Ok
@@ -299,7 +299,7 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
       in
       let* sp_saved =
         Value.eval_bop Bop.Bint_add sp_curr
-          (Num { value = spdiff; width = 8l })
+          (Num (NumericValue.of_int64 spdiff 8l))
           8l
       in
 

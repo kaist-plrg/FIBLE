@@ -7,11 +7,8 @@ let ( let* ) = Result.bind
 let eval_vn (vn : VarNode.t) (s : Store.t) : Value.t =
   match vn with
   | Register r -> Store.get_reg s r
-  | Const v -> { value = v.value; width = v.width }
-  | Ram v ->
-      Store.load_mem s
-        (Value.to_addr { value = v.value; width = v.width })
-        v.width
+  | Const v -> Value.of_int64 v.value v.width
+  | Ram v -> Store.load_mem s v.value v.width
 
 let eval_assignment (a : Assignable.t) (s : Store.t) (outwidth : Int32.t) :
     (Value.t, String.t) Result.t =
@@ -58,7 +55,7 @@ let step_call (p : Prog.t) (calln : Loc.t) (retn : Loc.t) (s : State.t) :
           sto =
             Store.add_reg s.sto
               { id = RegId.Register 32l; offset = 0l; width = 8l }
-              { value = Int64.add retpointer.value 8L; width = 8l };
+              (Value.of_int64 (Int64.add (Value.value_64 retpointer) 8L) 8l);
           cont = ncont;
           stack = s.stack;
         }
