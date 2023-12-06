@@ -200,39 +200,40 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
       else
         let* lf = Int64Ext.to_float_width lv.value lv.width in
         let* rf = Int64Ext.to_float_width rv.value rv.width in
-        NumericValue.of_int64_safe
-          (if Float.compare lf rf = 0 then 1L else 0L)
-          outwidth
+        let rv = if Float.compare lf rf = 0 then 1L else 0L in
+        [%log finfo "float" "%f = %f = %Lx" lf rf rv];
+        NumericValue.of_int64_safe rv outwidth
   | Bfloat_notequal ->
       if lv.width <> rv.width then Error "float_notequal: different bitwidth"
       else
         let* lf = Int64Ext.to_float_width lv.value lv.width in
         let* rf = Int64Ext.to_float_width rv.value rv.width in
-        NumericValue.of_int64_safe
-          (if Float.compare lf rf <> 0 then 1L else 0L)
-          outwidth
+        let rv = if Float.compare lf rf <> 0 then 1L else 0L in
+        [%log finfo "float" "%f <> %f = %Lx" lf rf rv];
+        NumericValue.of_int64_safe rv outwidth
   | Bfloat_less ->
       if lv.width <> rv.width then Error "float_less: different bitwidth"
       else
         let* lf = Int64Ext.to_float_width lv.value lv.width in
         let* rf = Int64Ext.to_float_width rv.value rv.width in
-        NumericValue.of_int64_safe
-          (if Float.compare lf rf < 0 then 1L else 0L)
-          outwidth
+        let rv = if Float.compare lf rf < 0 then 1L else 0L in
+        [%log finfo "float" "%f < %f = %Lx" lf rf rv];
+        NumericValue.of_int64_safe rv outwidth
   | Bfloat_lessequal ->
       if lv.width <> rv.width then Error "float_lessequal: different bitwidth"
       else
         let* lf = Int64Ext.to_float_width lv.value lv.width in
         let* rf = Int64Ext.to_float_width rv.value rv.width in
-        NumericValue.of_int64_safe
-          (if Float.compare lf rf <= 0 then 1L else 0L)
-          outwidth
+        let rv = if Float.compare lf rf <= 0 then 1L else 0L in
+        [%log finfo "float" "%f <= %f = %Lx" lf rf rv];
+        NumericValue.of_int64_safe rv outwidth
   | Bfloat_add ->
       if lv.width <> rv.width then Error "float_add: different bitwidth"
       else
         let* lf = Int64Ext.to_float_width lv.value lv.width in
         let* rf = Int64Ext.to_float_width rv.value rv.width in
         let fv = Float.add lf rf in
+        [%log finfo "float" "%f + %f = %f" lf rf fv];
         let* fv = Int64Ext.of_float_width fv outwidth in
         NumericValue.of_int64_safe fv outwidth
   | Bfloat_sub ->
@@ -241,6 +242,7 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
         let* lf = Int64Ext.to_float_width lv.value lv.width in
         let* rf = Int64Ext.to_float_width rv.value rv.width in
         let fv = Float.sub lf rf in
+        [%log finfo "float" "%f - %f = %f" lf rf fv];
         let* fv = Int64Ext.of_float_width fv outwidth in
         NumericValue.of_int64_safe fv outwidth
   | Bfloat_mult ->
@@ -249,6 +251,7 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
         let* lf = Int64Ext.to_float_width lv.value lv.width in
         let* rf = Int64Ext.to_float_width rv.value rv.width in
         let fv = Float.mul lf rf in
+        [%log finfo "float" "%f * %f = %f" lf rf fv];
         let* fv = Int64Ext.of_float_width fv outwidth in
         NumericValue.of_int64_safe fv outwidth
   | Bfloat_div ->
@@ -257,5 +260,6 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
         let* lf = Int64Ext.to_float_width lv.value lv.width in
         let* rf = Int64Ext.to_float_width rv.value rv.width in
         let fv = Float.div lf rf in
+        [%log finfo "float" "%f / %f = %f" lf rf fv];
         let* fv = Int64Ext.of_float_width fv outwidth in
         NumericValue.of_int64_safe fv outwidth

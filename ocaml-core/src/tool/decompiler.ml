@@ -54,6 +54,9 @@ let speclist =
     ("-project-cwd", Arg.Set_string cwd, ": set cwd");
     ("-debug", Arg.Unit (fun _ -> Logger.set_level Logger.Debug), ": debug mode");
     ("-log-path", Arg.String (fun x -> Logger.set_log_file x), ": log path");
+    ( "-log-feature",
+      Arg.String (fun x -> Logger.add_log_feature x),
+      ": add log feature" );
   ]
 
 let dump_cfa (cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list)

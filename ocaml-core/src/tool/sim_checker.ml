@@ -17,6 +17,9 @@ let speclist =
     ("-func-path", Arg.Set_string func_path, ": target funcs path");
     ("-debug", Arg.Unit (fun _ -> Logger.set_level Logger.Debug), ": debug mode");
     ("-log-path", Arg.String (fun x -> Logger.set_log_file x), ": log path");
+    ( "-log-feature",
+      Arg.String (fun x -> Logger.add_log_feature x),
+      ": add log feature" );
   ]
 
 let main () =

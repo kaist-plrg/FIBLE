@@ -9,6 +9,13 @@ let to_loc (x : t) : Loc.t = (x.value, 0)
 let to_addr (x : t) : Addr.t = x.value
 let pp fmt (x : t) = Format.fprintf fmt "%Lx:%ld" x.value x.width
 
+let pp_float fmt (x : t) =
+  match x.width with
+  | 4l ->
+      Format.fprintf fmt "%f:4" (Int32.float_of_bits (Int64.to_int32 x.value))
+  | 8l -> Format.fprintf fmt "%f:8" (Int64.float_of_bits x.value)
+  | _ -> Format.fprintf fmt "float(%Lx):%ld" x.value x.width
+
 let of_chars (cs : Char.t list) : t =
   let rec loop acc = function
     | [] -> acc
