@@ -204,6 +204,52 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) (func : Loc.t * Int64.t)
       Ok { s with sto = sto' }
   | INop -> Ok s
 
+let step_call_extern (p : Prog.t) (spdiff : Int64.t) (name : String.t)
+    (retn : Loc.t) (s : State.t) =
+  [%log debug "Calling %s" name];
+  let* fsig, _ =
+    StringMap.find_opt name World.Environment.signature_map
+    |> Option.to_result ~none:(Format.asprintf "No external function %s" name)
+  in
+  let values, args = build_args s fsig |> List.split in
+  [%log
+    debug "Call values: %a"
+      (Format.pp_print_list ~pp_sep:Format.pp_print_space Value.pp)
+      values];
+  [%log
+    debug "Call args: %a"
+      (Format.pp_print_list ~pp_sep:Format.pp_print_space Interop.pp)
+      args];
+  let sides, retv = World.Environment.request_call name args in
+  [%log
+    debug "Side values: %a"
+      (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun fmt (i, v) ->
+           Format.fprintf fmt "%d: %a" i Interop.pp v))
+      sides];
+  let sp_curr =
+    RegFile.get_reg s.regs { id = RegId.Register 32l; offset = 0l; width = 8l }
+  in
+  let* sp_saved =
+    Value.eval_bop Bop.Bint_add sp_curr
+      (Num (NumericValue.of_int64 spdiff 8l))
+      8l
+  in
+
+  let* ncont = Cont.of_block_loc p (fst s.func) retn in
+  let* s_side = build_sides s values sides in
+  Ok
+    (build_ret
+       {
+         s_side with
+         regs =
+           RegFile.add_reg s_side.regs
+             { id = RegId.Register 32l; offset = 0l; width = 8l }
+             sp_saved;
+         cont = ncont;
+         stack = s_side.stack;
+       }
+       retv)
+
 let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
     (inputs : VarNode.t List.t) (calln : Loc.t) (retn : Loc.t) (s : State.t) :
     (State.t, String.t) Result.t =
@@ -275,52 +321,72 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
                      nlocal;
             };
         }
-  | Some name ->
-      [%log debug "Calling %s" name];
-      let* fsig, _ =
-        StringMap.find_opt name World.Environment.signature_map
+  | Some name -> step_call_extern p spdiff name retn s
+
+let step_call_ind (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
+    (s : State.t) : (State.t, String.t) Result.t =
+  match AddrMap.find_opt (Loc.to_addr calln) p.externs with
+  | None ->
+      let* currf =
+        Prog.get_func_opt p (fst s.func)
         |> Option.to_result
-             ~none:(Format.asprintf "No external function %s" name)
+             ~none:
+               (Format.asprintf "jcall_ind: not found current function %a"
+                  Loc.pp calln)
       in
-      let values, args = build_args s fsig |> List.split in
-      [%log
-        debug "Call values: %a"
-          (Format.pp_print_list ~pp_sep:Format.pp_print_space Value.pp)
-          values];
-      [%log
-        debug "Call args: %a"
-          (Format.pp_print_list ~pp_sep:Format.pp_print_space Interop.pp)
-          args];
-      let sides, retv = World.Environment.request_call name args in
-      [%log
-        debug "Side values: %a"
-          (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun fmt (i, v) ->
-               Format.fprintf fmt "%d: %a" i Interop.pp v))
-          sides];
+      let* f =
+        Prog.get_func_opt p calln
+        |> Option.to_result
+             ~none:
+               (Format.asprintf "jcall_ind: not found function %a" Loc.pp calln)
+      in
+      let* _ =
+        if f.sp_diff = spdiff then Ok ()
+        else Error "jcall_ind: spdiff not match"
+      in
+      let* ncont = Cont.of_func_entry_loc p calln in
       let sp_curr =
         RegFile.get_reg s.regs
           { id = RegId.Register 32l; offset = 0l; width = 8l }
       in
+      let* passing_val = Store.load_mem s.sto sp_curr 8l in
+      let nlocal = Frame.store_mem Frame.empty 0L passing_val in
       let* sp_saved =
         Value.eval_bop Bop.Bint_add sp_curr
           (Num (NumericValue.of_int64 spdiff 8l))
           8l
       in
-
-      let* ncont = Cont.of_block_loc p (fst s.func) retn in
-      let* s_side = build_sides s values sides in
       Ok
-        (build_ret
-           {
-             s_side with
-             regs =
-               RegFile.add_reg s_side.regs
-                 { id = RegId.Register 32l; offset = 0l; width = 8l }
-                 sp_saved;
-             cont = ncont;
-             stack = s_side.stack;
-           }
-           retv)
+        {
+          State.timestamp = Int64Ext.succ s.timestamp;
+          cont = ncont;
+          stack = (s.func, f.outputs, s.regs, sp_saved, retn) :: s.stack;
+          regs =
+            RegFile.add_reg
+              (List.fold_left
+                 (fun r i ->
+                   RegFile.add_reg r
+                     { id = i; offset = 0l; width = 8l }
+                     (RegFile.get_reg s.regs
+                        { id = i; offset = 0l; width = 8l }))
+                 (RegFile.of_seq Seq.empty) f.inputs)
+              { id = RegId.Register 32l; offset = 0l; width = 8l }
+              (Value.sp { func = calln; timestamp = Int64Ext.succ s.timestamp });
+          func = (calln, Int64Ext.succ s.timestamp);
+          sto =
+            {
+              s.sto with
+              local =
+                s.sto.local
+                |> LocalMemory.add
+                     (Local, calln, Int64Ext.succ s.timestamp)
+                     nlocal
+                |> LocalMemory.add
+                     (Param, calln, Int64Ext.succ s.timestamp)
+                     nlocal;
+            };
+        }
+  | Some name -> step_call_extern p spdiff name retn s
 
 let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
     (State.t, String.t) Result.t =
@@ -349,9 +415,9 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
         Ok { s with cont = ncont }
   | Jcall (spdiff, outputs, inputs, calln, retn) ->
       step_call p spdiff outputs inputs calln retn s
-  | Jcall_ind (spdiff, outputs, inputs, callvn, retn) ->
+  | Jcall_ind (spdiff, callvn, retn) ->
       let* calln = Value.try_loc (eval_vn callvn s) in
-      step_call p spdiff outputs inputs calln retn s
+      step_call_ind p spdiff calln retn s
   | Jret values -> (
       match s.stack with
       | [] -> Error (Format.asprintf "Empty stack")

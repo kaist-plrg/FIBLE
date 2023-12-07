@@ -35,15 +35,7 @@ let translate_jmp (j : L3.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
             target,
             retn )
     | L3.Jmp.Jcall_ind (spdiff, targetvn, retn) ->
-        let inputs, outputs = (default_input, default_output) in
-        Jcall_ind
-          ( spdiff,
-            outputs,
-            inputs
-            |> List.map (fun n ->
-                   VarNode.Register { id = n; offset = 0l; width = 8l }),
-            targetvn,
-            retn )
+        Jcall_ind (spdiff, targetvn, retn)
     | L3.Jmp.Jtailcall (spdiff, target) ->
         let inputs, outputs =
           match LocMap.find_opt target fMap with
@@ -64,20 +56,12 @@ let translate_jmp (j : L3.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
                    VarNode.Register { id = n; offset = 0l; width = 8l }),
             target )
     | L3.Jmp.Jtailcall_ind (spdiff, targetvn) ->
-        let inputs, outputs = (default_input, default_output) in
         let retvs =
           snd la
           |> List.map (fun n ->
                  VarNode.Register { id = n; offset = 0l; width = 8l })
         in
-        Jtailcall_ind
-          ( spdiff,
-            retvs,
-            outputs,
-            inputs
-            |> List.map (fun n ->
-                   VarNode.Register { id = n; offset = 0l; width = 8l }),
-            targetvn )
+        Jtailcall_ind (spdiff, retvs, targetvn)
     | L3.Jmp.Jret ->
         let retvs =
           snd la

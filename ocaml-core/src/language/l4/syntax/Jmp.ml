@@ -8,16 +8,10 @@ type t =
   | Jjump_ind of (VarNode.t * LocSet.t)
   | Jcbranch of (VarNode.t * Loc.t * Loc.t)
   | Jcall of (Int64.t * RegId.t List.t * VarNode.t List.t * Loc.t * Loc.t)
-  | Jcall_ind of
-      (Int64.t * RegId.t List.t * VarNode.t List.t * VarNode.t * Loc.t)
+  | Jcall_ind of (Int64.t * VarNode.t * Loc.t)
   | Jtailcall of
       (Int64.t * VarNode.t List.t * RegId.t List.t * VarNode.t List.t * Loc.t)
-  | Jtailcall_ind of
-      (Int64.t
-      * VarNode.t List.t
-      * RegId.t List.t
-      * VarNode.t List.t
-      * VarNode.t)
+  | Jtailcall_ind of (Int64.t * VarNode.t List.t * VarNode.t)
   | Jret of VarNode.t List.t
 
 type t_full = { jmp : t; loc : Loc.t; mnem : Mnemonic.t }
@@ -46,16 +40,9 @@ let pp fmt (a : t) =
            ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
            VarNode.pp)
         inputs Loc.pp f
-  | Jcall_ind (spdiff, outputs, inputs, t, f) ->
-      Format.fprintf fmt "%a = call (+%Lx) *%a(%a); -> %a"
-        (Format.pp_print_list
-           ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
-           RegId.pp)
-        outputs spdiff VarNode.pp t
-        (Format.pp_print_list
-           ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
-           VarNode.pp)
-        inputs Loc.pp f
+  | Jcall_ind (spdiff, t, f) ->
+      Format.fprintf fmt "all = call_ind (+%Lx) *%a(all); -> %a" spdiff
+        VarNode.pp t Loc.pp f
   | Jtailcall (spdiff, retouts, callouts, inputs, t) ->
       Format.fprintf fmt "%a = tailcall (+%Lx) %a(%a) -> ret %a"
         (Format.pp_print_list
@@ -70,16 +57,9 @@ let pp fmt (a : t) =
            ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
            VarNode.pp)
         retouts
-  | Jtailcall_ind (spdiff, retouts, callouts, inputs, t) ->
-      Format.fprintf fmt "%a = tailcall_ind (+%Lx) %a(%a) -> ret %a"
-        (Format.pp_print_list
-           ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
-           RegId.pp)
-        callouts spdiff VarNode.pp t
-        (Format.pp_print_list
-           ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
-           VarNode.pp)
-        inputs
+  | Jtailcall_ind (spdiff, retouts, t) ->
+      Format.fprintf fmt "all = tailcall_ind (+%Lx) %a(all) -> ret %a" spdiff
+        VarNode.pp t
         (Format.pp_print_list
            ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
            VarNode.pp)
@@ -94,9 +74,9 @@ let pp fmt (a : t) =
 let succ jmp =
   match jmp with
   | Jcall (_, _, _, _, n) -> [ n ]
-  | Jcall_ind (_, _, _, _, n) -> [ n ]
+  | Jcall_ind (_, _, n) -> [ n ]
   | Jtailcall (_, _, _, _, _) -> []
-  | Jtailcall_ind (_, _, _, _, _) -> []
+  | Jtailcall_ind (_, _, _) -> []
   | Jcbranch (_, n, m) -> [ n; m ]
   | Jfallthrough n -> [ n ]
   | Jjump n -> [ n ]
