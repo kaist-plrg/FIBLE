@@ -95,7 +95,7 @@ let pcode_raw_to_pcode (si : SpaceInfo.t) (rspec : RegSpec.t) (p : PCode_Raw.t)
         | Ram { value = a; width = w } ->
             Istore
               ( Const { value = Int64.of_int32 si.ram; width = 8l },
-                Const { value = a; width = w },
+                Const { value = a; width = 8l },
                 inputs 0 )
         | _ -> [%log fatal "Output is not a register or ram"])
     | 2l -> Iload (inputs 0, inputs 1, output ())

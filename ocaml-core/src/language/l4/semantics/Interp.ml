@@ -10,7 +10,7 @@ let eval_vn (vn : VarNode.t) (s : State.t) : Value.t =
   | Register r -> RegFile.get_reg s.regs r
   | Const v -> Num (NumericValue.of_int64 v.value v.width)
   | Ram v ->
-      Store.load_mem s.sto (Num (NumericValue.of_int64 v.value v.width)) v.width
+      Store.load_mem s.sto (Num (NumericValue.of_int64 v.value 8l)) v.width
       |> Result.get_ok
 
 let eval_assignment (a : Assignable.t) (s : State.t) (outwidth : Int32.t) :
