@@ -18,6 +18,10 @@ let eval_assignment (a : Assignable.t) (s : State.t) (outwidth : Int32.t) :
   match a with
   | Avar vn -> Ok (eval_vn vn s)
   | Auop (u, vn) -> Value.eval_uop u (eval_vn vn s) outwidth
+  | Abop (Bop.Bint_xor, lv, rv) when VarNode.compare lv rv = 0 ->
+      Ok (Value.zero outwidth)
+  | Abop (Bop.Bint_sub, lv, rv) when VarNode.compare lv rv = 0 ->
+      Ok (Value.zero outwidth)
   | Abop (b, lv, rv) -> Value.eval_bop b (eval_vn lv s) (eval_vn rv s) outwidth
 
 let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :

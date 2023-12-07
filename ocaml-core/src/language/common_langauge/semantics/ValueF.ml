@@ -104,10 +104,8 @@ struct
     match (orig, inserted) with
     | Num orig, Num inserted -> Num (NumericValue.set orig inserted offset)
     | NonNum orig, Num inserted ->
-        if
-          Int32.equal offset Int32.zero
-          && NumericValue.width inserted = NonNumericValue.width orig
-        then Num inserted
+        if Int32.equal offset Int32.zero then
+          Num (NumericValue.extend inserted (NonNumericValue.width orig))
         else NonNum (NonNumericValue.undefined (NonNumericValue.width orig))
     | Num orig, NonNum inserted ->
         if
