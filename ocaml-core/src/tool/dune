@@ -9,7 +9,7 @@
  (modules cfa_analyzer))
 
 (executable
- (flags -w -20-33-3)
+ (flags -w -20-33-3 -g)
  (preprocess
   (pps ppx_log ppx_cwd))
  (name interpreter)

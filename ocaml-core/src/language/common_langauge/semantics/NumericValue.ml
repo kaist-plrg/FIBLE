@@ -6,8 +6,15 @@ type t = String.t
 let zero width = String.make (Int32.to_int width) '\x00'
 let isZero x = String.for_all (Char.equal '\x00') x
 let width (x : t) = Int32.of_int (String.length x)
-let value_64 (x : t) : Int64.t = String.get_int64_le x 0
-let value_32 (x : t) : Int32.t = String.get_int32_le x 0
+
+let extend (x : t) (size : Int32.t) =
+  if String.length x >= Int32.to_int size then x
+  else
+    let pad = String.make (Int32.to_int size - String.length x) '\x00' in
+    x ^ pad
+
+let value_64 (x : t) : Int64.t = String.get_int64_le (extend x 8l) 0
+let value_32 (x : t) : Int32.t = String.get_int32_le (extend x 4l) 0
 let to_addr (x : t) : Addr.t = value_64 x
 let to_loc (x : t) : Loc.t = (to_addr x, 0)
 
@@ -58,33 +65,8 @@ let of_int64_safe (v : Int64.t) (width : Int32.t) : (t, String.t) Result.t =
          "NumericValue.of_int64_safe: %Ld does not fit in %ld bytes" v width)
   else Ok (of_int64_le v width)
 
-let refine_width (x : t) (width : Int32.t) : t =
-  if Int32.equal (String.length x |> Int32.of_int) width then x
-  else
-    let value = value_64 x in
-    of_int64 (Int64Ext.cut_width value width) width
-
-let replace_width (ov : t) (nv : t) (width : Int32.t) : t =
-  let ovv = value_64 ov in
-  let nvv = value_64 nv in
-  let rv =
-    if Int32.equal width 8l then Int64.zero
-    else
-      Int64.logand ovv
-        (Int64.shift_left (-1L) (Int32.to_int (Int32.mul width 8l)))
-  in
-  of_int64
-    (Int64.logor rv (Int64Ext.cut_width nvv width))
-    (String.length ov |> Int32.of_int)
-
 let get (x : t) (offset : Int32.t) (size : Int32.t) : t =
   String.sub x (Int32.to_int offset) (Int32.to_int size)
-
-let extend (x : t) (size : Int32.t) =
-  if String.length x >= Int32.to_int size then x
-  else
-    let pad = String.make (Int32.to_int size - String.length x) '\x00' in
-    x ^ pad
 
 let set (orig : t) (inserted : t) (offset : Int32.t) =
   if String.length orig < Int32.to_int offset + String.length inserted then

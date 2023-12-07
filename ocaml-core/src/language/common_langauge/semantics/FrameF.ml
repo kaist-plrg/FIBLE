@@ -8,8 +8,7 @@ module Make (Value : sig
   module NonNumericValue : sig
     type t
 
-    val refine_width : t -> Int32.t -> t
-    val width_of : t -> Int32.t
+    val width : t -> Int32.t
     val undefined : Int32.t -> t
   end
 
@@ -30,7 +29,7 @@ struct
     match
       AddrMap.find_opt addr s.right
       |> Fun.flip Option.bind (fun v ->
-             if Value.NonNumericValue.width_of v = width then Some v else None)
+             if Value.NonNumericValue.width v = width then Some v else None)
     with
     | Some v -> Value.of_either (Right v)
     | None -> (

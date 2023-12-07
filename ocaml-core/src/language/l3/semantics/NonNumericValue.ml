@@ -98,12 +98,5 @@ let eval_bop (b : Bop.t)
       else Right (Undef outwidth)
   | _ -> Right (Undef outwidth)
 
-let refine_width (v : t) (width : int32) : t =
-  match v with
-  | LocalP v -> LocalP v
-  | ParamP v -> ParamP v
-  | SP v -> SP v
-  | Undef _ -> Undef width
-
-let width_of (v : t) : Int32.t = match v with Undef width -> width | _ -> 8l
+let width (v : t) : Int32.t = match v with Undef width -> width | _ -> 8l
 let undefined (width : Int32.t) : t = Undef width

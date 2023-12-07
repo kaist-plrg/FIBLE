@@ -32,7 +32,10 @@ let initialize_cgc_lib () =
   | Some _ -> ()
 
 let killall () = List.iter (fun pid -> Unix.kill pid Sys.sigterm) !pid_list
-let finailize () = if !kill_enabled then killall () else ()
+
+let finailize () =
+  (* Printexc.print_backtrace stdout; *)
+  if !kill_enabled then killall () else ()
 
 let install_pid pid =
   pid_list := pid :: !pid_list;

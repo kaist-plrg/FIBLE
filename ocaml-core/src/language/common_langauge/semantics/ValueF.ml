@@ -13,8 +13,7 @@ module Make (NonNumericValue : sig
     Int32.t ->
     (NumericValue.t, t) Either.t
 
-  val refine_width : t -> Int32.t -> t
-  val width_of : t -> Int32.t
+  val width : t -> Int32.t
   val undefined : Int32.t -> t
 end) =
 struct
@@ -31,6 +30,11 @@ struct
     match v with Left n -> Num n | Right n -> NonNum n
 
   let zero w = Num (NumericValue.zero w)
+
+  let width (v : t) : Int32.t =
+    match v with
+    | Num n -> NumericValue.width n
+    | NonNum n -> NonNumericValue.width n
 
   let pp fmt = function
     | Num n -> NumericValue.pp fmt n
@@ -81,18 +85,40 @@ struct
         in
         Ok vn'
 
-  let refine_width (v : t) (width : int32) : t =
-    match v with
-    | Num n -> Num (NumericValue.refine_width n width)
-    | NonNum n -> NonNum (NonNumericValue.refine_width n width)
+  let get (x : t) (offset : Int32.t) (size : Int32.t) : t =
+    match x with
+    | Num n -> Num (NumericValue.get n offset size)
+    | NonNum n ->
+        if Int32.equal offset Int32.zero && size = NonNumericValue.width n then
+          NonNum n
+        else NonNum (NonNumericValue.undefined size)
 
-  let replace_width (ov : t) (nv : t) (width : Int32.t) : t =
-    match (ov, nv) with
-    | Num ov, Num nv -> Num (NumericValue.replace_width ov nv width)
-    | _, Num nv -> Num nv
-    | _, NonNum nv -> NonNum (NonNumericValue.refine_width nv width)
+  let extend (x : t) (size : Int32.t) =
+    match x with
+    | Num n -> Num (NumericValue.extend n size)
+    | NonNum n ->
+        if Int32.equal size (NonNumericValue.width n) then NonNum n
+        else NonNum (NonNumericValue.undefined size)
 
-  let get (x : t) (offset : Int32.t) (size : Int32.t) : t = x
-  let extend (x : t) (size : Int32.t) = x
-  let set (orig : t) (inserted : t) (offset : Int32.t) = orig
+  let set (orig : t) (inserted : t) (offset : Int32.t) =
+    match (orig, inserted) with
+    | Num orig, Num inserted -> Num (NumericValue.set orig inserted offset)
+    | NonNum orig, Num inserted ->
+        if
+          Int32.equal offset Int32.zero
+          && NumericValue.width inserted = NonNumericValue.width orig
+        then Num inserted
+        else NonNum (NonNumericValue.undefined (NonNumericValue.width orig))
+    | Num orig, NonNum inserted ->
+        if
+          Int32.equal offset Int32.zero
+          && NumericValue.width orig = NonNumericValue.width inserted
+        then NonNum inserted
+        else NonNum (NonNumericValue.undefined (NonNumericValue.width inserted))
+    | NonNum orig, NonNum inserted ->
+        if
+          Int32.equal offset Int32.zero
+          && NonNumericValue.width orig = NonNumericValue.width inserted
+        then NonNum inserted
+        else NonNum (NonNumericValue.undefined (NonNumericValue.width inserted))
 end
