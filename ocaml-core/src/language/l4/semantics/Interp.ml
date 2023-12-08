@@ -456,12 +456,21 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
 
 let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match s.cont with
-  | { remaining = []; jmp } -> step_jmp p jmp s
+  | { remaining = []; jmp } ->
+      step_jmp p jmp s
+      |> Result.map_error (fun e -> Format.asprintf "%a: %s" Loc.pp jmp.loc e)
   | { remaining = i :: []; jmp } ->
-      let* s' = step_ins p i.ins s s.func in
+      let* s' =
+        step_ins p i.ins s s.func
+        |> Result.map_error (fun e -> Format.asprintf "%a: %s" Loc.pp i.loc e)
+      in
       step_jmp p jmp s'
+      |> Result.map_error (fun e -> Format.asprintf "%a: %s" Loc.pp jmp.loc e)
   | { remaining = i :: res; jmp } ->
-      let* s' = step_ins p i.ins s s.func in
+      let* s' =
+        step_ins p i.ins s s.func
+        |> Result.map_error (fun e -> Format.asprintf "%a: %s" Loc.pp i.loc e)
+      in
       Ok { s' with cont = { remaining = res; jmp } }
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
