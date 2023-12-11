@@ -3,7 +3,7 @@
 (package
   (name multi-step-decomp)
   (synopsis "Multi-step decompilation for PCode")
-  (depends ppxlib ocamlgraph ocaml-lsp-server ocamlformat ctypes ctypes-foreign)
+  (depends ppxlib zarith ocamlgraph ocaml-lsp-server ocamlformat ctypes ctypes-foreign)
   (authors
     "Jihee Park")
 )

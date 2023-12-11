@@ -6,6 +6,7 @@ authors: ["Jihee Park"]
 depends: [
   "dune" {>= "3.7"}
   "ppxlib"
+  "zarith"
   "ocamlgraph"
   "ocaml-lsp-server"
   "ocamlformat"
