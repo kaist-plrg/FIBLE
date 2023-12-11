@@ -83,12 +83,12 @@ let float2float (v : t) (inwidth : int32) (outwidth : int32) :
   let* fv =
     if inwidth = 4l then Ok (Int32.float_of_bits (Int64.to_int32 v))
     else if inwidth = 8l then Ok (Int64.float_of_bits v)
-    else Error "int2float: unsupported width"
+    else Error "float2float: unsupported width"
   in
   if outwidth = 4l then
     Ok (cut_width (Int64.of_int32 (Int32.bits_of_float fv)) outwidth)
   else if outwidth = 8l then Ok (cut_width (Int64.bits_of_float fv) outwidth)
-  else Error "int2float: unsupported width"
+  else Error "float2float: unsupported width"
 
 let trunc (v : t) (inwidth : int32) (outwidth : int32) : (t, String.t) Result.t
     =

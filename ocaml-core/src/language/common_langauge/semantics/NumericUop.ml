@@ -86,7 +86,7 @@ let eval (u : Uop.t) (v : NumericValue.t) (outwidth : Int32.t) :
       NumericValue.of_int64_safe (Int64Ext.cut_width fv outwidth) outwidth
   | Ufloat2float ->
       let* fv =
-        Int64Ext.int2float (NumericValue.value_64 v) (NumericValue.width v)
+        Int64Ext.float2float (NumericValue.value_64 v) (NumericValue.width v)
           outwidth
       in
       NumericValue.of_int64_safe (Int64Ext.cut_width fv outwidth) outwidth
