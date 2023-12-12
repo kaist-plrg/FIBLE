@@ -71,6 +71,10 @@ public class PCert extends GhidraScript {
         Address addr = currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(address);
         Instruction instruction = currentProgram.getListing().getInstructionAt(addr);
         if (instruction == null) {
+            disassemble(addr);
+            instruction = currentProgram.getListing().getInstructionAt(addr);
+        }
+        if (instruction == null) {
             out.writeInt(0);
         } else {
             PcodeOp[] pcode = instruction.getPcode();

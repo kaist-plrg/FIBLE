@@ -38,6 +38,7 @@ let run_ghidra ifile ghidra_path tmp_path cwd port =
         "-scriptPath";
         cwd;
         "-deleteProject";
+        "-noanalysis";
       |]
       Global.devnull Global.devnull Global.devnull
   in
