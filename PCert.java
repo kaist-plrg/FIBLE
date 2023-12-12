@@ -15,7 +15,10 @@ import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.pcode.PcodeOp;
 import ghidra.program.model.pcode.Varnode;
 import ghidra.program.model.symbol.Symbol;
+import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.script.GhidraScript;
+import ghidra.framework.options.OptionType;
+import ghidra.framework.options.Options;
 
 public class PCert extends GhidraScript {
 
@@ -202,9 +205,26 @@ public class PCert extends GhidraScript {
         }
     }
 
+    void initializeRef() {
+        Options o = currentProgram.getOptions("Analyzers");
+        for (Options sub: o.getChildOptions()) {
+            if (o.getType(sub.getName()) == OptionType.BOOLEAN_TYPE) {
+                o.setBoolean(sub.getName(), false);
+            }
+        }
+        o.setBoolean("Reference", true);
+        o.setBoolean("Subroutine References", true);
+        AutoAnalysisManager mgr = AutoAnalysisManager.getAnalysisManager(currentProgram);
+        mgr.initializeOptions();
+        mgr.reAnalyzeAll(null);
+        mgr.startAnalysis(monitor);
+    }
+
+
     @Override
     protected void run() throws Exception {
         // get arguments and print
+        initializeRef();
         String[] args = getScriptArgs();
         if (args.length != 1) {
             println("Usage: PCert <arg>");
