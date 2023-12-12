@@ -212,6 +212,7 @@ public class PCert extends GhidraScript {
                 o.setBoolean(sub.getName(), false);
             }
         }
+        o.setBoolean("Function Start Search", true);
         o.setBoolean("Reference", true);
         o.setBoolean("Subroutine References", true);
         AutoAnalysisManager mgr = AutoAnalysisManager.getAnalysisManager(currentProgram);
