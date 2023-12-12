@@ -138,6 +138,7 @@ let main () =
         in
         let cwd = if String.equal !cwd "" then [%pwd] else !cwd in
         let tmp_path = Filename.concat cwd "tmp" in
+        if not (Sys.file_exists tmp_path) then Unix.mkdir tmp_path 0o777;
         [%log debug "Input file is %s" !ifile];
         let server = Ghidra.make_server !ifile !ghidra_path tmp_path cwd in
         List.iter (fun x -> [%log debug "func %s" x]) target_funcs;
