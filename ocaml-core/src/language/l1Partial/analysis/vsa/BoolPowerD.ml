@@ -61,9 +61,29 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
       match (op1v, op2v) with
       | Register r, Const { value = c; _ } ->
           (Map.add outmr (OctagonD.gen_single_eq d r.id c, d)) na
+      | Register r1, Register r2 -> (
+          match
+            (Map.find_opt (KReg r1.id) na, Map.find_opt (KReg r2.id) na)
+          with
+          | Some (dt, df), Some (dt2, df2) ->
+              Map.add outmr
+                ( OctagonD.join (OctagonD.meet dt dt2) (OctagonD.meet df df2),
+                  OctagonD.join (OctagonD.meet dt df2) (OctagonD.meet df dt2) )
+                na
+          | _ -> na)
       | _ -> na)
   | Abop (Bint_sless, _, _) -> na
   | Abop (Bint_slessequal, _, _) -> na
+  | Abop (Bbool_and, op1v, op2v) -> (
+      match (op1v, op2v) with
+      | Register r1, Register r2 -> (
+          match
+            (Map.find_opt (KReg r1.id) na, Map.find_opt (KReg r2.id) na)
+          with
+          | Some (dt, df), Some (dt2, df2) ->
+              Map.add outmr (OctagonD.meet dt dt2, OctagonD.join df df2) na
+          | _ -> na)
+      | _ -> na)
   | Abop (Bbool_or, op1v, op2v) -> (
       match (op1v, op2v) with
       | Register r1, Register r2 -> (

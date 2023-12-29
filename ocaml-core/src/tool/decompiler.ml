@@ -146,6 +146,7 @@ let main () =
           List.map (fun x -> (x, Ghidra.get_func_addr server x)) target_funcs
         in
 
+        let c0 = Sys.time () in
         let l0 : L0.Prog.t =
           {
             ins_mem = server.instfunc;
@@ -153,36 +154,58 @@ let main () =
             externs = Util.ExternalFunction.to_addrMap server.external_function;
           }
         in
+        let c1 = Sys.time () in
+        [%log info "L0 translation time: %f" (c1 -. c0)];
         let cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list =
           func_with_addrs
           |> List.map (fun (fname, e) ->
                  (fname, e, L0.Shallow_CFA.follow_flow l0 e))
         in
+        let c2 = Sys.time () in
+        [%log info "CFA time: %f" (c2 -. c1)];
         let l1_init : L1Partial.Prog.t =
           L1Partial.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
         in
+        let c3 = Sys.time () in
+        [%log info "L1 translation time: %f" (c3 -. c2)];
         let l1_refine : L1Partial.Prog.t =
           L1Partial.Refine.apply_prog l0 l1_init
         in
+        let c4 = Sys.time () in
+        [%log info "L1 refinement time: %f" (c4 -. c3)];
         let l1 : L1.Prog.t = l1_refine |> L1.Prog.from_partial in
+        let c5 = Sys.time () in
+        [%log info "L1 time: %f" (c5 -. c4)]; 
         let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
           l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l))
         in
+        let c6 = Sys.time () in
+        [%log info "SPFA time: %f" (c6 -. c5)];
         let l2 : L2.Prog.t =
           Translation.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
         in
+        let c7 = Sys.time () in
+        [%log info "L2 translation time: %f" (c7 -. c6)];
         let csa_res : (L2.Func.t * L2.CSA.Immutable.t) list =
           l2.funcs |> List.map (fun x -> (x, L2.CSA.Immutable.analyze x))
         in
+        let c8 = Sys.time () in
+        [%log info "CSA time: %f" (c8 -. c7)];
         let l3 : L3.Prog.t =
           Translation.L2toL3.translate_prog_from_csa l2 csa_res
         in
+        let c9 = Sys.time () in
+        [%log info "L3 translation time: %f" (c9 -. c8)];
         let lva_res : (L3.Func.t * L3.REA.astate) List.t =
           L3.REA.compute_all l3
         in
+        let c10 = Sys.time () in
+        [%log info "REA time: %f" (c10 -. c9)];
         let l4 : L4.Prog.t =
           Translation.L3toL4.translate_prog_from_rea l3 lva_res
         in
+        let c11 = Sys.time () in
+        [%log info "L4 translation time: %f" (c11 -. c10)];
         if
           (!(dump_flag.cfa) || !(dump_flag.l1) || !(dump_flag.spfa)
          || !(dump_flag.l2))

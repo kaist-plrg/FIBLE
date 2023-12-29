@@ -15,9 +15,10 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
       NumericValue.of_int64_safe (Int64Ext.cut_width fv outwidth) outwidth
   | Bsubpiece ->
       NumericValue.of_int64_safe
-      (Int64Ext.cut_width (
-        (Int64.shift_right_logical (NumericValue.value_64 lv)
-           ((Int64.to_int (NumericValue.value_64 rv)) * 8))) outwidth)
+        (Int64Ext.cut_width
+           (Int64.shift_right_logical (NumericValue.value_64 lv)
+              (Int64.to_int (NumericValue.value_64 rv) * 8))
+           outwidth)
         outwidth
   | Bint_equal ->
       if NumericValue.width lv <> NumericValue.width rv then
