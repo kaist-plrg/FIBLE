@@ -135,10 +135,23 @@ module Lattice_noBot = struct
 
   let try_concretize_vn (a : t) (vn : VarNode.t) : Int64Set.t option =
     match vn with
-    | Register u -> (
-        match NonRelStateD.find_opt (KReg u.id) a.value_nonrel with
-        | Some a -> AbsNumeric.try_concretize a
-        | None -> None)
+    | Register u ->
+        OctagonD.find_all_equiv a.value_octagon u.id
+        |> AExprSet.to_list
+        |> List.fold_left
+             (fun acc (ae : AExpr.t) ->
+               match acc with
+               | Some _ -> acc
+               | None -> (
+                   match
+                     NonRelStateD.find_opt (KReg ae.base) a.value_nonrel
+                   with
+                   | Some a ->
+                       AbsNumeric.try_concretize a
+                       |> Option.map (fun x ->
+                              Int64Set.map (fun x -> Int64.add x ae.offset) x)
+                   | None -> None))
+             None
     | _ -> None
 end
 

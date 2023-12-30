@@ -125,23 +125,28 @@ let floyd_warshall graph =
   let update_map intermediate graph =
     List.fold_left
       (fun acc_map i ->
-        List.fold_left
-          (fun acc_inner_map j ->
-            let ik =
-              Map.find_opt (i, intermediate) graph
-              |> Option.value ~default:UpperD.Top
-            in
-            let kj =
-              Map.find_opt (intermediate, j) graph
-              |> Option.value ~default:UpperD.Top
-            in
-            let ij =
-              Map.find_opt (i, j) graph |> Option.value ~default:UpperD.Top
-            in
-            let new_dist = UpperD.add ik kj in
-            let updated_dist = UpperD.meet ij new_dist in
-            Map.add (i, j) updated_dist acc_inner_map)
-          acc_map nodes)
+        if Key.compare i intermediate = 0 then acc_map
+        else
+          List.fold_left
+            (fun acc_inner_map j ->
+              if Key.compare j intermediate = 0 then acc_inner_map
+              else if Key.compare i j = 0 then acc_inner_map
+              else
+                let ik =
+                  Map.find_opt (i, intermediate) graph
+                  |> Option.value ~default:UpperD.Top
+                in
+                let kj =
+                  Map.find_opt (intermediate, j) graph
+                  |> Option.value ~default:UpperD.Top
+                in
+                let ij =
+                  Map.find_opt (i, j) graph |> Option.value ~default:UpperD.Top
+                in
+                let new_dist = UpperD.add ik kj in
+                let updated_dist = UpperD.meet ij new_dist in
+                Map.add (i, j) updated_dist acc_inner_map)
+            acc_map nodes)
       graph nodes
   in
   List.fold_left (fun acc_graph k -> update_map k acc_graph) graph nodes
@@ -180,7 +185,38 @@ let join a b =
 
 let le = Map.le
 let top = Map.top
-let meet a b = Map.meet a b |> floyd_warshall
+
+let meet a b =
+  let amregs = memory_base_regs a in
+  let bmregs = memory_base_regs b in
+  let inters =
+    RegIdSet.inter amregs bmregs |> RegIdSet.elements |> List.sort_uniq compare
+  in
+  match inters with
+  | [] -> Map.meet (clear_memref a) (clear_memref b) |> floyd_warshall
+  | base :: _ ->
+      let amreg_rep =
+        memory_keys a
+        |> List.find (fun k ->
+               AExprSet.exists (fun (x : AExpr.t) -> x.base = base) k)
+      in
+      let bmreg_rep =
+        memory_keys b
+        |> List.find (fun k ->
+               AExprSet.exists (fun (x : AExpr.t) -> x.base = base) k)
+      in
+      let candids =
+        RegIdSet.union
+          (AExprSet.used_regs amreg_rep)
+          (AExprSet.used_regs bmreg_rep)
+      in
+      let final_inters =
+        RegIdSet.filter
+          (fun r -> AExprSet.has_same_diff amreg_rep bmreg_rep base r)
+          candids
+      in
+      Map.meet (refine_memrefs a final_inters) (refine_memrefs b final_inters)
+      |> floyd_warshall
 
 let ole (m1 : t) (m2 : t) : bool =
   Map.fold

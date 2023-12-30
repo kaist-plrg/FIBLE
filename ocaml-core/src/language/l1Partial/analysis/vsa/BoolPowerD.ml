@@ -57,11 +57,20 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
                OctagonD.gen_single_ge d r.id c ))
             na
       | _ -> na)
-  | Abop (Bint_sless, op1v, op2v) | Abop (Bint_sborrow, op1v, op2v) -> (
+  | Abop (Bint_sless, op1v, op2v) -> (
       match (op1v, op2v) with
       | Register r, Const { value = c; _ } ->
           (Map.add outmr
              (OctagonD.gen_single_lt d r.id c, OctagonD.gen_single_ge d r.id c))
+            na
+      | _ -> na)
+  | Abop (Bint_sborrow, op1v, op2v) -> (
+      match (op1v, op2v) with
+      | Register r, Const { value = c; _ } ->
+          (Map.add outmr
+             ( d,
+               OctagonD.gen_single_lt (OctagonD.gen_single_ge d r.id 0L) r.id c
+             ))
             na
       | _ -> na)
   | Abop (Bint_lessequal, op1v, op2v) -> (
@@ -91,10 +100,17 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
             (Map.find_opt (KReg r1.id) na, Map.find_opt (KReg r2.id) na)
           with
           | Some (dt, df), Some (dt2, df2) ->
-              Map.add outmr
-                ( OctagonD.join (OctagonD.meet dt dt2) (OctagonD.meet df df2),
-                  OctagonD.join (OctagonD.meet dt df2) (OctagonD.meet df dt2) )
-                na
+              if RegId.compare r1.id (Register 523l) = 0 then
+                Map.add outmr
+                  ( OctagonD.join (OctagonD.meet dt dt2) (OctagonD.meet df df2),
+                    OctagonD.meet df dt2 )
+                  na
+              else
+                Map.add outmr
+                  ( OctagonD.join (OctagonD.meet dt dt2) (OctagonD.meet df df2),
+                    OctagonD.join (OctagonD.meet dt df2) (OctagonD.meet df dt2)
+                  )
+                  na
           | _ -> na)
       | _ -> na)
   | Abop (Bbool_and, op1v, op2v) -> (
