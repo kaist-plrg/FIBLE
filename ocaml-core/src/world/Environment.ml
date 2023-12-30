@@ -111,12 +111,12 @@ let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
           },
           Hide (ocaml_bytes @-> int64_t @-> ocaml_bytes @-> returning int) ) );
       ( "random",
-          ( {
-              Interop.params =
-                [ Interop.TBuffer_dep 1; Interop.T64; Interop.TBuffer 8L ];
-              result = T32;
-            },
-            Hide (ocaml_bytes @-> int64_t @-> ocaml_bytes @-> returning int) ) );
+        ( {
+            Interop.params =
+              [ Interop.TBuffer_dep 1; Interop.T64; Interop.TBuffer 8L ];
+            result = T32;
+          },
+          Hide (ocaml_bytes @-> int64_t @-> ocaml_bytes @-> returning int) ) );
     ]
 
 let to_ctype : type t. t typ -> Interop.t -> t =
@@ -217,7 +217,9 @@ let request_call (fname : String.t) (arg : Interop.t list) :
         let _, Hide fn = StringMap.find_opt fname signature_map |> Option.get in
         ( [ (0, List.nth arg 0); (2, List.nth arg 2) ],
           call_with_signature fn
-            (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) "cgc_random" fn)
+            (Foreign.foreign
+               ~from:(!Global.cgc_lib |> Option.get)
+               "cgc_random" fn)
             arg )
     | _ -> [%log fatal "Not reacahble"])
   else

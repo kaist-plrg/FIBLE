@@ -175,7 +175,7 @@ let main () =
         [%log info "L1 refinement time: %f" (c4 -. c3)];
         let l1 : L1.Prog.t = l1_refine |> L1.Prog.from_partial in
         let c5 = Sys.time () in
-        [%log info "L1 time: %f" (c5 -. c4)]; 
+        [%log info "L1 time: %f" (c5 -. c4)];
         let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
           l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l))
         in
