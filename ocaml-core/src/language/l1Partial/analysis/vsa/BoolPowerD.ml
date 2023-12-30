@@ -49,7 +49,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
       |> Option.map (fun v -> Map.add outmr v na)
       |> Option.value ~default:na
   | Avar _ -> na
-  | Abop (Bint_less, op1v, op2v) | Abop (Bint_sless, op1v, op2v) -> (
+  | Abop (Bint_less, op1v, op2v) -> (
       match (op1v, op2v) with
       | Register r, Const { value = c; _ } ->
           (Map.add outmr
@@ -57,13 +57,28 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
                OctagonD.gen_single_ge d r.id c ))
             na
       | _ -> na)
-  | Abop (Bint_lessequal, op1v, op2v) | Abop (Bint_slessequal, op1v, op2v) -> (
+  | Abop (Bint_sless, op1v, op2v) | Abop (Bint_sborrow, op1v, op2v) -> (
+      match (op1v, op2v) with
+      | Register r, Const { value = c; _ } ->
+          (Map.add outmr
+             (OctagonD.gen_single_lt d r.id c, OctagonD.gen_single_ge d r.id c))
+            na
+      | _ -> na)
+  | Abop (Bint_lessequal, op1v, op2v) -> (
       match (op1v, op2v) with
       | Register r, Const { value = c; _ } ->
           (Map.add outmr
              ( OctagonD.gen_single_lt
                  (OctagonD.gen_single_ge d r.id 0L)
                  r.id (Int64.add c 1L),
+               OctagonD.gen_single_ge d r.id (Int64.add c 1L) ))
+            na
+      | _ -> na)
+  | Abop (Bint_slessequal, op1v, op2v) -> (
+      match (op1v, op2v) with
+      | Register r, Const { value = c; _ } ->
+          (Map.add outmr
+             ( OctagonD.gen_single_lt d r.id (Int64.add c 1L),
                OctagonD.gen_single_ge d r.id (Int64.add c 1L) ))
             na
       | _ -> na)
@@ -80,11 +95,6 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
                 ( OctagonD.join (OctagonD.meet dt dt2) (OctagonD.meet df df2),
                   OctagonD.join (OctagonD.meet dt df2) (OctagonD.meet df dt2) )
                 na
-          | None, Some (dt, df) ->
-              if RegId.compare r1.id (Register 523l) = 0 then
-                (* (suppose OF = 0), TODO: refine OF *)
-                Map.add outmr (df, dt) na
-              else na
           | _ -> na)
       | _ -> na)
   | Abop (Bbool_and, op1v, op2v) -> (
