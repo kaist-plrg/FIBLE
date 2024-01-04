@@ -20,23 +20,23 @@ let translate_jmp (j : L3.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
     | Jjump n -> Jjump n
     | Jjump_ind vs -> Jjump_ind vs
     | Jcbranch vs -> Jcbranch vs
-    | L3.Jmp.Jcall (spdiff, target, retn) ->
+    | L3.Jmp.Jcall (copydepth, spdiff, target, retn) ->
         let inputs, outputs =
           match LocMap.find_opt target fMap with
           | Some (i, o) -> (i, o)
           | None -> (default_input, default_output)
         in
         Jcall
-          ( spdiff,
+          ( copydepth, spdiff,
             outputs,
             inputs
             |> List.map (fun n ->
                    VarNode.Register { id = n; offset = 0l; width = 8l }),
             target,
             retn )
-    | L3.Jmp.Jcall_ind (spdiff, targetvn, retn) ->
-        Jcall_ind (spdiff, targetvn, retn)
-    | L3.Jmp.Jtailcall (spdiff, target) ->
+    | L3.Jmp.Jcall_ind (copydepth, spdiff, targetvn, retn) ->
+        Jcall_ind (copydepth, spdiff, targetvn, retn)
+    | L3.Jmp.Jtailcall (copydepth, spdiff, target) ->
         let inputs, outputs =
           match LocMap.find_opt target fMap with
           | Some (i, o) -> (i, o)
@@ -48,20 +48,20 @@ let translate_jmp (j : L3.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
                  VarNode.Register { id = n; offset = 0l; width = 8l })
         in
         Jtailcall
-          ( spdiff,
+          ( copydepth, spdiff,
             retvs,
             outputs,
             inputs
             |> List.map (fun n ->
                    VarNode.Register { id = n; offset = 0l; width = 8l }),
             target )
-    | L3.Jmp.Jtailcall_ind (spdiff, targetvn) ->
+    | L3.Jmp.Jtailcall_ind (copydepth, spdiff, targetvn) ->
         let retvs =
           snd la
           |> List.map (fun n ->
                  VarNode.Register { id = n; offset = 0l; width = 8l })
         in
-        Jtailcall_ind (spdiff, retvs, targetvn)
+        Jtailcall_ind (copydepth, spdiff, retvs, targetvn)
     | L3.Jmp.Jret ->
         let retvs =
           snd la

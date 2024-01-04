@@ -50,7 +50,7 @@ let post_single_instr (i : Inst.t) (c : t) : t =
 
 let post_single_jmp (i : Jmp.t) (c : t) : t =
   match i with
-  | Jmp.Jcall (d, _, _) | Jmp.Jcall_ind (d, _, _) ->
+  | Jmp.Jcall (_, _, _, _) | Jmp.Jcall_ind (_, _, _, _) ->
       { c with regs = ARegFile.top }
   | _ -> c
 

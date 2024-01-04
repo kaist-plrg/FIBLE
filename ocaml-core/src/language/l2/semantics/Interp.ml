@@ -167,7 +167,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
       Store.store_mem s addrv sv
   | INop -> Ok s
 
-let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
+let step_call (p : Prog.t) (copydepth: Int64.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
     (s : State.t) : (State.t, String.t) Result.t =
   match AddrMap.find_opt (Loc.to_addr calln) p.externs with
   | None ->
@@ -276,10 +276,10 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
       else
         let* ncont = Cont.of_block_loc p (fst s.func) ift in
         Ok { s with cont = ncont }
-  | Jcall (spdiff, calln, retn) -> step_call p spdiff calln retn s
-  | Jcall_ind (spdiff, callvn, retn) ->
+  | Jcall (copydepth, spdiff, calln, retn) -> step_call p copydepth spdiff calln retn s
+  | Jcall_ind (copydepth, spdiff, callvn, retn) ->
       let* calln = Value.try_loc (eval_vn callvn s.sto) in
-      step_call p spdiff calln retn s
+      step_call p copydepth spdiff calln retn s
   | Jret retvn -> (
       let* retn = Value.try_loc (eval_vn retvn s.sto) in
       match s.stack with
@@ -301,8 +301,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
                 Store.add_reg s.sto
                   { id = RegId.Register 32l; offset = 0l; width = 8l }
                   sp_saved;
-            })
-  | Junimplemented -> Error "unimplemented jump"
+            })| Jtailcall _ | Jtailcall_ind _ | Junimplemented -> Error "unimplemented jump"
 
 let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match s.cont with

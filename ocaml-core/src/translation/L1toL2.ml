@@ -1,5 +1,6 @@
-let translate_jmp (j : L1.Jmp.t_full) (ga : L1.SPFA.Immutable.t)
-    (la : L1.AbsState.t) : L2.Jmp.t_full =
+let translate_jmp (j : L1.Jmp.t_full)
+    (alist : (L1.Func.t * L1.SPFA.Immutable.t) List.t)
+    (ga : L1.SPFA.Immutable.t) (la : L1.AbsState.t) : L2.Jmp.t_full =
   let njmp : L2.Jmp.t =
     match j.jmp with
     | Junimplemented -> Junimplemented
@@ -7,10 +8,24 @@ let translate_jmp (j : L1.Jmp.t_full) (ga : L1.SPFA.Immutable.t)
     | Jjump l -> Jjump l
     | Jjump_ind (vn, ls, _) -> Jjump_ind (vn, ls)
     | Jcbranch (vn, lt, lf) -> Jcbranch (vn, lt, lf)
-    | Jcall (l, lret) -> Jcall (8L, l, lret)
-    | Jcall_ind (vn, lret) -> Jcall_ind (8L, vn, lret)
-    | Jtailcall l -> Jtailcall (8L, l)
-    | Jtailcall_ind vn -> Jtailcall_ind (8L, vn)
+    | Jcall (l, lret) -> (
+        let x =
+          List.find_opt (fun ((f, _) : L1.Func.t * _) -> f.entry = l) alist
+          |> Option.map (fun ((_, a) : _ * L1.SPFA.Immutable.t) -> a.accesses)
+        in
+        match x with
+        | Some (Fin s) -> Jcall (L1.AccessD.FinSet.max_elt s, 8L, l, lret)
+        | _ -> Jcall (0L, 8L, l, lret))
+    | Jcall_ind (vn, lret) -> Jcall_ind (0L, 8L, vn, lret)
+    | Jtailcall l -> (
+        let x =
+          List.find_opt (fun ((f, _) : L1.Func.t * _) -> f.entry = l) alist
+          |> Option.map (fun ((_, a) : _ * L1.SPFA.Immutable.t) -> a.accesses)
+        in
+        match x with
+        | Some (Fin s) -> Jtailcall (L1.AccessD.FinSet.max_elt s, 8L, l)
+        | _ -> Jtailcall (0L, 8L, l))
+    | Jtailcall_ind vn -> Jtailcall_ind (0L, 8L, vn)
     | Jret vn -> Jret vn
   in
 
@@ -41,7 +56,9 @@ let translate_inst (i : L1.Inst.t_full) (ga : L1.SPFA.Immutable.t)
   in
   { ins = nins; loc = i.loc; mnem = i.mnem }
 
-let translate_block (b : L1.Block.t) (ga : L1.SPFA.Immutable.t) : L2.Block.t =
+let translate_block (b : L1.Block.t)
+    (alist : (L1.Func.t * L1.SPFA.Immutable.t) List.t)
+    (ga : L1.SPFA.Immutable.t) : L2.Block.t =
   let astate = L1.FSAbsD.AbsLocMapD.find_opt b.loc ga.states.pre_state in
   let body, final_a =
     match astate with
@@ -55,13 +72,20 @@ let translate_block (b : L1.Block.t) (ga : L1.SPFA.Immutable.t) : L2.Block.t =
         ( List.map (fun i -> translate_inst i ga L1.AbsState.top) b.body,
           L1.AbsState.top )
   in
-  { fLoc = b.fLoc; loc = b.loc; body; jmp = translate_jmp b.jmp ga final_a }
+  {
+    fLoc = b.fLoc;
+    loc = b.loc;
+    body;
+    jmp = translate_jmp b.jmp alist ga final_a;
+  }
 
-let translate_func (f : L1.Func.t) (a : L1.SPFA.Immutable.t) : L2.Func.t =
+let translate_func (f : L1.Func.t)
+    (alist : (L1.Func.t * L1.SPFA.Immutable.t) List.t) (a : L1.SPFA.Immutable.t)
+    : L2.Func.t =
   {
     nameo = f.nameo;
     entry = f.entry;
-    blocks = List.map (fun b -> translate_block b a) f.blocks;
+    blocks = List.map (fun b -> translate_block b alist a) f.blocks;
     boundaries = f.boundaries;
     sp_diff = 8L;
     sp_boundary =
@@ -75,15 +99,14 @@ let translate_func (f : L1.Func.t) (a : L1.SPFA.Immutable.t) : L2.Func.t =
   }
 
 let translate_prog (p1 : L1.Prog.t) (sp_num : Int32.t) : L2.Prog.t =
-  let funcs =
-    List.map
-      (fun f -> translate_func f (L1.SPFA.Immutable.analyze f sp_num))
-      p1.funcs
+  let ares =
+    List.map (fun f -> (f, L1.SPFA.Immutable.analyze f sp_num)) p1.funcs
   in
+  let funcs = List.map (fun (f, r) -> translate_func f ares r) ares in
   { sp_num; funcs; rom = p1.rom; externs = p1.externs }
 
 let translate_prog_from_spfa (p1 : L1.Prog.t)
     (spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list) (sp_num : Int32.t) :
     L2.Prog.t =
-  let funcs = List.map (fun (f, a) -> translate_func f a) spfa_res in
+  let funcs = List.map (fun (f, a) -> translate_func f spfa_res a) spfa_res in
   { sp_num; funcs; rom = p1.rom; externs = p1.externs }

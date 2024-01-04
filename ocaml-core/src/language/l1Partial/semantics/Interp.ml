@@ -99,7 +99,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
             Error
               (Format.asprintf "ret to %a: Expected %a" Value.pp retn Loc.pp
                  retn'))
-  | Junimplemented -> Error "unimplemented jump"
+  | Jtailcall _ | Jtailcall_ind _ | Junimplemented -> Error "unimplemented jump"
   | JswitchStop _ -> Error "switch stop"
 
 let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =

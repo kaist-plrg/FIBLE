@@ -98,7 +98,7 @@ let compute_dd_jmp (j : Jmp.t) : astate =
   match j with
   | Jmp.Jjump_ind (VarNode.Register r, _)
   | Jmp.Jcbranch (VarNode.Register r, _, _)
-  | Jmp.Jcall_ind (_, VarNode.Register r, _) ->
+  | Jmp.Jcall_ind (_, _, VarNode.Register r, _) ->
       {
         must_def_regs = RegIdSetD.bot;
         may_def_regs = RegIdSetD.bot;
@@ -176,7 +176,7 @@ module RegAnalysisDomain = struct
         (fst a, accumulate_astate (snd a) (compute_dd_block bs.block))
     | ICFG.EdgeLabel.Flow -> (
         match bs.block.jmp.jmp with
-        | Jmp.Jcall (_, t, _) ->
+        | Jmp.Jcall (_, _, t, _) ->
             ( fst a,
               accumulate_astate (snd a)
                 (LocMap.find_opt t (fst a) |> Option.value ~default) )

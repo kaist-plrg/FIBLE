@@ -68,17 +68,18 @@ let to_graph (p : Prog.t) : G.t =
                 G.add_edge_e g
                   ( { block = b; time = Post },
                     (match b.jmp.jmp with
-                    | Jcall _ | Jcall_ind _ -> Call
+                    | Jcall _ | Jcall_ind _ | Jtailcall _ | Jtailcall_ind _ ->
+                        Call
                     | _ -> Flow),
                     { block = b'; time = Pre } ))
               g
               (match b.jmp.jmp with
-              | Jcall (_, t, _) ->
+              | Jcall (_, _, t, _) | Jtailcall (_, _, t) ->
                   LocMap.find_opt t bbMap
                   |> Fun.flip Option.bind (fun (bbs : Block.t LocMap.t) ->
                          LocMap.find_opt t bbs)
                   |> Option.to_list
-              | Jcall_ind (_, _, _) -> []
+              | Jcall_ind _ | Jtailcall_ind _ -> []
               | Jjump n | Jfallthrough n ->
                   LocMap.find_opt n bbs |> Option.to_list
               | Junimplemented -> []
@@ -102,7 +103,7 @@ let to_graph (p : Prog.t) : G.t =
           G.pred g { block = entry; time = Pre }
           |> List.filter_map (fun (b : vertex_t) ->
                  match b.block.jmp.jmp with
-                 | Jcall (_, _, r) | Jcall_ind (_, _, r) ->
+                 | Jcall (_, _, _, r) | Jcall_ind (_, _, _, r) ->
                      LocMap.find_opt b.block.fLoc bbMap
                      |> Fun.flip Option.bind (fun (bbs : Block.t LocMap.t) ->
                             LocMap.find_opt b.block.loc bbs)

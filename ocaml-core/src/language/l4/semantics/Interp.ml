@@ -250,9 +250,9 @@ let step_call_extern (p : Prog.t) (spdiff : Int64.t) (name : String.t)
        }
        retv)
 
-let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
-    (inputs : VarNode.t List.t) (calln : Loc.t) (retn : Loc.t) (s : State.t) :
-    (State.t, String.t) Result.t =
+let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
+    (outputs : RegId.t List.t) (inputs : VarNode.t List.t) (calln : Loc.t)
+    (retn : Loc.t) (s : State.t) : (State.t, String.t) Result.t =
   match AddrMap.find_opt (Loc.to_addr calln) p.externs with
   | None ->
       let* currf =
@@ -275,8 +275,28 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
         RegFile.get_reg s.regs
           { id = RegId.Register 32l; offset = 0l; width = 8l }
       in
-      let* passing_val = Store.load_mem s.sto sp_curr 8l in
-      let nlocal = Frame.store_mem Frame.empty 0L passing_val in
+      let* passing_vals =
+        List.fold_left
+          (fun acc (i, x) ->
+            match acc with
+            | Error _ -> acc
+            | Ok acc ->
+                let* addr = x in
+                let* v = Store.load_mem s.sto addr 8l in
+                Ok ((i, v) :: acc))
+          (Ok [])
+          (Int64.div copydepth 8L |> Int64.succ |> Int64.to_int
+          |> Fun.flip List.init (fun x ->
+                 ( Int64.of_int (x * 8),
+                   Value.eval_bop Bop.Bint_add sp_curr
+                     (Num (NumericValue.of_int64 (Int64.of_int (x * 8)) 8l))
+                     8l )))
+      in
+      let nlocal =
+        List.fold_left
+          (fun acc (i, j) -> Frame.store_mem acc i j)
+          Frame.empty passing_vals
+      in
       let* sp_saved =
         Value.eval_bop Bop.Bint_add sp_curr
           (Num (NumericValue.of_int64 spdiff 8l))
@@ -323,8 +343,9 @@ let step_call (p : Prog.t) (spdiff : Int64.t) (outputs : RegId.t List.t)
         }
   | Some name -> step_call_extern p spdiff name retn s
 
-let step_call_ind (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
-    (s : State.t) : (State.t, String.t) Result.t =
+let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
+    (calln : Loc.t) (retn : Loc.t) (s : State.t) : (State.t, String.t) Result.t
+    =
   match AddrMap.find_opt (Loc.to_addr calln) p.externs with
   | None ->
       let* currf =
@@ -343,6 +364,10 @@ let step_call_ind (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
       let* _ =
         if f.sp_diff = spdiff then Ok ()
         else Error "jcall_ind: spdiff not match"
+      in
+      let*  _ =
+        if (snd f.sp_boundary) <= copydepth then Ok ()
+        else Error "jcall_ind: copydepth not match"
       in
       let* ncont = Cont.of_func_entry_loc p calln in
       let sp_curr =
@@ -413,11 +438,11 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
       else
         let* ncont = Cont.of_block_loc p (fst s.func) ift in
         Ok { s with cont = ncont }
-  | Jcall (spdiff, outputs, inputs, calln, retn) ->
-      step_call p spdiff outputs inputs calln retn s
-  | Jcall_ind (spdiff, callvn, retn) ->
+  | Jcall (copydepth, spdiff, outputs, inputs, calln, retn) ->
+      step_call p copydepth spdiff outputs inputs calln retn s
+  | Jcall_ind (copydepth, spdiff, callvn, retn) ->
       let* calln = Value.try_loc (eval_vn callvn s) in
-      step_call_ind p spdiff calln retn s
+      step_call_ind p copydepth spdiff calln retn s
   | Jret values -> (
       match s.stack with
       | [] -> Error (Format.asprintf "Empty stack")

@@ -9,6 +9,10 @@ let eval_vn (vn : VarNode.t) (s : Store.t) : Value.t =
   match vn with
   | Register r -> Store.get_reg s r
   | Const v -> Num (NumericValue.of_int64 v.value v.width)
+  | Ram v ->
+    Store.load_mem s (Num (NumericValue.of_int64 v.value 8l)) v.width
+    |> Result.get_ok
+
 
 let eval_assignment (a : Assignable.t) (s : Store.t) (outwidth : Int32.t) :
     (Value.t, String.t) Result.t =
@@ -180,8 +184,9 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
       Store.store_mem s addrv sv
   | INop -> Ok s
 
-let step_call (p : Prog.t) (spdiff : Int64.t) (calln : Loc.t) (retn : Loc.t)
-    (s : State.t) : (State.t, String.t) Result.t =
+let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
+    (calln : Loc.t) (retn : Loc.t) (s : State.t) : (State.t, String.t) Result.t
+    =
   match AddrMap.find_opt (Loc.to_addr calln) p.externs with
   | None ->
       let* f =
@@ -288,10 +293,11 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
       else
         let* ncont = Cont.of_block_loc p (fst s.func) ift in
         Ok { s with cont = ncont }
-  | Jcall (spdiff, calln, retn) -> step_call p spdiff calln retn s
-  | Jcall_ind (spdiff, callvn, retn) ->
+  | Jcall (copydepth, spdiff, calln, retn) ->
+      step_call p copydepth spdiff calln retn s
+  | Jcall_ind (copydepth, spdiff, callvn, retn) ->
       let* calln = Value.try_loc (eval_vn callvn s.sto) in
-      step_call p spdiff calln retn s
+      step_call p copydepth spdiff calln retn s
   | Jret -> (
       match s.stack with
       | [] -> Error (Format.asprintf "Empty stack")
@@ -308,7 +314,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
                   { id = RegId.Register 32l; offset = 0l; width = 8l }
                   sp_saved;
             })
-  | Junimplemented -> Error "unimplemented jump"
+  | Jtailcall _ | Jtailcall_ind _ | Junimplemented -> Error "unimplemented jump"
 
 let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   match s.cont with
