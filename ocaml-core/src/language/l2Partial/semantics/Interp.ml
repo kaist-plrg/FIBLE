@@ -10,7 +10,7 @@ let eval_vn (vn : VarNode.t) (s : Store.t) : Value.t =
   | Register r -> Store.get_reg s r
   | Const v -> Num (NumericValue.of_int64 v.value v.width)
   | Ram v ->
-      Store.load_mem s (Num (NumericValue.of_int64 v.value 8l)) v.width
+      Store.load_mem s (Num (NumericValue.of_int64 v.value v.width)) v.width
       |> Result.get_ok
 
 let eval_assignment (a : Assignable.t) (s : Store.t) (outwidth : Int32.t) :
@@ -149,34 +149,18 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
       let sv = eval_vn valuevn s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       Store.store_mem s addrv sv
-  | Ilload (cv, outputid) ->
+  | Isload (cv, outputid) ->
       let addrv =
-        Value.localP
-          { func = fst func; timestamp = snd func; offset = cv.value }
+        Value.NonNum
+          (SP { SPVal.func = fst func; timestamp = snd func; offset = cv.value })
       in
       let* lv = Store.load_mem s addrv outputid.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
       Ok { s with regs = RegFile.add_reg s.regs outputid lv }
-  | Ilstore (cv, valuevn) ->
+  | Isstore (cv, valuevn) ->
       let addrv =
-        Value.localP
-          { func = fst func; timestamp = snd func; offset = cv.value }
-      in
-      let sv = eval_vn valuevn s in
-      [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
-      Store.store_mem s addrv sv
-  | Ipload (cv, outputid) ->
-      let addrv =
-        Value.paramP
-          { func = fst func; timestamp = snd func; offset = cv.value }
-      in
-      let* lv = Store.load_mem s addrv outputid.width in
-      [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-      Ok { s with regs = RegFile.add_reg s.regs outputid lv }
-  | Ipstore (cv, valuevn) ->
-      let addrv =
-        Value.paramP
-          { func = fst func; timestamp = snd func; offset = cv.value }
+        Value.NonNum
+          (SP { SPVal.func = fst func; timestamp = snd func; offset = cv.value })
       in
       let sv = eval_vn valuevn s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
@@ -219,16 +203,17 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
               regs =
                 RegFile.add_reg s.sto.regs
                   { id = RegId.Register 32l; offset = 0l; width = 8l }
-                  (Value.sp
-                     { func = calln; timestamp = Int64Ext.succ s.timestamp });
+                  (NonNum
+                     (SP
+                        {
+                          SPVal.func = calln;
+                          timestamp = Int64Ext.succ s.timestamp;
+                          offset = 0L;
+                        }));
               local =
-                s.sto.local
-                |> LocalMemory.add
-                     (Local, calln, Int64Ext.succ s.timestamp)
-                     nlocal
-                |> LocalMemory.add
-                     (Param, calln, Int64Ext.succ s.timestamp)
-                     nlocal;
+                LocalMemory.add
+                  (calln, Int64Ext.succ s.timestamp)
+                  nlocal s.sto.local;
             };
         }
   | Some name ->
@@ -297,10 +282,16 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
   | Jcall_ind (copydepth, spdiff, callvn, retn) ->
       let* calln = Value.try_loc (eval_vn callvn s.sto) in
       step_call p copydepth spdiff calln retn s
-  | Jret -> (
+  | Jret retvn -> (
+      let* retn = Value.try_loc (eval_vn retvn s.sto) in
       match s.stack with
-      | [] -> Error (Format.asprintf "Empty stack")
+      | [] -> Error (Format.asprintf "ret to %a: Empty stack" Loc.pp retn)
       | (calln, sp_saved, retn') :: stack' ->
+          if Loc.compare retn retn' <> 0 then
+            [%log
+              debug "try to ret %a but supposed ret is %a" Loc.pp retn Loc.pp
+                retn']
+          else ();
           let* ncont = Cont.of_block_loc p (fst calln) retn' in
           Ok
             {

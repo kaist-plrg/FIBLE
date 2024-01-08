@@ -11,7 +11,7 @@ type t =
   | Jcall_ind of (Int64.t * Int64.t * VarNode.t * Loc.t)
   | Jtailcall of (Int64.t * Int64.t * Loc.t)
   | Jtailcall_ind of (Int64.t * Int64.t * VarNode.t)
-  | Jret
+  | Jret of VarNode.t
 
 type t_full = { jmp : t; loc : Loc.t; mnem : Mnemonic.t }
 
@@ -29,15 +29,15 @@ let pp fmt (a : t) =
         Loc.pp i2
   | Jfallthrough i -> Format.fprintf fmt "fallthrough %a;" Loc.pp i
   | Junimplemented -> Format.fprintf fmt "unimplemented"
-  | Jcall (copydepth, spdiff, t, f) ->
+  | Jcall (preservedSp, spdiff, t, f) ->
       Format.fprintf fmt "call (+%Lx) %a; -> %a" spdiff Loc.pp t Loc.pp f
-  | Jcall_ind (copydepth, spdiff, t, f) ->
+  | Jcall_ind (preservedSp, spdiff, t, f) ->
       Format.fprintf fmt "call (+%Lx) *%a; -> %a" spdiff VarNode.pp t Loc.pp f
-  | Jtailcall (copydepth, spdiff, f) ->
+  | Jtailcall (preservedSp, spdiff, f) ->
       Format.fprintf fmt "tailcall (+%Lx) %a;" spdiff Loc.pp f
-  | Jtailcall_ind (copydepth, spdiff, f) ->
+  | Jtailcall_ind (preservedSp, spdiff, f) ->
       Format.fprintf fmt "tailcall (+%Lx) *%a;" spdiff VarNode.pp f
-  | Jret -> Format.fprintf fmt "return;"
+  | Jret i -> Format.fprintf fmt "return %a;" VarNode.pp i
 
 let succ jmp =
   match jmp with
@@ -49,7 +49,7 @@ let succ jmp =
   | Jfallthrough n -> [ n ]
   | Jjump n -> [ n ]
   | Jjump_ind (_, s) -> LocSet.to_seq s |> List.of_seq
-  | Jret -> []
+  | Jret _ -> []
   | Junimplemented -> []
 
 let succ_full jmp = succ jmp.jmp

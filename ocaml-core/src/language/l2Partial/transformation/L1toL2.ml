@@ -1,7 +1,7 @@
 let translate_jmp (j : L1.Jmp.t_full)
     (alist : (L1.Func.t * L1.SPFA.Immutable.t) List.t)
-    (ga : L1.SPFA.Immutable.t) (la : L1.AbsState.t) : L2.Jmp.t_full =
-  let njmp : L2.Jmp.t =
+    (ga : L1.SPFA.Immutable.t) (la : L1.AbsState.t) : Jmp.t_full =
+  let njmp : Jmp.t =
     match j.jmp with
     | Junimplemented -> Junimplemented
     | Jfallthrough l -> Jfallthrough l
@@ -32,8 +32,8 @@ let translate_jmp (j : L1.Jmp.t_full)
   { jmp = njmp; loc = j.loc; mnem = j.mnem }
 
 let translate_inst (i : L1.Inst.t_full) (ga : L1.SPFA.Immutable.t)
-    (la : L1.AbsState.t) : L2.Inst.t_full =
-  let nins : L2.Inst.t =
+    (la : L1.AbsState.t) : Inst.t_full =
+  let nins : Inst.t =
     match i.ins with
     | INop -> INop
     | Iassignment (d, s) -> Iassignment (d, s)
@@ -58,7 +58,7 @@ let translate_inst (i : L1.Inst.t_full) (ga : L1.SPFA.Immutable.t)
 
 let translate_block (b : L1.Block.t)
     (alist : (L1.Func.t * L1.SPFA.Immutable.t) List.t)
-    (ga : L1.SPFA.Immutable.t) : L2.Block.t =
+    (ga : L1.SPFA.Immutable.t) : Block.t =
   let astate = L1.FSAbsD.AbsLocMapD.find_opt b.loc ga.states.pre_state in
   let body, final_a =
     match astate with
@@ -81,7 +81,7 @@ let translate_block (b : L1.Block.t)
 
 let translate_func (f : L1.Func.t)
     (alist : (L1.Func.t * L1.SPFA.Immutable.t) List.t) (a : L1.SPFA.Immutable.t)
-    : L2.Func.t =
+    : Func.t =
   {
     nameo = f.nameo;
     entry = f.entry;
@@ -98,7 +98,7 @@ let translate_func (f : L1.Func.t)
                  "SPFA.Immutable.analyze returned non-constant sp boundary")]);
   }
 
-let translate_prog (p1 : L1.Prog.t) (sp_num : Int32.t) : L2.Prog.t =
+let translate_prog (p1 : L1.Prog.t) (sp_num : Int32.t) : Prog.t =
   let ares =
     List.map (fun f -> (f, L1.SPFA.Immutable.analyze f sp_num)) p1.funcs
   in
@@ -107,6 +107,6 @@ let translate_prog (p1 : L1.Prog.t) (sp_num : Int32.t) : L2.Prog.t =
 
 let translate_prog_from_spfa (p1 : L1.Prog.t)
     (spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list) (sp_num : Int32.t) :
-    L2.Prog.t =
+    Prog.t =
   let funcs = List.map (fun (f, a) -> translate_func f spfa_res a) spfa_res in
   { sp_num; funcs; rom = p1.rom; externs = p1.externs }

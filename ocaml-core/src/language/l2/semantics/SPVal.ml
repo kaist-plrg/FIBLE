@@ -1,6 +1,6 @@
 open Basic
 
-type t = { func : Loc.t; timestamp : Int64.t; offset : Int64.t }
+type t = { func : Loc.t; timestamp : Int64.t }
 
-let pp fmt { func; timestamp; offset } =
-  Format.fprintf fmt "[%a@%Ld]+%Ld" Loc.pp func timestamp offset
+let pp fmt { func; timestamp } =
+  Format.fprintf fmt "[%a@%Ld]" Loc.pp func timestamp

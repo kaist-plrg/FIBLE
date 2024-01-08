@@ -19,7 +19,6 @@ type dump_flag_type = {
   csa : bool ref;
   l3 : bool ref;
   rea : bool ref;
-  l4 : bool ref;
 }
 
 let dump_flag =
@@ -32,7 +31,6 @@ let dump_flag =
     csa = ref false;
     l3 = ref false;
     rea = ref false;
-    l4 = ref false;
   }
 
 let cwd = ref ""
@@ -47,9 +45,8 @@ let speclist =
     ("-dump-spfa", Arg.Set dump_flag.spfa, ": dump spfa");
     ("-dump-l2", Arg.Set dump_flag.l2, ": dump l2");
     ("-dump-csa", Arg.Set dump_flag.csa, ": dump csa");
-    ("-dump-l3", Arg.Set dump_flag.l3, ": dump l3");
     ("-dump-rea", Arg.Set dump_flag.rea, ": dump rea");
-    ("-dump-l4", Arg.Set dump_flag.l4, ": dump l4");
+    ("-dump-l3", Arg.Set dump_flag.l3, ": dump l3");
     ("-func-path", Arg.Set_string func_path, ": target funcs path");
     ("-project-cwd", Arg.Set_string cwd, ": set cwd");
     ("-debug", Arg.Unit (fun _ -> Logger.set_level Logger.Debug), ": debug mode");
@@ -181,31 +178,31 @@ let main () =
         in
         let c6 = Sys.time () in
         [%log info "SPFA time: %f" (c6 -. c5)];
-        let l2 : L2.Prog.t =
-          Translation.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
+        let l2_partial : L2Partial.Prog.t =
+          L2Partial.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
         in
         let c7 = Sys.time () in
         [%log info "L2 translation time: %f" (c7 -. c6)];
-        let csa_res : (L2.Func.t * L2.CSA.Immutable.t) list =
-          l2.funcs |> List.map (fun x -> (x, L2.CSA.Immutable.analyze x))
+        let csa_res : (L2Partial.Func.t * L2Partial.CSA.Immutable.t) list =
+          l2_partial.funcs |> List.map (fun x -> (x, L2Partial.CSA.Immutable.analyze x))
         in
         let c8 = Sys.time () in
         [%log info "CSA time: %f" (c8 -. c7)];
-        let l3 : L3.Prog.t =
-          Translation.L2toL3.translate_prog_from_csa l2 csa_res
+        let l2 : L2.Prog.t =
+          L2.Refine.translate_prog_from_csa l2_partial csa_res
         in
         let c9 = Sys.time () in
-        [%log info "L3 translation time: %f" (c9 -. c8)];
-        let lva_res : (L3.Func.t * L3.REA.astate) List.t =
-          L3.REA.compute_all l3
+        [%log info "L2 translation time: %f" (c9 -. c8)];
+        let lva_res : (L2.Func.t * L2.REA.astate) List.t =
+          L2.REA.compute_all l2
         in
         let c10 = Sys.time () in
         [%log info "REA time: %f" (c10 -. c9)];
-        let l4 : L4.Prog.t =
-          Translation.L3toL4.translate_prog_from_rea l3 lva_res
+        let l3 : L3.Prog.t =
+          L3.L2toL3.translate_prog_from_rea l2 lva_res
         in
         let c11 = Sys.time () in
-        [%log info "L4 translation time: %f" (c11 -. c10)];
+        [%log info "L3 translation time: %f" (c11 -. c10)];
         if
           (!(dump_flag.cfa) || !(dump_flag.l1) || !(dump_flag.spfa)
          || !(dump_flag.l2))
@@ -243,10 +240,6 @@ let main () =
              dump_rea lva_res !dump_path
                (Filename.basename !ifile |> Filename.remove_extension)
            else (); *)
-        if !(dump_flag.l4) then
-          L4.Prog.dump_prog l4 !dump_path
-            (Filename.basename !ifile |> Filename.remove_extension)
-        else ();
         ()
 
 let () = Global.run_main main

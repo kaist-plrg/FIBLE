@@ -85,24 +85,24 @@ let main () =
         let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
           l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l))
         in
-        let l2 : L2.Prog.t =
-          Translation.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
+        let l2_partial : L2Partial.Prog.t =
+          L2Partial.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
         in
-        let csa_res : (L2.Func.t * L2.CSA.Immutable.t) list =
-          l2.funcs |> List.map (fun x -> (x, L2.CSA.Immutable.analyze x))
+        let csa_res : (L2Partial.Func.t * L2Partial.CSA.Immutable.t) list =
+          l2_partial.funcs |> List.map (fun x -> (x, L2Partial.CSA.Immutable.analyze x))
+        in
+        let l2 : L2.Prog.t =
+          L2.Refine.translate_prog_from_csa l2_partial csa_res
+        in
+        let lva_res : (L2.Func.t * L2.REA.astate) List.t =
+          L2.REA.compute_all l2
         in
         let l3 : L3.Prog.t =
-          Translation.L2toL3.translate_prog_from_csa l2 csa_res
-        in
-        let lva_res : (L3.Func.t * L3.REA.astate) List.t =
-          L3.REA.compute_all l3
-        in
-        let l4 : L4.Prog.t =
-          Translation.L3toL4.translate_prog_from_rea l3 lva_res
+          L3.L2toL3.translate_prog_from_rea l2 lva_res
         in
         (match
-           L4.Interp.interp l4
-             (L4.Init.from_signature server.regspec.base_size l4
+        L3.Interp.interp l3
+             (L3.Init.from_signature server.regspec.base_size l3
                 (List.find (fun x -> fst x = "main") func_with_addrs |> snd))
          with
         | Ok _ -> [%log info "Success"]

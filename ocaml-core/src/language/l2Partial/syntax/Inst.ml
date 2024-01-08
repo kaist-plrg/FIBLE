@@ -3,10 +3,8 @@ open Basic
 type t =
   | Iload of (VarNode.t * VarNode.t * RegId.t_full)
   | Istore of (VarNode.t * VarNode.t * VarNode.t)
-  | Ilload of (Const.t * RegId.t_full)
-  | Ilstore of (Const.t * VarNode.t)
-  | Ipload of (Const.t * RegId.t_full)
-  | Ipstore of (Const.t * VarNode.t)
+  | Isload of (Const.t * RegId.t_full)
+  | Isstore of (Const.t * VarNode.t)
   | Iassignment of (Assignable.t * RegId.t_full)
   | INop
 
@@ -20,16 +18,12 @@ let pp (fmt : Format.formatter) (p : t) =
   | Istore (i0, i1, i2) ->
       Format.fprintf fmt "*[%a]%a = %a;" VarNode.pp i0 VarNode.pp i1 VarNode.pp
         i2
-  | Ilload (i0, o) ->
-      Format.fprintf fmt "%a = local[%a];" RegId.pp_full o Const.pp i0
-  | Ilstore (i0, i1) ->
-      Format.fprintf fmt "local[%a] = %a;" Const.pp i0 VarNode.pp i1
-  | Ipload (i0, o) ->
-      Format.fprintf fmt "%a = param[%a];" RegId.pp_full o Const.pp i0
-  | Ipstore (i0, i1) ->
-      Format.fprintf fmt "param[%a] = %a;" Const.pp i0 VarNode.pp i1
-  | Iassignment (i0, o) ->
-      Format.fprintf fmt "%a = %a;" RegId.pp_full o Assignable.pp i0
+  | Isload (i, o) ->
+      Format.fprintf fmt "%a = stack[%a];" RegId.pp_full o Const.pp i
+  | Isstore (i, o) ->
+      Format.fprintf fmt "stack[%a] = %a;" Const.pp i VarNode.pp o
+  | Iassignment (i, o) ->
+      Format.fprintf fmt "%a = %a;" RegId.pp_full o Assignable.pp i
   | INop -> Format.fprintf fmt "nop;"
 
 let pp_full (fmt : Format.formatter) (p : t_full) =

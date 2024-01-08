@@ -4,7 +4,6 @@ open Basic_collection
 type t = {
   timestamp : Int64.t;
   sto : Store.t;
-  regs : RegFile.t;
   cont : Cont.t;
   stack : Stack.t;
   func : Loc.t * Int64.t;

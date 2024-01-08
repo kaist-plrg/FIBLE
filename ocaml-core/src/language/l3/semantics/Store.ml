@@ -2,12 +2,7 @@ open Basic
 open Basic_collection
 open Common_language
 
-type t = { regs : RegFile.t; mem : Memory.t; local : LocalMemory.t }
-
-let add_reg (s : t) (r : RegId.t_full) (v : Value.t) : t =
-  { s with regs = RegFile.add_reg s.regs r v }
-
-let get_reg (s : t) (r : RegId.t_full) : Value.t = RegFile.get_reg s.regs r
+type t = { mem : Memory.t; local : LocalMemory.t }
 
 let load_mem_global (s : t) (addr : Addr.t) (width : Int32.t) : Value.t =
   Memory.load_mem s.mem addr width
@@ -57,6 +52,17 @@ let load_string (s : t) (v : Value.t) : (String.t, String.t) Result.t =
   | NonNum (SP sv) -> Error (Format.asprintf "load: SP %a" SPVal.pp sv)
   | NonNum (Undef _) -> Error "load: Undefined address"
 
+let load_bytes (s : t) (v : Value.t) (width : Int32.t) :
+    (String.t, String.t) Result.t =
+  match v with
+  | Num adv ->
+      let addr = NumericValue.to_addr adv in
+      Memory.load_bytes s.mem addr width
+  | NonNum (ParamP pv) -> LocalMemory.load_bytes_param s.local pv width
+  | NonNum (LocalP lv) -> LocalMemory.load_bytes_local s.local lv width
+  | NonNum (SP sv) -> Error (Format.asprintf "load: SP %a" SPVal.pp sv)
+  | NonNum (Undef _) -> Error "load: Undefined address"
+
 let store_mem (s : t) (v : Value.t) (e : Value.t) : (t, String.t) Result.t =
   match v with
   | Num adv ->
@@ -64,5 +70,17 @@ let store_mem (s : t) (v : Value.t) (e : Value.t) : (t, String.t) Result.t =
       Ok (store_mem_global s addr e)
   | NonNum (ParamP pv) -> Ok (store_mem_param s pv e)
   | NonNum (LocalP lv) -> Ok (store_mem_local s lv e)
+  | NonNum (SP sv) -> Error (Format.asprintf "store: SP %a" SPVal.pp sv)
+  | NonNum (Undef _) -> Error "store: Undefined address"
+
+let store_bytes (s : t) (v : Value.t) (e : String.t) : (t, String.t) Result.t =
+  match v with
+  | Num adv ->
+      let addr = NumericValue.to_addr adv in
+      Ok { s with mem = Memory.store_bytes s.mem addr e }
+  | NonNum (ParamP pv) ->
+      Ok { s with local = LocalMemory.store_bytes_param s.local pv e }
+  | NonNum (LocalP lv) ->
+      Ok { s with local = LocalMemory.store_bytes_local s.local lv e }
   | NonNum (SP sv) -> Error (Format.asprintf "store: SP %a" SPVal.pp sv)
   | NonNum (Undef _) -> Error "store: Undefined address"

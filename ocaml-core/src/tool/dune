@@ -24,11 +24,11 @@
   basic
   l0
   world
+  l1Partial
   l1
+  l2Partial
   l2
-  l3
-  l4
-  translation)
+  l3)
  (modules interpreter))
 
 (executable
@@ -47,11 +47,11 @@
   basic
   l0
   world
+  l1Partial
   l1
+  l2Partial
   l2
-  l3
-  l4
-  translation)
+  l3)
  (modules decompiler))
 
 (executable
@@ -70,8 +70,10 @@
   basic
   l0
   world
+  l1Partial
   l1
+  l2Partial
   l2
-  translation
+  l3
   simulation)
  (modules sim_checker))

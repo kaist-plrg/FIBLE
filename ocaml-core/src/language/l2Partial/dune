@@ -1,36 +1,35 @@
 (include_subdirs unqualified)
 
 (library
- (name l4)
+ (name l2Partial)
  (flags -w -20-33-3)
  (preprocess
   (pps ppx_log))
- (libraries
-  ocamlgraph
-  stdlibExt
-  ppx_log
-  basic
-  basic_domain
-  common_language
-  l3)
+ (libraries stdlibExt ppx_log basic basic_domain l1 common_language)
  (modules
   Block
   Func
   Inst
   Jmp
   Prog
-  LPVal
-  PPVal
   SPVal
   NonNumericValue
   Value
+  Cont
+  Stack
   RegFile
   Memory
   Frame
   LocalMemory
-  Cont
-  Stack
   Store
   State
   Init
-  Interp))
+  Interp
+  ASymb
+  ARegFile
+  AStack
+  AbsState
+  FSAbsD
+  CSA
+  L1toL2
+  ))

@@ -80,8 +80,8 @@ let main () =
         let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
           l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l))
         in
-        let l2 : L2.Prog.t =
-          Translation.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
+        let l2 : L2Partial.Prog.t =
+          L2Partial.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
         in
         (match
            Simulation.Check_simulation.run server.regspec.base_size l0 l1 l2

@@ -29,7 +29,7 @@ let pp fmt p =
   Format.fprintf fmt "@]"
 
 let dump_prog (p : t) (path : String.t) (filename : String.t) : unit =
-  let oc = open_out (Filename.concat path (filename ^ ".l2")) in
+  let oc = open_out (Filename.concat path (filename ^ ".l3")) in
   let fmt = Format.formatter_of_out_channel oc in
   Format.fprintf fmt "%a%!" pp p;
   close_out oc
