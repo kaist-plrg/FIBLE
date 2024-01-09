@@ -18,52 +18,60 @@ let translate_jmp (j : L2.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
     | Junimplemented -> Junimplemented
     | Jfallthrough n -> Jfallthrough n
     | Jjump n -> Jjump n
-    | Jjump_ind vs -> Jjump_ind vs
-    | Jcbranch vs -> Jcbranch vs
-    | L2.Jmp.Jcall (copydepth, spdiff, target, retn) ->
+    | Jjump_ind { target; candidates; sound } ->
+        Jjump_ind { target; candidates; sound }
+    | Jcbranch { condition; target_true; target_false } ->
+        Jcbranch { condition; target_true; target_false }
+    | L2.Jmp.Jcall { reserved_stack; sp_diff; target; fallthrough } ->
         let inputs, outputs =
           match LocMap.find_opt target fMap with
           | Some (i, o) -> (i, o)
           | None -> (default_input, default_output)
         in
         Jcall
-          ( copydepth,
-            spdiff,
-            outputs,
-            inputs
-            |> List.map (fun n ->
-                   VarNode.Register { id = n; offset = 0l; width = 8l }),
-            target,
-            retn )
-    | L2.Jmp.Jcall_ind (copydepth, spdiff, targetvn, retn) ->
-        Jcall_ind (copydepth, spdiff, targetvn, retn)
-    | L2.Jmp.Jtailcall (copydepth, spdiff, target) ->
+          {
+            reserved_stack;
+            sp_diff;
+            outputs;
+            inputs =
+              inputs
+              |> List.map (fun n ->
+                     VarNode.Register { id = n; offset = 0l; width = 8l });
+            target;
+            fallthrough;
+          }
+    | Jcall_ind { reserved_stack; sp_diff; target; fallthrough } ->
+        Jcall_ind { reserved_stack; sp_diff; target; fallthrough }
+    | Jtailcall { reserved_stack; sp_diff; target } ->
         let inputs, outputs =
           match LocMap.find_opt target fMap with
           | Some (i, o) -> (i, o)
           | None -> (default_input, default_output)
         in
-        let retvs =
+        let returns =
           snd la
           |> List.map (fun n ->
                  VarNode.Register { id = n; offset = 0l; width = 8l })
         in
         Jtailcall
-          ( copydepth,
-            spdiff,
-            retvs,
-            outputs,
-            inputs
-            |> List.map (fun n ->
-                   VarNode.Register { id = n; offset = 0l; width = 8l }),
-            target )
-    | L2.Jmp.Jtailcall_ind (copydepth, spdiff, targetvn) ->
-        let retvs =
+          {
+            reserved_stack;
+            sp_diff;
+            returns;
+            outputs;
+            inputs =
+              inputs
+              |> List.map (fun n ->
+                     VarNode.Register { id = n; offset = 0l; width = 8l });
+            target;
+          }
+    | L2.Jmp.Jtailcall_ind { reserved_stack; sp_diff; target } ->
+        let returns =
           snd la
           |> List.map (fun n ->
                  VarNode.Register { id = n; offset = 0l; width = 8l })
         in
-        Jtailcall_ind (copydepth, spdiff, retvs, targetvn)
+        Jtailcall_ind { reserved_stack; sp_diff; returns; target }
     | L2.Jmp.Jret ->
         let retvs =
           snd la

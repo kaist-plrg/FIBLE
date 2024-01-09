@@ -21,22 +21,27 @@ let eval_assignment (a : Assignable.t) (s : State.t) (outwidth : Int32.t) :
 let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
     (State.t, String.t) Result.t =
   match ins with
-  | Iassignment (a, o) ->
-      let* v = eval_assignment a s o.width in
-      Ok { s with regs = RegFile.add_reg s.regs o v; pc = Prog.fallthru p s.pc }
-  | Iload (_, addrvn, outputid) ->
-      let addr = eval_vn addrvn s in
-      let v = State.load_mem s (Value.to_addr addr) outputid.width in
+  | Iassignment { expr; output } ->
+      let* v = eval_assignment expr s output.width in
+      Ok
+        {
+          s with
+          regs = RegFile.add_reg s.regs output v;
+          pc = Prog.fallthru p s.pc;
+        }
+  | Iload { pointer; output; _ } ->
+      let addr = eval_vn pointer s in
+      let v = State.load_mem s (Value.to_addr addr) output.width in
       [%log debug "Loading %a from %a" Value.pp v Value.pp addr];
       Ok
         {
           s with
-          regs = RegFile.add_reg s.regs outputid v;
+          regs = RegFile.add_reg s.regs output v;
           pc = Prog.fallthru p s.pc;
         }
-  | Istore (_, addrvn, valuevn) ->
-      let addr = eval_vn addrvn s in
-      let v = eval_vn valuevn s in
+  | Istore { pointer; value; _ } ->
+      let addr = eval_vn pointer s in
+      let v = eval_vn value s in
       [%log debug "Storing %a at %a" Value.pp v Value.pp addr];
       Ok
         {
@@ -45,10 +50,10 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
           pc = Prog.fallthru p s.pc;
         }
   | Ijump l -> Ok { s with pc = l }
-  | Icbranch (vn, l) ->
-      let v = eval_vn vn s in
+  | Icbranch { condition; target } ->
+      let v = eval_vn condition s in
       if Value.isZero v then Ok { s with pc = Prog.fallthru p s.pc }
-      else Ok { s with pc = l }
+      else Ok { s with pc = target }
   | Ijump_ind vn ->
       let v = eval_vn vn s in
       Ok { s with pc = Value.to_loc v }

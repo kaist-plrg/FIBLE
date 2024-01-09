@@ -21,17 +21,17 @@ let eval_assignment (a : Assignable.t) (s : Store.t) (outwidth : Int32.t) :
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
     (Store.t, String.t) Result.t =
   match ins with
-  | Iassignment (a, o) ->
-      let* v = eval_assignment a s o.width in
-      Ok { s with regs = RegFile.add_reg s.regs o v }
-  | Iload (_, addrvn, outputid) ->
-      let addr = eval_vn addrvn s in
-      let v = Store.load_mem s (Value.to_addr addr) outputid.width in
+  | Iassignment { expr; output } ->
+      let* v = eval_assignment expr s output.width in
+      Ok { s with regs = RegFile.add_reg s.regs output v }
+  | Iload { pointer; output; _ } ->
+      let addr = eval_vn pointer s in
+      let v = Store.load_mem s (Value.to_addr addr) output.width in
       [%log debug "Loading %a from %a" Value.pp v Value.pp addr];
-      Ok { s with regs = RegFile.add_reg s.regs outputid v }
-  | Istore (_, addrvn, valuevn) ->
-      let addr = eval_vn addrvn s in
-      let v = eval_vn valuevn s in
+      Ok { s with regs = RegFile.add_reg s.regs output v }
+  | Istore { pointer; value; _ } ->
+      let addr = eval_vn pointer s in
+      let v = eval_vn value s in
       [%log debug "Storing %a at %a" Value.pp v Value.pp addr];
       Ok { s with mem = Memory.store_mem s.mem (Value.to_addr addr) v }
   | INop -> Ok s
@@ -107,24 +107,24 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
   | Jfallthrough l ->
       let* ncont = Cont.of_block_loc p s.func l in
       Ok { s with cont = ncont }
-  | Jjump_ind (vn, ls, _) ->
-      let v = eval_vn vn s.sto in
-      if LocSet.mem (Value.to_loc v) ls then
+  | Jjump_ind { target; candidates; _ } ->
+      let v = eval_vn target s.sto in
+      if LocSet.mem (Value.to_loc v) candidates then
         let* ncont = Cont.of_block_loc p s.func (Value.to_loc v) in
         Ok { s with cont = ncont }
       else Error "jump_ind: Not a valid jump"
-  | Jcbranch (vn, ift, iff) ->
-      let v = eval_vn vn s.sto in
+  | Jcbranch { condition; target_true; target_false } ->
+      let v = eval_vn condition s.sto in
       if Value.isZero v then
-        let* ncont = Cont.of_block_loc p s.func iff in
+        let* ncont = Cont.of_block_loc p s.func target_false in
         Ok { s with cont = ncont }
       else
-        let* ncont = Cont.of_block_loc p s.func ift in
+        let* ncont = Cont.of_block_loc p s.func target_true in
         Ok { s with cont = ncont }
-  | Jcall (calln, retn) -> step_call p calln retn s
-  | Jcall_ind (callvn, retn) ->
-      let calln = eval_vn callvn s.sto in
-      step_call p (Value.to_loc calln) retn s
+  | Jcall { target; fallthrough } -> step_call p target fallthrough s
+  | Jcall_ind { target; fallthrough } ->
+      let calln = eval_vn target s.sto in
+      step_call p (Value.to_loc calln) fallthrough s
   | Jtailcall calln -> step_tailcall p calln s
   | Jtailcall_ind callvn ->
       let calln = eval_vn callvn s.sto in

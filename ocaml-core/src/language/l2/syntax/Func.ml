@@ -44,7 +44,7 @@ let get_call_targets (f : t) : Loc.t list =
   List.fold_left
     (fun acc (b : Block.t) ->
       match b.jmp.jmp with
-      | Jcall (_, _, loc, _) -> loc :: acc
-      | Jtailcall (_, _, loc) -> loc :: acc
+      | Jcall { target; _ } -> target :: acc
+      | Jtailcall { target; _ } -> target :: acc
       | _ -> acc)
     [] f.blocks

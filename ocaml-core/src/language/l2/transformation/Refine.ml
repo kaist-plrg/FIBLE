@@ -1,37 +1,46 @@
-let translate_jmp (j : L2Partial.Jmp.t_full) (la : L2Partial.AbsState.t) : Jmp.t_full =
+let translate_jmp (j : L2Partial.Jmp.t_full) (la : L2Partial.AbsState.t) :
+    Jmp.t_full =
   let njmp : Jmp.t =
     match j.jmp with
     | Junimplemented -> Junimplemented
     | Jfallthrough l -> Jfallthrough l
     | Jjump l -> Jjump l
-    | Jjump_ind (vn, ls) -> Jjump_ind (vn, ls)
-    | Jcbranch (vn, lt, lf) -> Jcbranch (vn, lt, lf)
-    | Jcall (copydepth, spdiff, l, lret) -> Jcall (copydepth, spdiff, l, lret)
-    | Jcall_ind (copydepth, spdiff, vn, lret) ->
-        Jcall_ind (copydepth, spdiff, vn, lret)
-    | Jtailcall (copydepth, spdiff, l) -> Jtailcall (copydepth, spdiff, l)
-    | Jtailcall_ind (copydepth, spdiff, vn) ->
-        Jtailcall_ind (copydepth, spdiff, vn)
+    | Jjump_ind { target; candidates; sound } ->
+        Jjump_ind { target; candidates; sound }
+    | Jcbranch { condition; target_true; target_false } ->
+        Jcbranch { condition; target_true; target_false }
+    | Jcall { reserved_stack; sp_diff; target; fallthrough } ->
+        Jcall { reserved_stack; sp_diff; target; fallthrough }
+    | Jcall_ind { reserved_stack; sp_diff; target; fallthrough } ->
+        Jcall_ind { reserved_stack; sp_diff; target; fallthrough }
+    | Jtailcall { reserved_stack; sp_diff; target } ->
+        Jtailcall { reserved_stack; sp_diff; target }
+    | Jtailcall_ind { reserved_stack; sp_diff; target } ->
+        Jtailcall_ind { reserved_stack; sp_diff; target }
     | Jret vn -> Jret
   in
 
   { jmp = njmp; loc = j.loc; mnem = j.mnem }
 
-let translate_inst (i : L2Partial.Inst.t_full) (la : L2Partial.AbsState.t) : Inst.t_full =
+let translate_inst (i : L2Partial.Inst.t_full) (la : L2Partial.AbsState.t) :
+    Inst.t_full =
   let nins : Inst.t =
     match i.ins with
     | INop -> INop
-    | Iassignment (d, s) -> Iassignment (d, s)
-    | Iload (d, s, o) -> Iload (d, s, o)
-    | Istore (d, o, s) -> Istore (d, o, s)
-    | Isload (offset, o) ->
-        if offset.value > 0L then Ipload (offset, o) else Ilload (offset, o)
-    | Isstore (offset, o) ->
-        if offset.value > 0L then Ilstore (offset, o) else Ilstore (offset, o)
+    | Iassignment { expr; output } -> Iassignment { expr; output }
+    | Iload { space; pointer; output } -> Iload { space; pointer; output }
+    | Istore { space; pointer; value } -> Istore { space; pointer; value }
+    | Isload { offset; output } ->
+        if offset.value > 0L then Ipload { offset; output }
+        else Ilload { offset; output }
+    | Isstore { offset; value } ->
+        if offset.value > 0L then Ilstore { offset; value }
+        else Ilstore { offset; value }
   in
   { ins = nins; loc = i.loc; mnem = i.mnem }
 
-let translate_block (b : L2Partial.Block.t) (ga : L2Partial.CSA.Immutable.t) : Block.t =
+let translate_block (b : L2Partial.Block.t) (ga : L2Partial.CSA.Immutable.t) :
+    Block.t =
   let astate = L1.FSAbsD.AbsLocMapD.find_opt b.loc ga.pre_state in
   let body, final_a =
     match astate with
@@ -47,7 +56,8 @@ let translate_block (b : L2Partial.Block.t) (ga : L2Partial.CSA.Immutable.t) : B
   in
   { fLoc = b.fLoc; loc = b.loc; body; jmp = translate_jmp b.jmp final_a }
 
-let translate_func (f : L2Partial.Func.t) (a : L2Partial.CSA.Immutable.t) : Func.t =
+let translate_func (f : L2Partial.Func.t) (a : L2Partial.CSA.Immutable.t) :
+    Func.t =
   {
     nameo = f.nameo;
     entry = f.entry;
@@ -59,7 +69,9 @@ let translate_func (f : L2Partial.Func.t) (a : L2Partial.CSA.Immutable.t) : Func
 
 let translate_prog (p1 : L2Partial.Prog.t) : Prog.t =
   let funcs =
-    List.map (fun f -> translate_func f (L2Partial.CSA.Immutable.analyze f)) p1.funcs
+    List.map
+      (fun f -> translate_func f (L2Partial.CSA.Immutable.analyze f))
+      p1.funcs
   in
   { sp_num = p1.sp_num; funcs; rom = p1.rom; externs = p1.externs }
 

@@ -6,26 +6,43 @@ let translate_jmp (j : L1.Jmp.t_full)
     | Junimplemented -> Junimplemented
     | Jfallthrough l -> Jfallthrough l
     | Jjump l -> Jjump l
-    | Jjump_ind (vn, ls, _) -> Jjump_ind (vn, ls)
-    | Jcbranch (vn, lt, lf) -> Jcbranch (vn, lt, lf)
-    | Jcall (l, lret) -> (
+    | Jjump_ind { target; candidates; sound } ->
+        Jjump_ind { target; candidates; sound }
+    | Jcbranch { condition; target_true; target_false } ->
+        Jcbranch { condition; target_true; target_false }
+    | Jcall { target; fallthrough } ->
         let x =
-          List.find_opt (fun ((f, _) : L1.Func.t * _) -> f.entry = l) alist
+          List.find_opt (fun ((f, _) : L1.Func.t * _) -> f.entry = target) alist
           |> Option.map (fun ((_, a) : _ * L1.SPFA.Immutable.t) -> a.accesses)
         in
-        match x with
-        | Some (Fin s) -> Jcall (L1.AccessD.FinSet.max_elt s, 8L, l, lret)
-        | _ -> Jcall (0L, 8L, l, lret))
-    | Jcall_ind (vn, lret) -> Jcall_ind (0L, 8L, vn, lret)
-    | Jtailcall l -> (
+        Jcall
+          {
+            reserved_stack =
+              (match x with
+              | Some (Fin s) -> L1.AccessD.FinSet.max_elt s
+              | _ -> 0L);
+            sp_diff = 8L;
+            target;
+            fallthrough;
+          }
+    | Jcall_ind { target; fallthrough } ->
+        Jcall_ind { reserved_stack = 0L; sp_diff = 8L; target; fallthrough }
+    | Jtailcall target ->
         let x =
-          List.find_opt (fun ((f, _) : L1.Func.t * _) -> f.entry = l) alist
+          List.find_opt (fun ((f, _) : L1.Func.t * _) -> f.entry = target) alist
           |> Option.map (fun ((_, a) : _ * L1.SPFA.Immutable.t) -> a.accesses)
         in
-        match x with
-        | Some (Fin s) -> Jtailcall (L1.AccessD.FinSet.max_elt s, 8L, l)
-        | _ -> Jtailcall (0L, 8L, l))
-    | Jtailcall_ind vn -> Jtailcall_ind (0L, 8L, vn)
+        Jtailcall
+          {
+            reserved_stack =
+              (match x with
+              | Some (Fin s) -> L1.AccessD.FinSet.max_elt s
+              | _ -> 0L);
+            sp_diff = 8L;
+            target;
+          }
+    | Jtailcall_ind target ->
+        Jtailcall_ind { reserved_stack = 0L; sp_diff = 8L; target }
     | Jret vn -> Jret vn
   in
 
@@ -36,23 +53,23 @@ let translate_inst (i : L1.Inst.t_full) (ga : L1.SPFA.Immutable.t)
   let nins : Inst.t =
     match i.ins with
     | INop -> INop
-    | Iassignment (d, s) -> Iassignment (d, s)
-    | Iload (d, s, o) -> (
-        match s with
+    | Iassignment { expr; output } -> Iassignment { expr; output }
+    | Iload { space; pointer; output } -> (
+        match pointer with
         | Register r -> (
             match L1.AbsState.find_opt r.id la with
             | Some { have_sp = Flat true; offset = Flat c } ->
-                Isload ({ value = c; width = 8l }, o)
-            | _ -> Iload (d, s, o))
-        | _ -> Iload (d, s, o))
-    | Istore (d, o, s) -> (
-        match o with
+                Isload { offset = { value = c; width = 8l }; output }
+            | _ -> Iload { space; pointer; output })
+        | _ -> Iload { space; pointer; output })
+    | Istore { space; pointer; value } -> (
+        match pointer with
         | Register r -> (
             match L1.AbsState.find_opt r.id la with
             | Some { have_sp = Flat true; offset = Flat c } ->
-                Isstore ({ value = c; width = 8l }, s)
-            | _ -> Istore (d, o, s))
-        | _ -> Istore (d, o, s))
+                Isstore { offset = { value = c; width = 8l }; value }
+            | _ -> Istore { space; pointer; value })
+        | _ -> Istore { space; pointer; value })
   in
   { ins = nins; loc = i.loc; mnem = i.mnem }
 

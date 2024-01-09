@@ -89,36 +89,43 @@ let compute_ud_assignment (a : Assignable.t) : RegIdSet.t =
 
 let compute_ud_inst (astate : abstr) (i : Inst.t_full) : abstr * ALocSet.t =
   match i.ins with
-  | Iload (_, Basic.VarNode.Register rm, ro) ->
-      ( update_reg_def_loc astate ro.id i.loc,
+  | Iload { pointer = Basic.VarNode.Register rm; output; _ } ->
+      ( update_reg_def_loc astate output.id i.loc,
         ALocSet.union (get_reg_def_locs astate rm.id) astate.store_locs )
-  | Istore (_, Basic.VarNode.Register rm, Basic.VarNode.Register rs) ->
+  | Iload { pointer = Basic.VarNode.Const _; output; _ } ->
+      (update_reg_def_loc astate output.id i.loc, astate.store_locs)
+  | Istore
+      {
+        pointer = Basic.VarNode.Register rm;
+        value = Basic.VarNode.Register rs;
+        _;
+      } ->
       ( update_store_loc astate i.loc,
         ALocSet.union
           (get_reg_def_locs astate rm.id)
           (get_reg_def_locs astate rs.id) )
-  | Istore (_, Basic.VarNode.Const _, Basic.VarNode.Register rs) ->
+  | Istore
+      { pointer = Basic.VarNode.Const _; value = Basic.VarNode.Register rs; _ }
+    ->
       (update_store_loc astate i.loc, get_reg_def_locs astate rs.id)
-  | Iload (_, Basic.VarNode.Const _, ro) ->
-      (update_reg_def_loc astate ro.id i.loc, astate.store_locs)
-  | Iassignment (a, ro) ->
-      ( update_reg_def_loc astate ro.id i.loc,
-        (compute_ud_assignment a |> Fun.flip RegIdSet.fold)
+  | Iassignment { expr; output } ->
+      ( update_reg_def_loc astate output.id i.loc,
+        (compute_ud_assignment expr |> Fun.flip RegIdSet.fold)
           (fun r s -> ALocSet.union (get_reg_def_locs astate r) s)
-          (if has_mem a then astate.store_locs else ALocSet.empty) )
+          (if has_mem expr then astate.store_locs else ALocSet.empty) )
   | INop -> (astate, ALocSet.empty)
   | _ -> (astate, ALocSet.empty)
 
 let compute_ud_jmp (astate : abstr) (j : Jmp.t_full) : abstr * ALocSet.t =
   match j.jmp with
-  | Jmp.Jjump_ind (VarNode.Register r, _, _)
-  | Jmp.Jcbranch (VarNode.Register r, _, _)
-  | Jmp.Jcall_ind (VarNode.Register r, _)
+  | Jmp.Jjump_ind { target = VarNode.Register r; _ }
+  | Jmp.Jcbranch { condition = VarNode.Register r; _ }
+  | Jmp.Jcall_ind { target = VarNode.Register r; _ }
   | Jmp.JswitchStop (VarNode.Register r) ->
       (astate, get_reg_def_locs astate r.id)
-  | Jmp.Jjump_ind (VarNode.Ram _, _, _)
-  | Jmp.Jcbranch (VarNode.Ram _, _, _)
-  | Jmp.Jcall_ind (VarNode.Ram _, _)
+  | Jmp.Jjump_ind { target = VarNode.Ram _; _ }
+  | Jmp.Jcbranch { condition = VarNode.Ram _; _ }
+  | Jmp.Jcall_ind { target = VarNode.Ram _; _ }
   | Jmp.JswitchStop (VarNode.Ram _) ->
       (astate, astate.store_locs)
   | _ -> (astate, ALocSet.empty)

@@ -4,40 +4,55 @@ open Basic_collection
 
 let translate_stmt (loc : Loc.t) (i : L0.Inst.t_full) : Inst.t_full =
   match i.ins with
-  | Iassignment (x, e) -> { loc; ins = Iassignment (x, e); mnem = i.mnem }
-  | Iload (i0, i1, o) -> { loc; ins = Iload (i0, i1, o); mnem = i.mnem }
-  | Istore (i0, i1, i2) -> { loc; ins = Istore (i0, i1, i2); mnem = i.mnem }
+  | Iassignment { expr; output } ->
+      { loc; ins = Iassignment { expr; output }; mnem = i.mnem }
+  | Iload { space; pointer; output } ->
+      { loc; ins = Iload { space; pointer; output }; mnem = i.mnem }
+  | Istore { space; pointer; value } ->
+      { loc; ins = Istore { space; pointer; value }; mnem = i.mnem }
   | _ -> { loc; ins = INop; mnem = i.mnem }
 
 let translate_jmp (p : L0.Prog.t) (loc : Loc.t) (i : L0.Inst.t_full)
     (next : Loc.t) (jmps : Loc.t List.t) (known_addrs : LocSet.t LocMap.t) :
     Jmp.t_full =
   match i.ins with
-  | Ijump l ->
+  | Ijump target ->
       {
         loc;
         jmp =
           (if
-             (not (AddrMap.mem (Loc.to_addr l) p.externs))
+             (not (AddrMap.mem (Loc.to_addr target) p.externs))
              && (String.starts_with ~prefix:"J" i.mnem
                 || String.starts_with ~prefix:"M" i.mnem)
-           then Jjump l
-           else if L0.Prog.get_ins p l |> Option.is_some then Jcall (l, next)
-           else Jtailcall l);
+           then Jjump target
+           else if L0.Prog.get_ins p target |> Option.is_some then
+             Jcall { target; fallthrough = next }
+           else Jtailcall target);
         mnem = i.mnem;
       }
-  | Ijump_ind vn ->
+  | Ijump_ind target ->
       {
         loc;
         jmp =
-          (if String.equal i.mnem "RET" then Jret vn
-           else if String.equal i.mnem "CALL" then Jcall_ind (vn, next)
+          (if String.equal i.mnem "RET" then Jret target
+           else if String.equal i.mnem "CALL" then
+             Jcall_ind { target; fallthrough = next }
            else if LocMap.mem loc known_addrs then
-             Jjump_ind (vn, LocMap.find loc known_addrs, false)
-           else JswitchStop vn);
+             Jjump_ind
+               {
+                 target;
+                 candidates = LocMap.find loc known_addrs;
+                 sound = false;
+               }
+           else JswitchStop target);
         mnem = i.mnem;
       }
-  | Icbranch (a, l0) -> { loc; jmp = Jcbranch (a, l0, next); mnem = i.mnem }
+  | Icbranch { condition; target } ->
+      {
+        loc;
+        jmp = Jcbranch { condition; target_true = target; target_false = next };
+        mnem = i.mnem;
+      }
   | Iunimplemented -> { loc; jmp = Junimplemented; mnem = i.mnem }
   | _ -> { loc; jmp = Jfallthrough next; mnem = i.mnem }
 

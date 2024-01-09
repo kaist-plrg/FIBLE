@@ -83,31 +83,39 @@ let pcode_raw_to_pcode (si : SpaceInfo.t) (rspec : RegSpec.t) (p : PCode_Raw.t)
       | _ -> [%log fatal "Jump target is not a constant"])
   in
   let mkJIump _ = RawInst.Ijump_ind (inputs 0) in
-  let mkUop op = RawInst.Iassignment (Auop (op, inputs 0), output ()) in
+  let mkUop op =
+    RawInst.Iassignment { expr = Auop (op, inputs 0); output = output () }
+  in
   let mkBop op =
-    RawInst.Iassignment (Abop (op, inputs 0, inputs 1), output ())
+    RawInst.Iassignment
+      { expr = Abop (op, inputs 0, inputs 1); output = output () }
   in
   let (inst : RawInst.t) =
     match p.opcode with
     | 0l -> Iunimplemented
     | 1l -> (
         match output_raw () with
-        | Register r -> Iassignment (Avar (inputs 0), r)
+        | Register r -> Iassignment { expr = Avar (inputs 0); output = r }
         | Ram { value = a; width = w } ->
             Istore
-              ( Const { value = Int64.of_int32 si.ram; width = 8l },
-                Const { value = a; width = 8l },
-                inputs 0 )
+              {
+                space = Const { value = Int64.of_int32 si.ram; width = 8l };
+                pointer = Const { value = a; width = 8l };
+                value = inputs 0;
+              }
         | _ -> [%log fatal "Output is not a register or ram"])
-    | 2l -> Iload (inputs 0, inputs 1, output ())
-    | 3l -> Istore (inputs 0, inputs 1, inputs 2)
+    | 2l -> Iload { space = inputs 0; pointer = inputs 1; output = output () }
+    | 3l -> Istore { space = inputs 0; pointer = inputs 1; value = inputs 2 }
     | 4l -> mkJump ()
     | 5l ->
         Icbranch
-          ( inputs 1,
-            match inputs 0 with
-            | Ram { value = a; _ } -> (a, 0)
-            | _ -> [%log fatal "Jump target is not a constant"] )
+          {
+            condition = inputs 1;
+            target =
+              (match inputs 0 with
+              | Ram { value = a; _ } -> (a, 0)
+              | _ -> [%log fatal "Jump target is not a constant"]);
+          }
     | 6l -> mkJIump ()
     | 7l -> mkJump ()
     | 8l -> mkJIump ()

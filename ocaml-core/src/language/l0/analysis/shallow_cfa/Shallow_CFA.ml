@@ -48,7 +48,8 @@ let flow_heuristic_simple (p : Prog.t) (l : Loc.t) (i : Inst.t) (m : Mnemonic.t)
       LocMap.find_opt l known_addrs
       |> Option.map (fun s -> HrSound s)
       |> Option.value ~default:HrStop
-  | Icbranch (cn, a), _ -> HrSound (LocSetD.of_list [ a; Prog.fallthru p l ])
+  | Icbranch { target; _ }, _ ->
+      HrSound (LocSetD.of_list [ target; Prog.fallthru p l ])
   | Iunimplemented, _ -> HrExit
   | _ -> HrSound (LocSetD.singleton (Prog.fallthru p l))
 

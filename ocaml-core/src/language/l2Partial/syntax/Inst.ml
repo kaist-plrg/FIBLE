@@ -1,29 +1,29 @@
 open Basic
 
 type t =
-  | Iload of (VarNode.t * VarNode.t * RegId.t_full)
-  | Istore of (VarNode.t * VarNode.t * VarNode.t)
-  | Isload of (Const.t * RegId.t_full)
-  | Isstore of (Const.t * VarNode.t)
-  | Iassignment of (Assignable.t * RegId.t_full)
+  | Iload of { space : VarNode.t; pointer : VarNode.t; output : RegId.t_full }
+  | Istore of { space : VarNode.t; pointer : VarNode.t; value : VarNode.t }
+  | Isload of { offset : Const.t; output : RegId.t_full }
+  | Isstore of { offset : Const.t; value : VarNode.t }
+  | Iassignment of { expr : Assignable.t; output : RegId.t_full }
   | INop
 
 type t_full = { ins : t; loc : Loc.t; mnem : Mnemonic.t }
 
 let pp (fmt : Format.formatter) (p : t) =
   match p with
-  | Iload (i0, i1, o) ->
-      Format.fprintf fmt "%a = *[%a]%a;" RegId.pp_full o VarNode.pp i0
-        VarNode.pp i1
-  | Istore (i0, i1, i2) ->
-      Format.fprintf fmt "*[%a]%a = %a;" VarNode.pp i0 VarNode.pp i1 VarNode.pp
-        i2
-  | Isload (i, o) ->
-      Format.fprintf fmt "%a = stack[%a];" RegId.pp_full o Const.pp i
-  | Isstore (i, o) ->
-      Format.fprintf fmt "stack[%a] = %a;" Const.pp i VarNode.pp o
-  | Iassignment (i, o) ->
-      Format.fprintf fmt "%a = %a;" RegId.pp_full o Assignable.pp i
+  | Iload { space; pointer; output } ->
+      Format.fprintf fmt "%a = *[%a]%a;" RegId.pp_full output VarNode.pp space
+        VarNode.pp pointer
+  | Istore { space; pointer; value } ->
+      Format.fprintf fmt "*[%a]%a = %a;" VarNode.pp space VarNode.pp pointer
+        VarNode.pp value
+  | Isload { offset; output } ->
+      Format.fprintf fmt "%a = stack[%a];" RegId.pp_full output Const.pp offset
+  | Isstore { offset; value } ->
+      Format.fprintf fmt "stack[%a] = %a;" Const.pp offset VarNode.pp value
+  | Iassignment { expr; output } ->
+      Format.fprintf fmt "%a = %a;" RegId.pp_full output Assignable.pp expr
   | INop -> Format.fprintf fmt "nop;"
 
 let pp_full (fmt : Format.formatter) (p : t_full) =

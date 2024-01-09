@@ -136,33 +136,43 @@ let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
     : (Store.t, String.t) Result.t =
   match ins with
-  | Iassignment (a, o) ->
-      let* v = eval_assignment a s o.width in
-      Ok { s with regs = RegFile.add_reg s.regs o v }
-  | Iload (_, addrvn, outputid) ->
-      let addrv = eval_vn addrvn s in
-      let* lv = Store.load_mem s addrv outputid.width in
+  | Iassignment { expr; output } ->
+      let* v = eval_assignment expr s output.width in
+      Ok { s with regs = RegFile.add_reg s.regs output v }
+  | Iload { pointer; output } ->
+      let addrv = eval_vn pointer s in
+      let* lv = Store.load_mem s addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-      Ok { s with regs = RegFile.add_reg s.regs outputid lv }
-  | Istore (_, addrvn, valuevn) ->
-      let addrv = eval_vn addrvn s in
-      let sv = eval_vn valuevn s in
+      Ok { s with regs = RegFile.add_reg s.regs output lv }
+  | Istore { pointer; value } ->
+      let addrv = eval_vn pointer s in
+      let sv = eval_vn value s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       Store.store_mem s addrv sv
-  | Isload (cv, outputid) ->
+  | Isload { offset; output } ->
       let addrv =
         Value.NonNum
-          (SP { SPVal.func = fst func; timestamp = snd func; offset = cv.value })
+          (SP
+             {
+               SPVal.func = fst func;
+               timestamp = snd func;
+               offset = offset.value;
+             })
       in
-      let* lv = Store.load_mem s addrv outputid.width in
+      let* lv = Store.load_mem s addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-      Ok { s with regs = RegFile.add_reg s.regs outputid lv }
-  | Isstore (cv, valuevn) ->
+      Ok { s with regs = RegFile.add_reg s.regs output lv }
+  | Isstore { offset; value } ->
       let addrv =
         Value.NonNum
-          (SP { SPVal.func = fst func; timestamp = snd func; offset = cv.value })
+          (SP
+             {
+               SPVal.func = fst func;
+               timestamp = snd func;
+               offset = offset.value;
+             })
       in
-      let sv = eval_vn valuevn s in
+      let sv = eval_vn value s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       Store.store_mem s addrv sv
   | INop -> Ok s
@@ -262,26 +272,26 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
   | Jfallthrough l ->
       let* ncont = Cont.of_block_loc p (fst s.func) l in
       Ok { s with cont = ncont }
-  | Jjump_ind (vn, ls) ->
-      let* loc = Value.try_loc (eval_vn vn s.sto) in
-      if LocSet.mem loc ls then
+  | Jjump_ind { target; candidates; _ } ->
+      let* loc = Value.try_loc (eval_vn target s.sto) in
+      if LocSet.mem loc candidates then
         let* ncont = Cont.of_block_loc p (fst s.func) loc in
         Ok { s with cont = ncont }
       else Error "jump_ind: Not a valid jump"
-  | Jcbranch (vn, ift, iff) ->
-      let v = eval_vn vn s.sto in
+  | Jcbranch { condition; target_true; target_false } ->
+      let v = eval_vn condition s.sto in
       let* iz = Value.try_isZero v in
       if iz then
-        let* ncont = Cont.of_block_loc p (fst s.func) iff in
+        let* ncont = Cont.of_block_loc p (fst s.func) target_false in
         Ok { s with cont = ncont }
       else
-        let* ncont = Cont.of_block_loc p (fst s.func) ift in
+        let* ncont = Cont.of_block_loc p (fst s.func) target_true in
         Ok { s with cont = ncont }
-  | Jcall (copydepth, spdiff, calln, retn) ->
-      step_call p copydepth spdiff calln retn s
-  | Jcall_ind (copydepth, spdiff, callvn, retn) ->
-      let* calln = Value.try_loc (eval_vn callvn s.sto) in
-      step_call p copydepth spdiff calln retn s
+  | Jcall { reserved_stack; sp_diff; target; fallthrough } ->
+      step_call p reserved_stack sp_diff target fallthrough s
+  | Jcall_ind { reserved_stack; sp_diff; target; fallthrough } ->
+      let* calln = Value.try_loc (eval_vn target s.sto) in
+      step_call p reserved_stack sp_diff calln fallthrough s
   | Jret retvn -> (
       let* retn = Value.try_loc (eval_vn retvn s.sto) in
       match s.stack with

@@ -5,12 +5,30 @@ type t =
   | Junimplemented
   | Jfallthrough of Loc.t
   | Jjump of Loc.t
-  | Jjump_ind of (VarNode.t * LocSet.t)
-  | Jcbranch of (VarNode.t * Loc.t * Loc.t)
-  | Jcall of (Int64.t * Int64.t * Loc.t * Loc.t)
-  | Jcall_ind of (Int64.t * Int64.t * VarNode.t * Loc.t)
-  | Jtailcall of (Int64.t * Int64.t * Loc.t)
-  | Jtailcall_ind of (Int64.t * Int64.t * VarNode.t)
+  | Jjump_ind of { target : VarNode.t; candidates : LocSet.t; sound : Bool.t }
+  | Jcbranch of {
+      condition : VarNode.t;
+      target_true : Loc.t;
+      target_false : Loc.t;
+    }
+  | Jcall of {
+      reserved_stack : Int64.t;
+      sp_diff : Int64.t;
+      target : Loc.t;
+      fallthrough : Loc.t;
+    }
+  | Jcall_ind of {
+      reserved_stack : Int64.t;
+      sp_diff : Int64.t;
+      target : VarNode.t;
+      fallthrough : Loc.t;
+    }
+  | Jtailcall of { reserved_stack : Int64.t; sp_diff : Int64.t; target : Loc.t }
+  | Jtailcall_ind of {
+      reserved_stack : Int64.t;
+      sp_diff : Int64.t;
+      target : VarNode.t;
+    }
   | Jret
 
 type t_full = { jmp : t; loc : Loc.t; mnem : Mnemonic.t }
@@ -18,39 +36,41 @@ type t_full = { jmp : t; loc : Loc.t; mnem : Mnemonic.t }
 let pp fmt (a : t) =
   match a with
   | Jjump i -> Format.fprintf fmt "goto %a;" Loc.pp i
-  | Jjump_ind (i, s) ->
-      Format.fprintf fmt "goto *%a (from %a);" VarNode.pp i
+  | Jjump_ind { target; candidates; _ } ->
+      Format.fprintf fmt "goto *%a (from %a);" VarNode.pp target
         (Format.pp_print_list
            ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
            Loc.pp)
-        (LocSet.elements s)
-  | Jcbranch (i0, i1, i2) ->
-      Format.fprintf fmt "if %a goto %a else goto %a;" VarNode.pp i0 Loc.pp i1
-        Loc.pp i2
+        (LocSet.elements candidates)
+  | Jcbranch { condition; target_true; target_false } ->
+      Format.fprintf fmt "if %a goto %a else goto %a;" VarNode.pp condition
+        Loc.pp target_true Loc.pp target_false
   | Jfallthrough i -> Format.fprintf fmt "fallthrough %a;" Loc.pp i
   | Junimplemented -> Format.fprintf fmt "unimplemented"
-  | Jcall (copydepth, spdiff, t, f) ->
-      Format.fprintf fmt "call (+%Lx) %a; -> %a" spdiff Loc.pp t Loc.pp f
-  | Jcall_ind (copydepth, spdiff, t, f) ->
-      Format.fprintf fmt "call (+%Lx) *%a; -> %a" spdiff VarNode.pp t Loc.pp f
-  | Jtailcall (copydepth, spdiff, f) ->
-      Format.fprintf fmt "tailcall (+%Lx) %a;" spdiff Loc.pp f
-  | Jtailcall_ind (copydepth, spdiff, f) ->
-      Format.fprintf fmt "tailcall (+%Lx) *%a;" spdiff VarNode.pp f
+  | Jcall { reserved_stack; sp_diff; target; fallthrough } ->
+      Format.fprintf fmt "call (+%Lx) %a[%Lx]; -> %a" sp_diff Loc.pp target
+        reserved_stack Loc.pp fallthrough
+  | Jcall_ind { reserved_stack; sp_diff; target; fallthrough } ->
+      Format.fprintf fmt "call (+%Lx) *%a[%Lx]; -> %a" sp_diff VarNode.pp target
+        reserved_stack Loc.pp fallthrough
+  | Jtailcall { reserved_stack; sp_diff; target } ->
+      Format.fprintf fmt "tailcall (+%Lx) %a[%Lx];" sp_diff Loc.pp target
+        reserved_stack
+  | Jtailcall_ind { reserved_stack; sp_diff; target } ->
+      Format.fprintf fmt "tailcall (+%Lx) *%a[%Lx];" sp_diff VarNode.pp target
+        reserved_stack
   | Jret -> Format.fprintf fmt "return;"
 
 let succ jmp =
   match jmp with
-  | Jcall (_, _, _, n) -> [ n ]
-  | Jcall_ind (_, _, _, n) -> [ n ]
-  | Jtailcall (_, _, _) -> []
-  | Jtailcall_ind (_, _, _) -> []
-  | Jcbranch (_, n, m) -> [ n; m ]
-  | Jfallthrough n -> [ n ]
+  | Jcall { fallthrough; _ }
+  | Jcall_ind { fallthrough; _ }
+  | Jfallthrough fallthrough ->
+      [ fallthrough ]
+  | Jtailcall _ | Jtailcall_ind _ | Jret | Junimplemented -> []
+  | Jcbranch { target_true; target_false } -> [ target_true; target_false ]
   | Jjump n -> [ n ]
-  | Jjump_ind (_, s) -> LocSet.to_seq s |> List.of_seq
-  | Jret -> []
-  | Junimplemented -> []
+  | Jjump_ind { candidates; _ } -> LocSet.to_seq candidates |> List.of_seq
 
 let succ_full jmp = succ jmp.jmp
 

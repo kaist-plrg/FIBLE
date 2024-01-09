@@ -154,51 +154,51 @@ let build_sides (s : State.t) (values : Value.t List.t)
 let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) (func : Loc.t * Int64.t)
     : (State.t, String.t) Result.t =
   match ins with
-  | Iassignment (a, o) ->
-      let* v = eval_assignment a s o.width in
-      Ok { s with regs = RegFile.add_reg s.regs o v }
-  | Iload (_, addrvn, outputid) ->
-      let addrv = eval_vn addrvn s in
-      let* lv = Store.load_mem s.sto addrv outputid.width in
+  | Iassignment { expr; output } ->
+      let* v = eval_assignment expr s output.width in
+      Ok { s with regs = RegFile.add_reg s.regs output v }
+  | Iload { pointer; output; _ } ->
+      let addrv = eval_vn pointer s in
+      let* lv = Store.load_mem s.sto addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-      Ok { s with regs = RegFile.add_reg s.regs outputid lv }
-  | Istore (_, addrvn, valuevn) ->
-      let addrv = eval_vn addrvn s in
-      let sv = eval_vn valuevn s in
+      Ok { s with regs = RegFile.add_reg s.regs output lv }
+  | Istore { pointer; value; _ } ->
+      let addrv = eval_vn pointer s in
+      let sv = eval_vn value s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       let* sto' = Store.store_mem s.sto addrv sv in
       Ok { s with sto = sto' }
-  | Ilload (cv, outputid) ->
+  | Ilload { offset; output } ->
       let addrv =
         Value.localP
-          { func = fst func; timestamp = snd func; offset = cv.value }
+          { func = fst func; timestamp = snd func; offset = offset.value }
       in
-      let* lv = Store.load_mem s.sto addrv outputid.width in
+      let* lv = Store.load_mem s.sto addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-      Ok { s with regs = RegFile.add_reg s.regs outputid lv }
-  | Ilstore (cv, valuevn) ->
+      Ok { s with regs = RegFile.add_reg s.regs output lv }
+  | Ilstore { offset; value } ->
       let addrv =
         Value.localP
-          { func = fst func; timestamp = snd func; offset = cv.value }
+          { func = fst func; timestamp = snd func; offset = offset.value }
       in
-      let sv = eval_vn valuevn s in
+      let sv = eval_vn value s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       let* sto' = Store.store_mem s.sto addrv sv in
       Ok { s with sto = sto' }
-  | Ipload (cv, outputid) ->
+  | Ipload { offset; output } ->
       let addrv =
         Value.paramP
-          { func = fst func; timestamp = snd func; offset = cv.value }
+          { func = fst func; timestamp = snd func; offset = offset.value }
       in
-      let* lv = Store.load_mem s.sto addrv outputid.width in
+      let* lv = Store.load_mem s.sto addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-      Ok { s with regs = RegFile.add_reg s.regs outputid lv }
-  | Ipstore (cv, valuevn) ->
+      Ok { s with regs = RegFile.add_reg s.regs output lv }
+  | Ipstore { offset; value } ->
       let addrv =
         Value.paramP
-          { func = fst func; timestamp = snd func; offset = cv.value }
+          { func = fst func; timestamp = snd func; offset = offset.value }
       in
-      let sv = eval_vn valuevn s in
+      let sv = eval_vn value s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       let* sto' = Store.store_mem s.sto addrv sv in
       Ok { s with sto = sto' }
@@ -422,27 +422,27 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
   | Jfallthrough l ->
       let* ncont = Cont.of_block_loc p (fst s.func) l in
       Ok { s with cont = ncont }
-  | Jjump_ind (vn, ls) ->
-      let* loc = Value.try_loc (eval_vn vn s) in
-      if LocSet.mem loc ls then
+  | Jjump_ind { target; candidates; _ } ->
+      let* loc = Value.try_loc (eval_vn target s) in
+      if LocSet.mem loc candidates then
         let* ncont = Cont.of_block_loc p (fst s.func) loc in
         Ok { s with cont = ncont }
       else Error "jump_ind: Not a valid jump"
-  | Jcbranch (vn, ift, iff) ->
-      let v = eval_vn vn s in
+  | Jcbranch { condition; target_true; target_false } ->
+      let v = eval_vn condition s in
       [%log debug "Jcbranch %a" Value.pp v];
       let* iz = Value.try_isZero v in
       if iz then
-        let* ncont = Cont.of_block_loc p (fst s.func) iff in
+        let* ncont = Cont.of_block_loc p (fst s.func) target_false in
         Ok { s with cont = ncont }
       else
-        let* ncont = Cont.of_block_loc p (fst s.func) ift in
+        let* ncont = Cont.of_block_loc p (fst s.func) target_true in
         Ok { s with cont = ncont }
-  | Jcall (copydepth, spdiff, outputs, inputs, calln, retn) ->
-      step_call p copydepth spdiff outputs inputs calln retn s
-  | Jcall_ind (copydepth, spdiff, callvn, retn) ->
-      let* calln = Value.try_loc (eval_vn callvn s) in
-      step_call_ind p copydepth spdiff calln retn s
+  | Jcall { reserved_stack; sp_diff; outputs; inputs; target; fallthrough } ->
+      step_call p reserved_stack sp_diff outputs inputs target fallthrough s
+  | Jcall_ind { reserved_stack; sp_diff; target; fallthrough } ->
+      let* calln = Value.try_loc (eval_vn target s) in
+      step_call_ind p reserved_stack sp_diff calln fallthrough s
   | Jret values -> (
       match s.stack with
       | [] -> Error (Format.asprintf "Empty stack")

@@ -49,19 +49,19 @@ module Lattice_noBot = struct
   let post_single (rom : Addr.t -> Char.t) (ls : Loc.t) (a : t) (i : Inst.t) : t
       =
     match i with
-    | Iassignment (asn, outputv) ->
+    | Iassignment { expr; output } ->
         {
           value_nonrel =
-            NonRelStateD.process_assignment a.value_nonrel a.value_octagon asn
-              outputv;
+            NonRelStateD.process_assignment a.value_nonrel a.value_octagon expr
+              output;
           value_octagon =
-            OctagonD.process_assignment a.value_octagon asn outputv;
+            OctagonD.process_assignment a.value_octagon expr output;
           value_boolpower =
-            BoolPowerD.process_assignment a.value_boolpower a.value_octagon asn
-              outputv;
+            BoolPowerD.process_assignment a.value_boolpower a.value_octagon expr
+              output;
         }
-    | Iload (_, pointerv, outputv) ->
-        let addrSet = gen_aexpr_set a.value_octagon pointerv in
+    | Iload { pointer; output; _ } ->
+        let addrSet = gen_aexpr_set a.value_octagon pointer in
         let regSet = AExprSet.used_regs addrSet in
         let inter_regSet =
           RegIdSet.inter regSet (OctagonD.memory_base_regs a.value_octagon)
@@ -78,16 +78,16 @@ module Lattice_noBot = struct
 
         {
           value_nonrel =
-            NonRelStateD.process_load rom a.value_nonrel a.value_octagon outputv
+            NonRelStateD.process_load rom a.value_nonrel a.value_octagon output
               addrSet;
           value_octagon =
-            OctagonD.process_load rom a.value_octagon outputv addrSet;
+            OctagonD.process_load rom a.value_octagon output addrSet;
           value_boolpower =
-            BoolPowerD.process_load rom a.value_boolpower a.value_octagon
-              outputv addrSet;
+            BoolPowerD.process_load rom a.value_boolpower a.value_octagon output
+              addrSet;
         }
-    | Istore (_, pointerv, storev) ->
-        let addrSet = gen_aexpr_set a.value_octagon pointerv in
+    | Istore { pointer; value; _ } ->
+        let addrSet = gen_aexpr_set a.value_octagon pointer in
         let regSet = AExprSet.used_regs addrSet in
         let inter_regSet =
           RegIdSet.inter regSet (OctagonD.memory_base_regs a.value_octagon)
@@ -103,11 +103,11 @@ module Lattice_noBot = struct
         in
         {
           value_nonrel =
-            NonRelStateD.process_store a.value_nonrel a.value_octagon storev
+            NonRelStateD.process_store a.value_nonrel a.value_octagon value
               addrSet;
-          value_octagon = OctagonD.process_store a.value_octagon storev addrSet;
+          value_octagon = OctagonD.process_store a.value_octagon value addrSet;
           value_boolpower =
-            BoolPowerD.process_store a.value_boolpower a.value_octagon storev
+            BoolPowerD.process_store a.value_boolpower a.value_octagon value
               addrSet;
         }
     | INop -> a
@@ -194,8 +194,9 @@ let analyze_noBot (e : edge) (a : Lattice_noBot.t) (rom : Addr.t -> Char.t) :
   | Flow -> (
       let srcBlock = ICFG.G.E.src e in
       match srcBlock.block.jmp.jmp with
-      | Jcbranch (cv, trueLoc, falseLoc) ->
-          Lattice_noBot.filter_branch a cv trueLoc (ICFG.G.E.dst e).block.loc
+      | Jcbranch { condition; target_true; target_false } ->
+          Lattice_noBot.filter_branch a condition target_true
+            (ICFG.G.E.dst e).block.loc
       | _ -> a)
 
 let analyze (e : edge) (a : t) : t =

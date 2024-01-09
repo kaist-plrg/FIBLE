@@ -32,31 +32,31 @@ let pp fmt (a : t) =
 
 let post_single (p : Prog.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
   match i with
-  | Iassignment (asn, outputv) ->
+  | Iassignment { expr; output } ->
       {
         value_nonrel =
-          NonRelStateD.process_assignment a.value_nonrel a.value_octagon asn
-            outputv;
-        value_octagon = OctagonD.process_assignment a.value_octagon asn outputv;
+          NonRelStateD.process_assignment a.value_nonrel a.value_octagon expr
+            output;
+        value_octagon = OctagonD.process_assignment a.value_octagon expr output;
         value_boolpower =
-          BoolPowerD.process_assignment a.value_boolpower a.value_octagon asn
-            outputv;
+          BoolPowerD.process_assignment a.value_boolpower a.value_octagon expr
+            output;
       }
-  | Iload (_, pointerv, outputv) ->
+  | Iload { pointer; output } ->
       {
         value_nonrel =
-          NonRelStateD.process_load p a.value_nonrel a.value_octagon pointerv
-            outputv;
-        value_octagon = OctagonD.process_load p a.value_octagon pointerv outputv;
+          NonRelStateD.process_load p a.value_nonrel a.value_octagon pointer
+            output;
+        value_octagon = OctagonD.process_load p a.value_octagon pointer output;
         value_boolpower = a.value_boolpower;
       }
-  | Istore (_, _, _) ->
+  | Istore _ ->
       {
         value_nonrel = NonRelStateD.clear_memref a.value_nonrel;
         value_octagon = OctagonD.clear_memref a.value_octagon;
         value_boolpower = BoolPowerD.clear_memref a.value_boolpower;
       }
-  | Icbranch (_, _) -> a
+  | Icbranch _ -> a
   | Ijump _ -> a
   | Ijump_ind _ -> a
   | INop -> a
@@ -65,12 +65,12 @@ let post_single (p : Prog.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
 let filter_single (_ : Prog.t) (_ : Loc.t) (lf : Loc.t) (a : t) (i : Inst.t) : t
     =
   match i with
-  | Icbranch (condv, trueloc) -> (
-      match condv with
+  | Icbranch { condition; target } -> (
+      match condition with
       | Register { id = RegId.Unique _ as i; _ } -> (
           match BoolPowerD.find_opt (MemRef.R i) a.value_boolpower with
           | Some b ->
-              if compare trueloc lf = 0 then
+              if compare target lf = 0 then
                 {
                   value_nonrel = a.value_nonrel;
                   value_octagon = OctagonD.meet a.value_octagon (fst b);

@@ -184,7 +184,8 @@ let main () =
         let c7 = Sys.time () in
         [%log info "L2 translation time: %f" (c7 -. c6)];
         let csa_res : (L2Partial.Func.t * L2Partial.CSA.Immutable.t) list =
-          l2_partial.funcs |> List.map (fun x -> (x, L2Partial.CSA.Immutable.analyze x))
+          l2_partial.funcs
+          |> List.map (fun x -> (x, L2Partial.CSA.Immutable.analyze x))
         in
         let c8 = Sys.time () in
         [%log info "CSA time: %f" (c8 -. c7)];
@@ -198,9 +199,7 @@ let main () =
         in
         let c10 = Sys.time () in
         [%log info "REA time: %f" (c10 -. c9)];
-        let l3 : L3.Prog.t =
-          L3.L2toL3.translate_prog_from_rea l2 lva_res
-        in
+        let l3 : L3.Prog.t = L3.L2toL3.translate_prog_from_rea l2 lva_res in
         let c11 = Sys.time () in
         [%log info "L3 translation time: %f" (c11 -. c10)];
         if

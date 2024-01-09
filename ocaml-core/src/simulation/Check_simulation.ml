@@ -10,8 +10,8 @@ let check_pc (s0 : Loc.t) (s1 : L1.Cont.t) (s2 : L2Partial.Cont.t) :
   if Loc.compare s0 s1_pc = 0 && Loc.compare s1_pc s2_pc = 0 then Ok ()
   else Error "PCs are not equal"
 
-let check_simu_state (s0 : L0.State.t) (s1 : L1.State.t) (s2 : L2Partial.State.t) :
-    (Unit.t, String.t) Result.t =
+let check_simu_state (s0 : L0.State.t) (s1 : L1.State.t)
+    (s2 : L2Partial.State.t) : (Unit.t, String.t) Result.t =
   let* _ = check_pc s0.pc s1.cont s2.cont in
   Ok ()
 

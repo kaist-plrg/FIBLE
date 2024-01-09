@@ -74,23 +74,23 @@ let to_graph (p : Prog.t) : G.t =
                     { block = b'; time = Pre } ))
               g
               (match b.jmp.jmp with
-              | Jcall (_, _, t, _) | Jtailcall (_, _, t) ->
-                  LocMap.find_opt t bbMap
+              | Jcall { target; _ } | Jtailcall { target; _ } ->
+                  LocMap.find_opt target bbMap
                   |> Fun.flip Option.bind (fun (bbs : Block.t LocMap.t) ->
-                         LocMap.find_opt t bbs)
+                         LocMap.find_opt target bbs)
                   |> Option.to_list
               | Jcall_ind _ | Jtailcall_ind _ -> []
               | Jjump n | Jfallthrough n ->
                   LocMap.find_opt n bbs |> Option.to_list
               | Junimplemented -> []
               | Jret -> []
-              | Jjump_ind (_, ls) ->
-                  LocSet.to_list ls
+              | Jjump_ind { candidates; _ } ->
+                  LocSet.to_list candidates
                   |> List.map (fun l -> LocMap.find_opt l bbs)
                   |> List.filter_map Fun.id
-              | Jcbranch (_, lt, lf) ->
-                  (LocMap.find_opt lt bbs |> Option.to_list)
-                  @ (LocMap.find_opt lf bbs |> Option.to_list)))
+              | Jcbranch { target_true; target_false; _ } ->
+                  (LocMap.find_opt target_true bbs |> Option.to_list)
+                  @ (LocMap.find_opt target_false bbs |> Option.to_list)))
           bbs g)
       bbMap g
   in
@@ -103,10 +103,10 @@ let to_graph (p : Prog.t) : G.t =
           G.pred g { block = entry; time = Pre }
           |> List.filter_map (fun (b : vertex_t) ->
                  match b.block.jmp.jmp with
-                 | Jcall (_, _, _, r) | Jcall_ind (_, _, _, r) ->
+                 | Jcall { fallthrough; _ } | Jcall_ind { fallthrough; _ } ->
                      LocMap.find_opt b.block.fLoc bbMap
                      |> Fun.flip Option.bind (fun (bbs : Block.t LocMap.t) ->
-                            LocMap.find_opt b.block.loc bbs)
+                            LocMap.find_opt fallthrough bbs)
                  | _ -> None)
         in
         List.fold_left

@@ -49,37 +49,45 @@ let compute_dr_assignment (a : Assignable.t) : RegIdSet.t =
 
 let compute_dd_inst (i : Inst.t) : astate =
   match i with
-  | Iload (_, Basic.VarNode.Register rm, ro) ->
+  | Iload { pointer = Basic.VarNode.Register rm; output; _ } ->
       {
-        must_def_regs = RegIdSetD.Set (RegIdSet.singleton ro.id);
-        may_def_regs = RegIdSetD.Set (RegIdSet.singleton ro.id);
+        must_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
+        may_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         dependent_regs = RegIdSetD.Set (RegIdSet.singleton rm.id);
       }
-  | Istore (_, Basic.VarNode.Register rm, Basic.VarNode.Register rs) ->
+  | Istore
+      {
+        pointer = Basic.VarNode.Register rm;
+        value = Basic.VarNode.Register rs;
+        _;
+      } ->
       {
         must_def_regs = RegIdSetD.bot;
         may_def_regs = RegIdSetD.bot;
         dependent_regs = RegIdSetD.Set (RegIdSet.of_list [ rm.id; rs.id ]);
       }
-  | Istore (_, Basic.VarNode.Const _, Basic.VarNode.Register rs)
-  | Ilstore (_, Basic.VarNode.Register rs)
-  | Ipstore (_, Basic.VarNode.Register rs) ->
+  | Istore
+      { pointer = Basic.VarNode.Const _; value = Basic.VarNode.Register rs }
+  | Ilstore { value = Basic.VarNode.Register rs; _ }
+  | Ipstore { value = Basic.VarNode.Register rs; _ } ->
       {
         must_def_regs = RegIdSetD.bot;
         may_def_regs = RegIdSetD.bot;
         dependent_regs = RegIdSetD.Set (RegIdSet.singleton rs.id);
       }
-  | Iload (_, Basic.VarNode.Const _, ro) | Ilload (_, ro) | Ipload (_, ro) ->
+  | Iload { pointer = Basic.VarNode.Const _; output }
+  | Ilload { output; _ }
+  | Ipload { output; _ } ->
       {
-        must_def_regs = RegIdSetD.Set (RegIdSet.singleton ro.id);
-        may_def_regs = RegIdSetD.Set (RegIdSet.singleton ro.id);
+        must_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
+        may_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         dependent_regs = RegIdSetD.bot;
       }
-  | Iassignment (a, ro) ->
+  | Iassignment { expr; output } ->
       {
-        must_def_regs = RegIdSetD.Set (RegIdSet.singleton ro.id);
-        may_def_regs = RegIdSetD.Set (RegIdSet.singleton ro.id);
-        dependent_regs = RegIdSetD.Set (compute_dr_assignment a);
+        must_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
+        may_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
+        dependent_regs = RegIdSetD.Set (compute_dr_assignment expr);
       }
   | INop ->
       {
@@ -96,9 +104,9 @@ let compute_dd_inst (i : Inst.t) : astate =
 
 let compute_dd_jmp (j : Jmp.t) : astate =
   match j with
-  | Jmp.Jjump_ind (VarNode.Register r, _)
-  | Jmp.Jcbranch (VarNode.Register r, _, _)
-  | Jmp.Jcall_ind (_, _, VarNode.Register r, _) ->
+  | Jmp.Jjump_ind { target = VarNode.Register r; _ }
+  | Jmp.Jcbranch { condition = VarNode.Register r; _ }
+  | Jmp.Jcall_ind { target = VarNode.Register r; _ } ->
       {
         must_def_regs = RegIdSetD.bot;
         may_def_regs = RegIdSetD.bot;
@@ -176,10 +184,10 @@ module RegAnalysisDomain = struct
         (fst a, accumulate_astate (snd a) (compute_dd_block bs.block))
     | ICFG.EdgeLabel.Flow -> (
         match bs.block.jmp.jmp with
-        | Jmp.Jcall (_, _, t, _) ->
+        | Jmp.Jcall { target; _ } ->
             ( fst a,
               accumulate_astate (snd a)
-                (LocMap.find_opt t (fst a) |> Option.value ~default) )
+                (LocMap.find_opt target (fst a) |> Option.value ~default) )
         | _ -> a)
 
   let bot =

@@ -56,7 +56,8 @@ let flow_heuristic_simple (p : Prog.t) (l : Loc.t) (a : AbsState.t) (i : Inst.t)
           HrSound
             (LocSetD.of_seq (Int64Set.to_seq a |> Seq.map (fun a -> (a, 0))))
       | None -> HrUnsound LocSetD.empty)
-  | Icbranch (cn, a), _ -> HrSound (LocSetD.of_list [ a; Prog.fallthru p l ])
+  | Icbranch { target; _ }, _ ->
+      HrSound (LocSetD.of_list [ target; Prog.fallthru p l ])
   | Iunimplemented, _ -> HrUnsound LocSetD.empty
   | _ -> HrSound (LocSetD.singleton (Prog.fallthru p l))
 
