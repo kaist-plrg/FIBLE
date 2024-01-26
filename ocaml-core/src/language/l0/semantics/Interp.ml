@@ -18,46 +18,60 @@ let eval_assignment (a : Assignable.t) (s : State.t) (outwidth : Int32.t) :
   | Abop (b, lv, rv) ->
       Common_language.NumericBop.eval b (eval_vn lv s) (eval_vn rv s) outwidth
 
+let step_assignment (p : Prog.t) (a : Assignable.t) (output : RegId.t_full)
+    (s : State.t) : (State.t, String.t) Result.t =
+  let* v = eval_assignment a s output.width in
+  Ok
+    { s with regs = RegFile.add_reg s.regs output v; pc = Prog.fallthru p s.pc }
+
+let step_load (p : Prog.t) (pointer : VarNode.t) (output : RegId.t_full)
+    (s : State.t) : (State.t, String.t) Result.t =
+  let addr = eval_vn pointer s in
+  let v = State.load_mem s (Value.to_addr addr) output.width in
+  [%log debug "Loading %a from %a" Value.pp v Value.pp addr];
+  Ok
+    { s with regs = RegFile.add_reg s.regs output v; pc = Prog.fallthru p s.pc }
+
+let step_store (p : Prog.t) (pointer : VarNode.t) (value : VarNode.t)
+    (s : State.t) : (State.t, String.t) Result.t =
+  let addr = eval_vn pointer s in
+  let v = eval_vn value s in
+  [%log debug "Storing %a at %a" Value.pp v Value.pp addr];
+  Ok
+    {
+      s with
+      mem = Memory.store_mem s.mem (Value.to_addr addr) v;
+      pc = Prog.fallthru p s.pc;
+    }
+
+let step_jump (p : Prog.t) (l : Loc.t) (s : State.t) :
+    (State.t, String.t) Result.t =
+  Ok { s with pc = l }
+
+let step_cbranch (p : Prog.t) (condition : VarNode.t) (target : Loc.t)
+    (s : State.t) : (State.t, String.t) Result.t =
+  let v = eval_vn condition s in
+  if Value.isZero v then Ok { s with pc = Prog.fallthru p s.pc }
+  else Ok { s with pc = target }
+
+let step_jump_ind (p : Prog.t) (vn : VarNode.t) (s : State.t) :
+    (State.t, String.t) Result.t =
+  let v = eval_vn vn s in
+  Ok { s with pc = Value.to_loc v }
+
+let step_nop (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
+  Ok { s with pc = Prog.fallthru p s.pc }
+
 let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
     (State.t, String.t) Result.t =
   match ins with
-  | Iassignment { expr; output } ->
-      let* v = eval_assignment expr s output.width in
-      Ok
-        {
-          s with
-          regs = RegFile.add_reg s.regs output v;
-          pc = Prog.fallthru p s.pc;
-        }
-  | Iload { pointer; output; _ } ->
-      let addr = eval_vn pointer s in
-      let v = State.load_mem s (Value.to_addr addr) output.width in
-      [%log debug "Loading %a from %a" Value.pp v Value.pp addr];
-      Ok
-        {
-          s with
-          regs = RegFile.add_reg s.regs output v;
-          pc = Prog.fallthru p s.pc;
-        }
-  | Istore { pointer; value; _ } ->
-      let addr = eval_vn pointer s in
-      let v = eval_vn value s in
-      [%log debug "Storing %a at %a" Value.pp v Value.pp addr];
-      Ok
-        {
-          s with
-          mem = Memory.store_mem s.mem (Value.to_addr addr) v;
-          pc = Prog.fallthru p s.pc;
-        }
-  | Ijump l -> Ok { s with pc = l }
-  | Icbranch { condition; target } ->
-      let v = eval_vn condition s in
-      if Value.isZero v then Ok { s with pc = Prog.fallthru p s.pc }
-      else Ok { s with pc = target }
-  | Ijump_ind vn ->
-      let v = eval_vn vn s in
-      Ok { s with pc = Value.to_loc v }
-  | Inst.INop -> Ok { s with pc = Prog.fallthru p s.pc }
+  | Iassignment { expr; output } -> step_assignment p expr output s
+  | Iload { pointer; output; _ } -> step_load p pointer output s
+  | Istore { pointer; value; _ } -> step_store p pointer value s
+  | Ijump l -> step_jump p l s
+  | Icbranch { condition; target } -> step_cbranch p condition target s
+  | Ijump_ind vn -> step_jump_ind p vn s
+  | Inst.INop -> step_nop p s
   | Inst.Iunimplemented -> Error "Unimplemented instruction"
 
 let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :

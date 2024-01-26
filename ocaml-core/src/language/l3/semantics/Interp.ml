@@ -250,58 +250,60 @@ let step_call_extern (p : Prog.t) (spdiff : Int64.t) (name : String.t)
        }
        retv)
 
+let get_func_from (p : Prog.t) (target : Loc.t) : (Func.t, String.t) Result.t =
+  Prog.get_func_opt p target
+  |> Option.to_result
+       ~none:(Format.asprintf "jcall: not found function %a" Loc.pp target)
+
+let get_current_function (p : Prog.t) (s : State.t) :
+    (Func.t, String.t) Result.t =
+  get_func_from p (fst s.func)
+
+let get_sp_curr (s : State.t) (regid : Int32.t) : Value.t =
+  RegFile.get_reg s.regs { id = RegId.Register 32l; offset = 0l; width = 8l }
+
+let build_local_frame (s : State.t) (copydepth : Int64.t) =
+  let sp_curr = get_sp_curr s 32l in
+  let* passing_vals =
+    List.fold_left
+      (fun acc (i, x) ->
+        match acc with
+        | Error _ -> acc
+        | Ok acc ->
+            let* addr = x in
+            let* v = Store.load_mem s.sto addr 8l in
+            Ok ((i, v) :: acc))
+      (Ok [])
+      (Int64.div copydepth 8L |> Int64.succ |> Int64.to_int
+      |> Fun.flip List.init (fun x ->
+             ( Int64.of_int (x * 8),
+               Value.eval_bop Bop.Bint_add sp_curr
+                 (Num (NumericValue.of_int64 (Int64.of_int (x * 8)) 8l))
+                 8l )))
+  in
+  Ok
+    (List.fold_left
+       (fun acc (i, j) -> Frame.store_mem acc i j)
+       Frame.empty passing_vals)
+
+let get_sp_saved (s : State.t) (spdiff : Int64.t) : (Value.t, String.t) Result.t
+    =
+  let sp_curr = get_sp_curr s 32l in
+  Value.eval_bop Bop.Bint_add sp_curr (Num (NumericValue.of_int64 spdiff 8l)) 8l
+
 let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
     (outputs : RegId.t List.t) (inputs : VarNode.t List.t) (calln : Loc.t)
     (retn : Loc.t) (s : State.t) : (State.t, String.t) Result.t =
   match AddrMap.find_opt (Loc.to_addr calln) p.externs with
   | None ->
-      let* currf =
-        Prog.get_func_opt p (fst s.func)
-        |> Option.to_result
-             ~none:
-               (Format.asprintf "jcall: not found current function %a" Loc.pp
-                  calln)
-      in
-      let* f =
-        Prog.get_func_opt p calln
-        |> Option.to_result
-             ~none:(Format.asprintf "jcall: not found function %a" Loc.pp calln)
-      in
+      let* currf = get_current_function p s in
+      let* f = get_func_from p calln in
       let* _ =
         if f.sp_diff = spdiff then Ok () else Error "jcall: spdiff not match"
       in
       let* ncont = Cont.of_func_entry_loc p calln in
-      let sp_curr =
-        RegFile.get_reg s.regs
-          { id = RegId.Register 32l; offset = 0l; width = 8l }
-      in
-      let* passing_vals =
-        List.fold_left
-          (fun acc (i, x) ->
-            match acc with
-            | Error _ -> acc
-            | Ok acc ->
-                let* addr = x in
-                let* v = Store.load_mem s.sto addr 8l in
-                Ok ((i, v) :: acc))
-          (Ok [])
-          (Int64.div copydepth 8L |> Int64.succ |> Int64.to_int
-          |> Fun.flip List.init (fun x ->
-                 ( Int64.of_int (x * 8),
-                   Value.eval_bop Bop.Bint_add sp_curr
-                     (Num (NumericValue.of_int64 (Int64.of_int (x * 8)) 8l))
-                     8l )))
-      in
-      let nlocal =
-        List.fold_left
-          (fun acc (i, j) -> Frame.store_mem acc i j)
-          Frame.empty passing_vals
-      in
-      let* sp_saved =
-        Value.eval_bop Bop.Bint_add sp_curr
-          (Num (NumericValue.of_int64 spdiff 8l))
-          8l
-      in
+      let* nlocal = build_local_frame s copydepth in
+      let* sp_saved = get_sp_saved s spdiff in
       Ok
         {
           State.timestamp = Int64Ext.succ s.timestamp;
@@ -335,7 +337,7 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
                 s.sto.local
                 |> LocalMemory.add
                      (Local, calln, Int64Ext.succ s.timestamp)
-                     nlocal
+                     Frame.empty
                 |> LocalMemory.add
                      (Param, calln, Int64Ext.succ s.timestamp)
                      nlocal;
@@ -348,19 +350,8 @@ let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
     =
   match AddrMap.find_opt (Loc.to_addr calln) p.externs with
   | None ->
-      let* currf =
-        Prog.get_func_opt p (fst s.func)
-        |> Option.to_result
-             ~none:
-               (Format.asprintf "jcall_ind: not found current function %a"
-                  Loc.pp calln)
-      in
-      let* f =
-        Prog.get_func_opt p calln
-        |> Option.to_result
-             ~none:
-               (Format.asprintf "jcall_ind: not found function %a" Loc.pp calln)
-      in
+      let* currf = get_current_function p s in
+      let* f = get_func_from p calln in
       let* _ =
         if f.sp_diff = spdiff then Ok ()
         else Error "jcall_ind: spdiff not match"
@@ -370,17 +361,8 @@ let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
         else Error "jcall_ind: copydepth not match"
       in
       let* ncont = Cont.of_func_entry_loc p calln in
-      let sp_curr =
-        RegFile.get_reg s.regs
-          { id = RegId.Register 32l; offset = 0l; width = 8l }
-      in
-      let* passing_val = Store.load_mem s.sto sp_curr 8l in
-      let nlocal = Frame.store_mem Frame.empty 0L passing_val in
-      let* sp_saved =
-        Value.eval_bop Bop.Bint_add sp_curr
-          (Num (NumericValue.of_int64 spdiff 8l))
-          8l
-      in
+      let* nlocal = build_local_frame s copydepth in
+      let* sp_saved = get_sp_saved s spdiff in
       Ok
         {
           State.timestamp = Int64Ext.succ s.timestamp;
@@ -405,7 +387,7 @@ let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
                 s.sto.local
                 |> LocalMemory.add
                      (Local, calln, Int64Ext.succ s.timestamp)
-                     nlocal
+                     Frame.empty
                 |> LocalMemory.add
                      (Param, calln, Int64Ext.succ s.timestamp)
                      nlocal;
