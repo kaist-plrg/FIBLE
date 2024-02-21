@@ -203,7 +203,7 @@ let make_server ifile ghidra_path tmp_path cwd : t =
   [%log debug "Listening on port %d" port];
   let ghidra_pid = run_ghidra ifile ghidra_path tmp_path cwd port in
 
-  let x, _, _ = Unix.select [ sfd ] [] [] 30.0 in
+  let x, _, _ = Unix.select [ sfd ] [] [] 60.0 in
   if x = [] then [%log fatal "No connection"] else ();
   let fd, _ = Unix.accept sfd in
   [%log debug "Accepted connection"];
