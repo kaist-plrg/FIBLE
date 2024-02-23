@@ -173,6 +173,23 @@ let main () =
         let l1 : L1.Prog.t = l1_refine |> L1.Prog.from_partial in
         let c5 = Sys.time () in
         [%log info "L1 time: %f" (c5 -. c4)];
+        let cnt : int =
+          l1.funcs
+          |> List.fold_left
+               (fun (a : Int64Set.t) (f : L1.Func.t) ->
+                 List.fold_left
+                   (fun (a : Int64Set.t) (b : L1.Block.t) ->
+                     Int64Set.add_seq
+                       (List.to_seq
+                          (List.map
+                             (fun (i : L1.Inst.t_full) -> fst i.loc)
+                             b.body))
+                       a)
+                   a f.blocks)
+               Int64Set.empty
+          |> Int64Set.cardinal
+        in
+        [%log info "Total number of instructions: %d" cnt];
         let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
           l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l))
         in
