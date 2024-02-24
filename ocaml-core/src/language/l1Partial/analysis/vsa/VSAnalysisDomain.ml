@@ -46,8 +46,7 @@ module Lattice_noBot = struct
       value_boolpower = BoolPowerD.clear_memref a.value_boolpower;
     }
 
-  let post_single (rom : Addr.t -> Char.t) (ls : Loc.t) (a : t) (i : Inst.t) : t
-      =
+  let post_single (rom : ROM.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
     match i with
     | Iassignment { expr; output } ->
         {
@@ -155,7 +154,7 @@ module Lattice_noBot = struct
     | _ -> None
 end
 
-type t = LV of (Lattice_noBot.t * (Addr.t -> Char.t)) | Bottom
+type t = LV of (Lattice_noBot.t * ROM.t) | Bottom
 type edge = ICFG.G.E.t
 
 let join a b =
@@ -176,7 +175,7 @@ let pp fmt (a : t) =
   | Bottom -> Format.fprintf fmt "Bottom"
 
 let bot = Bottom
-let init (rom : Addr.t -> Char.t) = LV (Lattice_noBot.top, rom)
+let init (rom : ROM.t) = LV (Lattice_noBot.top, rom)
 
 let equal a b =
   match (a, b) with
@@ -184,7 +183,7 @@ let equal a b =
   | Bottom, Bottom -> true
   | _ -> false
 
-let analyze_noBot (e : edge) (a : Lattice_noBot.t) (rom : Addr.t -> Char.t) :
+let analyze_noBot (e : edge) (a : Lattice_noBot.t) (rom : ROM.t) :
     Lattice_noBot.t =
   match ICFG.G.E.label e with
   | Inner ->

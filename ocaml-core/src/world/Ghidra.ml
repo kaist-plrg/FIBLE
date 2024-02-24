@@ -8,6 +8,7 @@ type t = {
   fd : Unix.file_descr;
   instfunc : Int64.t -> (int * RawInst.t_full list) option;
   initstate : Int64.t -> Char.t;
+  dump_rom : String.t -> String.t -> Int64.t;
   external_function : ExternalFunction.t;
   regspec : RegSpec.t;
 }
@@ -245,4 +246,19 @@ let make_server ifile ghidra_path tmp_path cwd : t =
     Interaction.get_char fd
   in
 
-  { pid = ghidra_pid; fd; instfunc; initstate; external_function; regspec }
+  let dump_rom (fpath : String.t) (fname : String.t) =
+    Interaction.put_char 'd';
+    Interaction.put_string (fpath ^ "/" ^ fname ^ ".rom");
+    Interaction.flush fd;
+    Interaction.get_long fd
+  in
+
+  {
+    pid = ghidra_pid;
+    fd;
+    instfunc;
+    initstate;
+    dump_rom;
+    external_function;
+    regspec;
+  }

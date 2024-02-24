@@ -1,6 +1,7 @@
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -12,6 +13,8 @@ import ghidra.program.model.address.AddressSpace;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
+import ghidra.program.model.mem.MemoryAccessException;
+import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.pcode.PcodeOp;
 import ghidra.program.model.pcode.Varnode;
 import ghidra.program.model.symbol.Symbol;
@@ -105,6 +108,30 @@ public class PCert extends GhidraScript {
         out.writeByte(data_byte);
     }
 
+    public void dump_memory(DataOutputStream out, String name) throws IOException, MemoryAccessException {
+        AddressSpace space = currentProgram.getAddressFactory().getDefaultAddressSpace();
+        File file = new File(name);
+        DataOutputStream file_out = new DataOutputStream(new BufferedOutputStream(new java.io.FileOutputStream(file)));
+
+        MemoryBlock[] blocks = currentProgram.getMemory().getBlocks();
+        List<MemoryBlock> block_list = new java.util.ArrayList<MemoryBlock>();
+        for (MemoryBlock block : blocks) {
+            if (block.getStart().getAddressSpace().equals(space) && block.isInitialized()) {
+                block_list.add(block);
+            }
+        }
+        file_out.writeInt(block_list.size());
+        for (MemoryBlock block : block_list) {
+            file_out.writeLong(block.getStart().getOffset());
+            byte[] data = new byte[(int) block.getSize()];
+            file_out.writeInt(data.length);
+            block.getBytes(block.getStart(), data);
+            file_out.write(data);
+        }
+        file_out.close();
+        out.writeLong(file.length());
+    }
+
     public void send_function_addr(DataOutputStream out, String name) throws IOException {
         Address func_address = null;
         for (Symbol sym : currentProgram.getSymbolTable().getSymbols(name)) {
@@ -171,7 +198,9 @@ public class PCert extends GhidraScript {
         }
     }
 
-    public void loop_program(Socket connected) throws IOException {
+    public void loop_program(Socket connected) throws IOException, MemoryAccessException {
+        byte[] nameBuffer;
+        String name;
         DataInputStream in = new DataInputStream(connected.getInputStream());
         DataOutputStream out = new DataOutputStream(new BufferedOutputStream(connected.getOutputStream()));
         send_address_space(out);
@@ -195,10 +224,17 @@ public class PCert extends GhidraScript {
                 case 'f': // get function address
                     // println("Getting function address");
                     int size = in.readInt();
-                    byte[] nameBuffer = new byte[size];
+                    nameBuffer = new byte[size];
                     in.read(nameBuffer, 0, size);
-                    String name = new String(nameBuffer);
+                    name = new String(nameBuffer);
                     send_function_addr(out, name);
+                    break;
+                case 'd': // dump memory
+                    size = in.readInt();
+                    nameBuffer = new byte[size];
+                    in.read(nameBuffer, 0, size);
+                    name = new String(nameBuffer);
+                    dump_memory(out, name);
                     break;
             }
             out.flush();

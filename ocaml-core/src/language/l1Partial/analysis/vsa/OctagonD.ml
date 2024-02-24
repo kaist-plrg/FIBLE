@@ -1,5 +1,6 @@
 open Basic
 open Basic_collection
+open Common_language
 open Basic_domain
 open Value_domain
 
@@ -407,7 +408,7 @@ let request_interval (a : t) (r : RegId.t) =
   in
   (minv, maxv)
 
-let process_load (_ : Addr.t -> Char.t) (a : t) (outv : RegId.t_full)
+let process_load (_ : ROM.t) (a : t) (outv : RegId.t_full)
     (addrSet : AExprSet.t) =
   [%log debug "process_load: %a <- %a" RegId.pp outv.id AExprSet.pp addrSet];
   let retv =

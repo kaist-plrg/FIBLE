@@ -73,9 +73,21 @@ let translate_prog (p1 : L2Partial.Prog.t) : Prog.t =
       (fun f -> translate_func f (L2Partial.CSA.Immutable.analyze f))
       p1.funcs
   in
-  { sp_num = p1.sp_num; funcs; rom = p1.rom; externs = p1.externs }
+  {
+    sp_num = p1.sp_num;
+    funcs;
+    rom = p1.rom;
+    rspec = p1.rspec;
+    externs = p1.externs;
+  }
 
 let translate_prog_from_csa (p1 : L2Partial.Prog.t)
     (csa_res : (L2Partial.Func.t * L2Partial.CSA.Immutable.t) list) : Prog.t =
   let funcs = List.map (fun (f, a) -> translate_func f a) csa_res in
-  { sp_num = p1.sp_num; funcs; rom = p1.rom; externs = p1.externs }
+  {
+    sp_num = p1.sp_num;
+    funcs;
+    rom = p1.rom;
+    rspec = p1.rspec;
+    externs = p1.externs;
+  }

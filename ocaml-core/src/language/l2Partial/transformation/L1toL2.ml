@@ -120,10 +120,10 @@ let translate_prog (p1 : L1.Prog.t) (sp_num : Int32.t) : Prog.t =
     List.map (fun f -> (f, L1.SPFA.Immutable.analyze f sp_num)) p1.funcs
   in
   let funcs = List.map (fun (f, r) -> translate_func f ares r) ares in
-  { sp_num; funcs; rom = p1.rom; externs = p1.externs }
+  { sp_num; funcs; rom = p1.rom; rspec = p1.rspec; externs = p1.externs }
 
 let translate_prog_from_spfa (p1 : L1.Prog.t)
     (spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list) (sp_num : Int32.t) :
     Prog.t =
   let funcs = List.map (fun (f, a) -> translate_func f spfa_res a) spfa_res in
-  { sp_num; funcs; rom = p1.rom; externs = p1.externs }
+  { sp_num; funcs; rom = p1.rom; rspec = p1.rspec; externs = p1.externs }

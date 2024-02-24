@@ -20,6 +20,18 @@ let get_int (fd : Unix.file_descr) : int32 =
   done;
   !i
 
+let read_int (fd : Unix.file_descr) : int32 =
+  let read_num = Unix.read fd recvbuf 0 4 in
+  assert (read_num = 4);
+  let s = Bytes.sub_string recvbuf 0 4 in
+  let i = ref 0l in
+  for j = 0 to 3 do
+    i :=
+      Int32.logor !i
+        (Int32.shift_left (Int32.of_int (Char.code s.[j])) (8 * (3 - j)))
+  done;
+  !i
+
 let get_long (fd : Unix.file_descr) : int64 =
   let _ = Unix.recv fd recvbuf 0 8 [] in
   let s = Bytes.sub_string recvbuf 0 8 in
@@ -31,11 +43,30 @@ let get_long (fd : Unix.file_descr) : int64 =
   done;
   !i
 
+let read_long (fd : Unix.file_descr) : int64 =
+  let _ = Unix.read fd recvbuf 0 8 in
+  let s = Bytes.sub_string recvbuf 0 8 in
+  let i = ref 0L in
+  for j = 0 to 7 do
+    i :=
+      Int64.logor !i
+        (Int64.shift_left (Int64.of_int (Char.code s.[j])) (8 * (7 - j)))
+  done;
+  !i
+
 let get_string (fd : Unix.file_descr) : string =
   let len = Int32.to_int (get_int fd) in
-  let recv_num = Unix.recv fd recvbuf 0 len [] in
+  let s = Bytes.create len in
+  let recv_num = Unix.recv fd s 0 len [] in
   assert (recv_num = len);
-  Bytes.sub_string recvbuf 0 len
+  Bytes.unsafe_to_string s
+
+let read_string (fd : Unix.file_descr) : string =
+  let len = Int32.to_int (read_int fd) in
+  let s = Bytes.create len in
+  let recv_num = Unix.read fd s 0 len in
+  assert (recv_num = len);
+  Bytes.unsafe_to_string s
 
 let put_char (c : char) =
   Bytes.set sendbuf !send_offset c;

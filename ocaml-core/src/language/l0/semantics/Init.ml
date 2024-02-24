@@ -4,11 +4,10 @@ open Basic_collection
 
 let init_sp = 0x7FFFFFFFC000L
 
-let from_signature (rspec : Int32.t Int32Map.t) (p : Prog.t) (a : Addr.t) :
-    State.t =
+let from_signature (p : Prog.t) (a : Addr.t) : State.t =
   {
     regs =
-      RegFile.add_reg (RegFile.empty rspec)
+      RegFile.add_reg (RegFile.empty p.rspec)
         { id = RegId.Register 32l; offset = 0l; width = 8l }
         (Value.of_int64 init_sp 8l);
     mem =

@@ -23,7 +23,7 @@ struct
     right : Value.NonNumericValue.t AddrMap.t;
   }
 
-  let from_rom (rom : Addr.t -> Char.t) =
+  let from_rom (rom : ROM.t) =
     { left = ROMCombinedFailableMemory.from_rom rom; right = AddrMap.empty }
 
   let load_mem (s : t) (addr : Addr.t) (width : Int32.t) : Value.t =

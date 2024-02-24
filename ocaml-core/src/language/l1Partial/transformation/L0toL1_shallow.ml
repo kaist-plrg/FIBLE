@@ -129,7 +129,7 @@ let translate_prog (p0 : L0.Prog.t) (entries : Addr.t list) : Prog.t =
         translate_func p0 None e (L0.Shallow_CFA.follow_flow p0 e) LocMap.empty)
       entries
   in
-  { funcs; rom = p0.rom; externs = p0.externs }
+  { funcs; rom = p0.rom; rspec = p0.rspec; externs = p0.externs }
 
 let translate_prog_from_cfa (p0 : L0.Prog.t)
     (cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list) : Prog.t =
@@ -138,4 +138,4 @@ let translate_prog_from_cfa (p0 : L0.Prog.t)
       (fun (fname, e, cf) -> translate_func p0 (Some fname) e cf LocMap.empty)
       cfa_res
   in
-  { funcs; rom = p0.rom; externs = p0.externs }
+  { funcs; rom = p0.rom; rspec = p0.rspec; externs = p0.externs }

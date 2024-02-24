@@ -11,6 +11,7 @@ let dump_path = ref ""
 let func_path = ref ""
 
 type dump_flag_type = {
+  rom : bool ref;
   cfa : bool ref;
   l1 : bool ref;
   basic_block : bool ref;
@@ -23,6 +24,7 @@ type dump_flag_type = {
 
 let dump_flag =
   {
+    rom = ref true;
     cfa = ref false;
     l1 = ref false;
     basic_block = ref false;
@@ -142,12 +144,18 @@ let main () =
         let func_with_addrs =
           List.map (fun x -> (x, Ghidra.get_func_addr server x)) target_funcs
         in
+        let ifile_base =
+          Filename.basename !ifile |> Filename.remove_extension
+        in
+        let _ = server.dump_rom !dump_path ifile_base in
 
+        let rom : ROM.t = Util.ROMWrapper.read_file !dump_path ifile_base in
         let c0 = Sys.time () in
         let l0 : L0.Prog.t =
           {
             ins_mem = server.instfunc;
-            rom = server.initstate;
+            rom;
+            rspec = server.regspec.base_size;
             externs = Util.ExternalFunction.to_addrMap server.external_function;
           }
         in
@@ -230,27 +238,25 @@ let main () =
                -dump-path"];
         if !(dump_flag.cfa) then dump_cfa cfa_res !dump_path else ();
         if !(dump_flag.l1) then (
-          L1.Prog.dump_prog l1 !dump_path
-            (Filename.basename !ifile |> Filename.remove_extension);
-          L1Partial.Prog.dump_prog l1_refine !dump_path
-            (Filename.basename !ifile |> Filename.remove_extension))
+          L1.Prog.write_prog l1 !dump_path ifile_base;
+          L1.Prog.dump_prog l1 !dump_path ifile_base;
+          L1Partial.Prog.dump_prog l1_refine !dump_path ifile_base)
         else ();
         if !(dump_flag.basic_block) then
-          L1.Prog.dump_basic_block l1 !dump_path
-            (Filename.basename !ifile |> Filename.remove_extension)
+          L1.Prog.dump_basic_block l1 !dump_path ifile_base
         else ();
         if !(dump_flag.spfa) then dump_spfa spfa_res !dump_path else ();
-        if !(dump_flag.l2) then
-          L2.Prog.dump_prog l2 !dump_path
-            (Filename.basename !ifile |> Filename.remove_extension)
+        if !(dump_flag.l2) then (
+          L2.Prog.write_prog l2 !dump_path ifile_base;
+          L2.Prog.dump_prog l2 !dump_path ifile_base)
         else ();
         (* if !(dump_flag.csa) then
              dump_csa csa_res !dump_path
                (Filename.basename !ifile |> Filename.remove_extension)
            else (); *)
-        if !(dump_flag.l3) then
-          L3.Prog.dump_prog l3 !dump_path
-            (Filename.basename !ifile |> Filename.remove_extension)
+        if !(dump_flag.l3) then (
+          L3.Prog.write_prog l3 !dump_path ifile_base;
+          L3.Prog.dump_prog l3 !dump_path ifile_base)
         else ();
         (* if !(dump_flag.rea) then
              dump_rea lva_res !dump_path

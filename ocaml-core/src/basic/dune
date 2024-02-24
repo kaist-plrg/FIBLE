@@ -14,4 +14,6 @@
   VarNode
   MemRef
   Assignable
-  PrettySpec))
+  PrettySpec
+  MemoryBlock
+  ROM))

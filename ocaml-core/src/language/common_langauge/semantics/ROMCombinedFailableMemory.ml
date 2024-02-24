@@ -5,14 +5,14 @@ include AddrMap
 let ( let* ) = Result.bind
 
 type storable = Byte of Char.t | Undef
-type t = { ram : storable AddrMap.t; rom : Addr.t -> Char.t }
+type t = { ram : storable AddrMap.t; rom : ROM.t }
 
-let from_rom (rom : Addr.t -> Char.t) : t = { ram = AddrMap.empty; rom }
+let from_rom (rom : ROM.t) : t = { ram = AddrMap.empty; rom }
 
 let find (s : t) (addr : Addr.t) : storable =
   match AddrMap.find_opt addr s.ram with
   | Some v -> v
-  | None -> Byte (s.rom addr)
+  | None -> Byte (ROM.get_byte s.rom addr)
 
 let load_mem (s : t) (addr : Addr.t) (width : Int32.t) :
     (NumericValue.t, String.t) Result.t =

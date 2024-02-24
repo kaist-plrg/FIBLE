@@ -3,15 +3,14 @@ open Basic
 open Basic_collection
 open Common_language
 
-let from_signature (rspec : Int32.t Int32Map.t) (p : Prog.t) (a : Addr.t) :
-    State.t =
+let from_signature (p : Prog.t) (a : Addr.t) : State.t =
   let init_sp = { SPVal.func = (a, 0); timestamp = 0L; offset = 0L } in
   {
     timestamp = 0L;
     sto =
       {
         regs =
-          RegFile.add_reg (RegFile.empty rspec)
+          RegFile.add_reg (RegFile.empty p.rspec)
             { id = RegId.Register 32l; offset = 0l; width = 8l }
             (Value.NonNum (SP init_sp));
         mem = Memory.from_rom p.rom;

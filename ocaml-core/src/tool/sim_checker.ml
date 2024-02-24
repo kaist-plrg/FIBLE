@@ -54,41 +54,42 @@ let main () =
         [%log debug "Input file is %s" !ifile];
         let server = Ghidra.make_server !ifile !ghidra_path tmp_path cwd in
         List.iter (fun x -> [%log debug "func %s" x]) target_funcs;
-        let func_with_addrs =
+        let _ =
           List.map (fun x -> (x, Ghidra.get_func_addr server x)) target_funcs
         in
-
-        let l0 : L0.Prog.t =
-          {
-            ins_mem = server.instfunc;
-            rom = server.initstate;
-            externs = Util.ExternalFunction.to_addrMap server.external_function;
-          }
-        in
-        let cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list =
-          func_with_addrs
-          |> List.map (fun (fname, e) ->
-                 (fname, e, L0.Shallow_CFA.follow_flow l0 e))
-        in
-        let l1_init : L1Partial.Prog.t =
-          L1Partial.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
-        in
-        let l1_refine : L1Partial.Prog.t =
-          L1Partial.Refine.apply_prog l0 l1_init
-        in
-        let l1 : L1.Prog.t = l1_refine |> L1.Prog.from_partial in
-        let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
-          l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l))
-        in
-        let l2 : L2Partial.Prog.t =
-          L2Partial.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
-        in
-        (match
-           Simulation.Check_simulation.run server.regspec.base_size l0 l1 l2
-             (List.find (fun x -> fst x = "main") func_with_addrs |> snd)
-         with
-        | Ok _ -> Format.printf "Success\n"
-        | Error e -> Format.printf "Error: %s\n" e);
+        (*
+                 let l0 : L0.Prog.t =
+                   {
+                     ins_mem = server.instfunc;
+                     rom = server.initstate;
+                     rspec = server.regspec.base_size;
+                     externs = Util.ExternalFunction.to_addrMap server.external_function;
+                   }
+                 in
+                 let cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list =
+                   func_with_addrs
+                   |> List.map (fun (fname, e) ->
+                          (fname, e, L0.Shallow_CFA.follow_flow l0 e))
+                 in
+                 let l1_init : L1Partial.Prog.t =
+                   L1Partial.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
+                 in
+                 let l1_refine : L1Partial.Prog.t =
+                   L1Partial.Refine.apply_prog l0 l1_init
+                 in
+                 let l1 : L1.Prog.t = l1_refine |> L1.Prog.from_partial in
+                 let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
+                   l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l))
+                 in
+                 let l2 : L2Partial.Prog.t =
+                   L2Partial.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
+                 in
+                 (match
+                    Simulation.Check_simulation.run server.regspec.base_size l0 l1 l2
+                      (List.find (fun x -> fst x = "main") func_with_addrs |> snd)
+                  with
+                 | Ok _ -> Format.printf "Success\n"
+                 | Error e -> Format.printf "Error: %s\n" e); *)
         Unix.kill server.pid Sys.sigterm
 
 let () = Global.run_main main

@@ -4,8 +4,8 @@ open Basic_domain
 module VSAnalysis = Graph.ChaoticIteration.Make (ICFG.G) (VSAnalysisDomain)
 module WTPO = Graph.WeakTopological.Make (ICFG.G)
 
-let compute_astate_with_graph (rom : Addr.t -> Char.t) (f : Func.t)
-    (g : ICFG.G.t) : VSAnalysisDomain.t LocMap.t =
+let compute_astate_with_graph (rom : ROM.t) (f : Func.t) (g : ICFG.G.t) :
+    VSAnalysisDomain.t LocMap.t =
   let wtpo =
     WTPO.recursive_scc g
       { block = Func.get_bb f f.entry |> Option.get; time = Pre }

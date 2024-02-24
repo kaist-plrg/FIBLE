@@ -1,6 +1,7 @@
 open StdlibExt
 open Basic
 open Basic_domain
+open Common_language
 open Value_domain
 module Map = KeyMap.Make (AbsNumeric)
 
@@ -27,8 +28,8 @@ let eval_varnode (a : t) (d : OctagonD.t) (vn : VarNode.t) =
             v)
   | Ram _ -> AbsNumeric.top
 
-let process_load (rom : Addr.t -> Char.t) (a : t) (d : OctagonD.t)
-    (outv : RegId.t_full) (addrSet : AExprSet.t) =
+let process_load (rom : ROM.t) (a : t) (d : OctagonD.t) (outv : RegId.t_full)
+    (addrSet : AExprSet.t) =
   let cv =
     AExprSet.fold
       (fun ae o ->

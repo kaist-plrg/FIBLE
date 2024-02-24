@@ -1,22 +1,24 @@
 open StdlibExt
 open Basic
 open Basic_collection
+open Common_language
 
 type t = {
   funcs : Func.t list;
-  rom : Addr.t -> Char.t;
+  rom : ROM.t;
+  rspec : Int32.t Int32Map.t;
   externs : String.t AddrMap.t;
 }
 
-let get_rom_byte (p : t) (addr : Addr.t) : Char.t = p.rom addr
+let get_rom_byte (p : t) (addr : Addr.t) : Char.t = ROM.get_byte p.rom addr
 
-let get_rom_raw (rom : Addr.t -> Char.t) (addr : Addr.t) (width : Int32.t) :
+let get_rom_raw (rom : ROM.t) (addr : Addr.t) (width : Int32.t) :
     Common_language.NumericValue.t =
   let rec aux (addr : Addr.t) (width : Int32.t) (acc : Char.t list) :
       Char.t list =
     if width = 0l then acc
     else
-      let c = rom addr in
+      let c = ROM.get_byte rom addr in
       aux (Addr.succ addr) (Int32.pred width) (c :: acc)
   in
   let chars = aux addr width [] |> List.rev in

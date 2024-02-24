@@ -44,11 +44,18 @@ let main () =
         let server = Ghidra.make_server !ifile !ghidra_path tmp_path cwd in
         [%log debug "func %s" target_func];
         let addr = Ghidra.get_func_addr server target_func in
+        let ifile_base =
+          Filename.basename !ifile |> Filename.remove_extension
+        in
+        let _ = server.dump_rom "./" ifile_base in
+
+        let rom : ROM.t = Util.ROMWrapper.read_file "./" ifile_base in
 
         let l0 : L0.Prog.t =
           {
             ins_mem = server.instfunc;
-            rom = server.initstate;
+            rom;
+            rspec = server.regspec.base_size;
             externs = Util.ExternalFunction.to_addrMap server.external_function;
           }
         in

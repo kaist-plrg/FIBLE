@@ -127,7 +127,13 @@ let translate_prog_from_rea (p1 : L2.Prog.t)
       |> List.map (fun ((f, s) : L2.Func.t * 'a) -> (f.entry, s)))
   in
   let funcs = List.map (fun (f, a) -> translate_func f a fMap) signature_list in
-  { sp_num = p1.sp_num; funcs; rom = p1.rom; externs = p1.externs }
+  {
+    sp_num = p1.sp_num;
+    funcs;
+    rom = p1.rom;
+    rspec = p1.rspec;
+    externs = p1.externs;
+  }
 
 let translate_prog (p1 : L2.Prog.t) : Prog.t =
   let rea_res = L2.REA.compute_all p1 in
