@@ -47,9 +47,11 @@ let main () =
         let ifile_base =
           Filename.basename !ifile |> Filename.remove_extension
         in
-        let _ = server.dump_rom "./" ifile_base in
+        let _ = server.dump_rom ("./" ^ ifile_base ^ ".dmem") in
 
-        let rom : ROM.t = Util.ROMWrapper.read_file "./" ifile_base in
+        let rom : DMem.t =
+          Util.DMemWrapper.read_file ("./" ^ ifile_base ^ ".dmem")
+        in
 
         let l0 : L0.Prog.t =
           {

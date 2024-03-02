@@ -4,12 +4,12 @@ open Basic_collection
 
 type t = {
   funcs : Func.t list;
-  rom : ROM.t;
+  rom : DMem.t;
   rspec : Int32.t Int32Map.t;
   externs : String.t AddrMap.t;
 }
 
-let get_rom_byte (p : t) (addr : Addr.t) : Char.t = ROM.get_byte p.rom addr
+let get_rom_byte (p : t) (addr : Addr.t) : Char.t = DMem.get_byte p.rom addr
 
 let get_rom (p : t) (addr : Addr.t) (width : Int32.t) :
     Common_language.NumericValue.t =
@@ -28,24 +28,13 @@ let pp fmt p =
   Format.fprintf fmt "funcs: @[<v>%a@]@," (Format.pp_print_list Func.pp) p.funcs;
   Format.fprintf fmt "@]"
 
-let write_prog (p : t) (path : String.t) (filename : String.t) : unit =
-  let oc = open_out (Filename.concat path (filename ^ ".fgir")) in
+let write_prog (p : t) (path : String.t) : unit =
+  let oc = open_out path in
   let fmt = Format.formatter_of_out_channel oc in
   Format.fprintf fmt "%a@.%!" pp p;
   close_out oc
 
-let dump_prog (p : t) (path : String.t) (filename : String.t) : unit =
-  let oc = open_out_bin (Filename.concat path (filename ^ ".fgir_dump")) in
-  Marshal.to_channel oc p [];
-  close_out oc
-
-let load_prog (filename : String.t) : t =
-  let ic = open_in_bin (filename ^ ".fgir_dump") in
-  let p = Marshal.from_channel ic in
-  close_in ic;
-  p
-
-let dump_basic_block (p : t) (path : String.t) (filename : String.t) : unit =
+let write_basic_block (p : t) (path : String.t) : unit =
   List.iter
     (fun (f : Func.t) ->
       Func.dump_basic_block f path

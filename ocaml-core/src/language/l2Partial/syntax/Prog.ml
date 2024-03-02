@@ -5,12 +5,12 @@ open Basic_collection
 type t = {
   sp_num : Int32.t;
   funcs : Func.t list;
-  rom : ROM.t;
+  rom : DMem.t;
   rspec : Int32.t Int32Map.t;
   externs : String.t AddrMap.t;
 }
 
-let get_rom_byte (p : t) (addr : Addr.t) : Char.t = ROM.get_byte p.rom addr
+let get_rom_byte (p : t) (addr : Addr.t) : Char.t = DMem.get_byte p.rom addr
 
 let get_rom (p : t) (addr : Addr.t) (width : Int32.t) :
     Common_language.NumericValue.t =

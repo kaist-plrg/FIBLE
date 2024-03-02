@@ -66,7 +66,7 @@ let extract_dep_loc (f : Func.t) (b : Block.t) : Func.t =
   let dep_locs = gen_dep_locs pdg init_locs in
   extract_loc f dep_locs
 
-let do_analysis (rom : ROM.t) (f : Func.t) (b : Block.t) : Int64Set.t option =
+let do_analysis (rom : DMem.t) (f : Func.t) (b : Block.t) : Int64Set.t option =
   let g = ICFG.to_graph f.blocks in
   let vsa = VSA.compute_astate_with_graph rom f g in
   [%log debug "VSA: %a" VSAnalysisDomain.pp (LocMap.find f.entry vsa)];

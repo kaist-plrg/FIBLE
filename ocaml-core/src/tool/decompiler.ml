@@ -147,9 +147,11 @@ let main () =
         let ifile_base =
           Filename.basename !ifile |> Filename.remove_extension
         in
-        let _ = server.dump_rom !dump_path ifile_base in
+        let _ = server.dump_rom (!dump_path ^ "/" ^ ifile_base ^ ".dmem") in
 
-        let rom : ROM.t = Util.ROMWrapper.read_file !dump_path ifile_base in
+        let rom : DMem.t =
+          Util.DMemWrapper.read_file (!dump_path ^ "/" ^ ifile_base ^ ".dmem")
+        in
         let c0 = Sys.time () in
         let l0 : L0.Prog.t =
           {
@@ -238,25 +240,26 @@ let main () =
                -dump-path"];
         if !(dump_flag.cfa) then dump_cfa cfa_res !dump_path else ();
         if !(dump_flag.l1) then (
-          L1.Prog.write_prog l1 !dump_path ifile_base;
-          L1.Prog.dump_prog l1 !dump_path ifile_base;
-          L1Partial.Prog.dump_prog l1_refine !dump_path ifile_base)
+          L1.Prog.write_prog l1 (!dump_path ^ "/" ^ ifile_base ^ ".fgir");
+          Artifact.Dumper.dump (Artifact.Data.L1 l1)
+            (!dump_path ^ "/" ^ ifile_base ^ ".fgir_dump"))
         else ();
-        if !(dump_flag.basic_block) then
-          L1.Prog.dump_basic_block l1 !dump_path ifile_base
+        if !(dump_flag.basic_block) then L1.Prog.write_basic_block l1 !dump_path
         else ();
         if !(dump_flag.spfa) then dump_spfa spfa_res !dump_path else ();
         if !(dump_flag.l2) then (
-          L2.Prog.write_prog l2 !dump_path ifile_base;
-          L2.Prog.dump_prog l2 !dump_path ifile_base)
+          L2.Prog.write_prog l2 (!dump_path ^ "/" ^ ifile_base ^ ".asir");
+          Artifact.Dumper.dump (Artifact.Data.L2 l2)
+            (!dump_path ^ "/" ^ ifile_base ^ ".asir_dump"))
         else ();
         (* if !(dump_flag.csa) then
              dump_csa csa_res !dump_path
                (Filename.basename !ifile |> Filename.remove_extension)
            else (); *)
         if !(dump_flag.l3) then (
-          L3.Prog.write_prog l3 !dump_path ifile_base;
-          L3.Prog.dump_prog l3 !dump_path ifile_base)
+          L3.Prog.write_prog l3 (!dump_path ^ "/" ^ ifile_base ^ ".ioir");
+          Artifact.Dumper.dump (Artifact.Data.L3 l3)
+            (!dump_path ^ "/" ^ ifile_base ^ ".ioir_dump"))
         else ();
         (* if !(dump_flag.rea) then
              dump_rea lva_res !dump_path

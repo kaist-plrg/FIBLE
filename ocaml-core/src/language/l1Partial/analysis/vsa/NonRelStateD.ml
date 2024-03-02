@@ -28,7 +28,7 @@ let eval_varnode (a : t) (d : OctagonD.t) (vn : VarNode.t) =
             v)
   | Ram _ -> AbsNumeric.top
 
-let process_load (rom : ROM.t) (a : t) (d : OctagonD.t) (outv : RegId.t_full)
+let process_load (rom : DMem.t) (a : t) (d : OctagonD.t) (outv : RegId.t_full)
     (addrSet : AExprSet.t) =
   let cv =
     AExprSet.fold

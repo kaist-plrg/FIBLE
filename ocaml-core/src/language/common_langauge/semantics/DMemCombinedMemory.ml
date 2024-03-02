@@ -2,12 +2,13 @@ open Basic
 open Basic_collection
 include AddrMap
 
-type t = { ram : Char.t AddrMap.t; rom : ROM.t }
+type t = { ram : Char.t AddrMap.t; rom : DMem.t }
 
-let from_rom (rom : ROM.t) : t = { ram = AddrMap.empty; rom }
+let from_rom (rom : DMem.t) : t = { ram = AddrMap.empty; rom }
 
 let find (s : t) (addr : Addr.t) : Char.t =
-  AddrMap.find_opt addr s.ram |> Option.value ~default:(ROM.get_byte s.rom addr)
+  AddrMap.find_opt addr s.ram
+  |> Option.value ~default:(DMem.get_byte s.rom addr)
 
 let load_mem (s : t) (addr : Addr.t) (width : Int32.t) : NumericValue.t =
   let rec aux (addr : Addr.t) (width : Int32.t) (acc : Char.t list) :

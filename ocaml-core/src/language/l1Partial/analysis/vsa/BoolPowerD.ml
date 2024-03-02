@@ -148,7 +148,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
       | _ -> na)
   | Auop (_, _) -> na
 
-let process_load (rom : ROM.t) (a : t) (d : OctagonD.t) (outv : RegId.t_full)
+let process_load (rom : DMem.t) (a : t) (d : OctagonD.t) (outv : RegId.t_full)
     (addrSet : AExprSet.t) : t =
   clear_mr a outv.id
   |> Map.map (fun (vt, vf) ->

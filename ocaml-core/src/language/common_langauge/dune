@@ -12,9 +12,9 @@
   Interop
   RegFileF
   NumericMemory
-  ROMCombinedMemory
+  DMemCombinedMemory
   FailableMemory
-  ROMCombinedFailableMemory
+  DMemCombinedFailableMemory
   MemoryF
   FrameF
   NumericBop

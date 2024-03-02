@@ -28,7 +28,8 @@
   l1
   l2Partial
   l2
-  l3)
+  l3
+  artifact)
  (modules interpreter))
 
 (executable
@@ -51,7 +52,8 @@
   l1
   l2Partial
   l2
-  l3)
+  l3
+  artifact)
  (modules decompiler))
 
 (executable

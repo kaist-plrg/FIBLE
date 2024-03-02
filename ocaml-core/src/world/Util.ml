@@ -156,8 +156,8 @@ module ExternalFunction = struct
       ext Basic_collection.AddrMap.empty
 end
 
-module ROMWrapper = struct
-  type t = ROM.t
+module DMemWrapper = struct
+  type t = DMem.t
 
   let read (fd : Unix.file_descr) : t =
     let num = Interaction.read_int fd in
@@ -170,8 +170,8 @@ module ROMWrapper = struct
     in
     loop [] (Int32.to_int num) |> List.rev
 
-  let read_file (path : String.t) (base : String.t) : t =
-    let ic = open_in_bin (path ^ "/" ^ base ^ ".rom") in
+  let read_file (path : String.t) : t =
+    let ic = open_in_bin path in
     let res = read (Unix.descr_of_in_channel ic) in
     close_in ic;
     res

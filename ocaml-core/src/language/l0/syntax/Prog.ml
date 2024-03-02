@@ -5,7 +5,7 @@ open Common_language
 
 type t = {
   ins_mem : Addr.t -> (int * Inst.t_full list) option;
-  rom : ROM.t;
+  rom : DMem.t;
   rspec : Int32.t Int32Map.t;
   externs : String.t AddrMap.t;
 }
@@ -25,7 +25,7 @@ let get_ins_full (p : t) (loc : Loc.t) : Inst.t_full option =
       if snd loc < List.length ins_list then Some (List.nth ins_list (snd loc))
       else None
 
-let get_rom_byte (p : t) (addr : Addr.t) : Char.t = ROM.get_byte p.rom addr
+let get_rom_byte (p : t) (addr : Addr.t) : Char.t = DMem.get_byte p.rom addr
 
 let get_rom (p : t) (addr : Addr.t) (width : Int32.t) :
     Common_language.NumericValue.t =

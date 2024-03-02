@@ -16,4 +16,4 @@
   Assignable
   PrettySpec
   MemoryBlock
-  ROM))
+  DMem))
