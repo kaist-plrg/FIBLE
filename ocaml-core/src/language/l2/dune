@@ -19,8 +19,6 @@
   Inst
   Jmp
   Prog
-  LPVal
-  PPVal
   SPVal
   NonNumericValue
   Value

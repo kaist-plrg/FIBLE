@@ -140,6 +140,7 @@ let build_side (s : State.t) (value : Value.t) (t : Interop.t) :
     (State.t, String.t) Result.t =
   match t with
   | Interop.VBuffer v ->
+      [%log debug "Storing extern_val at %a" Value.pp value];
       let* sto = Store.store_bytes s.sto value (Bytes.to_string v) in
       Ok { s with sto }
   | _ -> Error "Unreachable"
@@ -168,34 +169,17 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) (func : Loc.t * Int64.t)
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       let* sto' = Store.store_mem s.sto addrv sv in
       Ok { s with sto = sto' }
-  | Ilload { offset; output } ->
+  | Isload { offset; output } ->
       let addrv =
-        Value.localP
+        Value.sp
           { func = fst func; timestamp = snd func; offset = offset.value }
       in
       let* lv = Store.load_mem s.sto addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
       Ok { s with regs = RegFile.add_reg s.regs output lv }
-  | Ilstore { offset; value } ->
+  | Isstore { offset; value } ->
       let addrv =
-        Value.localP
-          { func = fst func; timestamp = snd func; offset = offset.value }
-      in
-      let sv = eval_vn value s in
-      [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
-      let* sto' = Store.store_mem s.sto addrv sv in
-      Ok { s with sto = sto' }
-  | Ipload { offset; output } ->
-      let addrv =
-        Value.paramP
-          { func = fst func; timestamp = snd func; offset = offset.value }
-      in
-      let* lv = Store.load_mem s.sto addrv output.width in
-      [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-      Ok { s with regs = RegFile.add_reg s.regs output lv }
-  | Ipstore { offset; value } ->
-      let addrv =
-        Value.paramP
+        Value.sp
           { func = fst func; timestamp = snd func; offset = offset.value }
       in
       let sv = eval_vn value s in
@@ -328,7 +312,12 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
                         (f.nameo |> Option.value ~default:"noname")
                         (List.length inputs)]))
               { id = RegId.Register 32l; offset = 0l; width = 8l }
-              (Value.sp { func = calln; timestamp = Int64Ext.succ s.timestamp });
+              (Value.sp
+                 {
+                   func = calln;
+                   timestamp = Int64Ext.succ s.timestamp;
+                   offset = 0L;
+                 });
           func = (calln, Int64Ext.succ s.timestamp);
           sto =
             {
@@ -336,10 +325,7 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
               local =
                 s.sto.local
                 |> LocalMemory.add
-                     (Local, calln, Int64Ext.succ s.timestamp)
-                     Frame.empty
-                |> LocalMemory.add
-                     (Param, calln, Int64Ext.succ s.timestamp)
+                     (calln, Int64Ext.succ s.timestamp)
                      nlocal;
             };
         }
@@ -356,12 +342,14 @@ let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
         if f.sp_diff = spdiff then Ok ()
         else Error "jcall_ind: spdiff not match"
       in
-      let* _ =
-        if snd f.sp_boundary <= copydepth then Ok ()
-        else Error "jcall_ind: copydepth not match"
-      in
+      (* TODO: think ind copydepth
+         let* _ =
+           if snd f.sp_boundary <= copydepth then Ok ()
+           else Error "jcall_ind: copydepth not match"
+         in
+      *)
       let* ncont = Cont.of_func_entry_loc p calln in
-      let* nlocal = build_local_frame s copydepth in
+      let* nlocal = build_local_frame s (snd f.sp_boundary) in
       let* sp_saved = get_sp_saved s spdiff in
       Ok
         {
@@ -378,7 +366,12 @@ let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
                         { id = i; offset = 0l; width = 8l }))
                  (RegFile.of_seq Seq.empty) f.inputs)
               { id = RegId.Register 32l; offset = 0l; width = 8l }
-              (Value.sp { func = calln; timestamp = Int64Ext.succ s.timestamp });
+              (Value.sp
+                 {
+                   func = calln;
+                   timestamp = Int64Ext.succ s.timestamp;
+                   offset = 0L;
+                 });
           func = (calln, Int64Ext.succ s.timestamp);
           sto =
             {
@@ -386,10 +379,7 @@ let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
               local =
                 s.sto.local
                 |> LocalMemory.add
-                     (Local, calln, Int64Ext.succ s.timestamp)
-                     Frame.empty
-                |> LocalMemory.add
-                     (Param, calln, Int64Ext.succ s.timestamp)
+                     (calln, Int64Ext.succ s.timestamp)
                      nlocal;
             };
         }

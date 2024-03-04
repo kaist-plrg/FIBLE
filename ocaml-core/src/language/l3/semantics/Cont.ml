@@ -40,3 +40,6 @@ let pp fmt (v : t) =
   | [] -> Format.fprintf fmt "Jmp %a" Jmp.pp_full v.jmp
   | { ins = INop; _ } :: [] -> Format.fprintf fmt "Jmp %a" Jmp.pp_full v.jmp
   | i :: _ -> Format.fprintf fmt "Inst %a" Inst.pp_full i
+
+let get_loc (v : t) : Loc.t =
+  match v.remaining with [] -> v.jmp.loc | i :: _ -> i.loc

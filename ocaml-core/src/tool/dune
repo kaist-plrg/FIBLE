@@ -5,7 +5,7 @@
  (name cfa_analyzer)
  (public_name multi-step-decomp)
  (package multi-step-decomp)
- (libraries zarith unix stdlibExt ppx_log ppx_cwd basic l0 world)
+ (libraries zarith unix stdlibExt ppx_log ppx_cwd basic l0 world artifact)
  (modules cfa_analyzer))
 
 (executable
@@ -31,6 +31,30 @@
   l3
   artifact)
  (modules interpreter))
+
+(executable
+ (flags -w -20-33-3 -g)
+ (preprocess
+  (pps ppx_log ppx_cwd))
+ (name debugger)
+ (public_name multi-step-decomp)
+ (package multi-step-decomp)
+ (libraries
+  zarith
+  unix
+  stdlibExt
+  ppx_log
+  ppx_cwd
+  basic
+  l0
+  world
+  l1Partial
+  l1
+  l2Partial
+  l2
+  l3
+  artifact)
+ (modules debugger))
 
 (executable
  (flags -w -20-33-3)

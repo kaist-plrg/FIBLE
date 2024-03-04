@@ -1,0 +1,53 @@
+open StdlibExt
+open Basic
+open Basic_domain
+open Value_domain
+open World
+
+let usage_msg = "debugger -i <ifile>"
+let ifile = ref ""
+let port = ref 0
+
+let speclist =
+  [
+    ("-i", Arg.Set_string ifile, ": input file");
+    ("-p", Arg.Set_int port, ": port");
+  ]
+
+let debug_l1 l1 = failwith "not implemented"
+let debug_l2 l2 = failwith "not implemented"
+
+let debug_l3 (in_chan, out_chan) l3 =
+  Artifact.L3_repl.repl (in_chan, out_chan) l3 (L3.Init.default l3)
+
+let main () =
+  Arg.parse speclist
+    (fun x -> raise (Arg.Bad ("Bad argument : " ^ x)))
+    usage_msg;
+  if !ifile = "" then raise (Arg.Bad "No input file")
+  else
+    let sfd, port = Util.create_server_socket ~default_port:!port () in
+    Format.printf "Listening on port %d\n%!" port;
+
+    let x, _, _ = Unix.select [ sfd ] [] [] 60.0 in
+    if x = [] then [%log fatal "No connection"] else ();
+    let fd, _ = Unix.accept sfd in
+    Format.printf "Accepted connection\n%!";
+
+    let in_chan, out_chan =
+      (Unix.in_channel_of_descr fd, Unix.out_channel_of_descr fd)
+    in
+    let data = Artifact.Loader.load !ifile in
+    let res =
+      match data with
+      | Artifact.Data.L1 l1 -> debug_l1 (in_chan, out_chan) l1
+      | Artifact.Data.L2 l2 -> debug_l2 (in_chan, out_chan) l2
+      | Artifact.Data.L3 l3 -> debug_l3 (in_chan, out_chan) l3
+    in
+    (match res with
+    | Ok _ -> [%log info "Success"]
+    | Error e -> [%log error "Error: %s\n" e]);
+    Unix.close fd;
+    ()
+
+let () = Global.run_main main

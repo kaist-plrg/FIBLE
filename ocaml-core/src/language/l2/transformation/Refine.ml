@@ -30,12 +30,8 @@ let translate_inst (i : L2Partial.Inst.t_full) (la : L2Partial.AbsState.t) :
     | Iassignment { expr; output } -> Iassignment { expr; output }
     | Iload { space; pointer; output } -> Iload { space; pointer; output }
     | Istore { space; pointer; value } -> Istore { space; pointer; value }
-    | Isload { offset; output } ->
-        if offset.value > 0L then Ipload { offset; output }
-        else Ilload { offset; output }
-    | Isstore { offset; value } ->
-        if offset.value > 0L then Ilstore { offset; value }
-        else Ilstore { offset; value }
+    | Isload { offset; output } -> Isload { offset; output }
+    | Isstore { offset; value } -> Isstore { offset; value }
   in
   { ins = nins; loc = i.loc; mnem = i.mnem }
 

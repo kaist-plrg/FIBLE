@@ -64,8 +64,10 @@ let get_string (fd : Unix.file_descr) : string =
 let read_string (fd : Unix.file_descr) : string =
   let len = Int32.to_int (read_int fd) in
   let s = Bytes.create len in
-  let recv_num = Unix.read fd s 0 len in
-  assert (recv_num = len);
+  let recv_num : int ref = ref 0 in
+  while !recv_num < len do
+    recv_num := !recv_num + Unix.read fd s !recv_num (len - !recv_num)
+  done;
   Bytes.unsafe_to_string s
 
 let put_char (c : char) =

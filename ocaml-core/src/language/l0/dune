@@ -39,5 +39,4 @@
   ContourD_Mut
   FSAbsD_Mut
   Shallow_CFA
-  CFA
-  CFA_repl))
+  CFA))

@@ -3,7 +3,7 @@ open Basic
 open Basic_collection
 
 let from_signature (p : Prog.t) (a : Addr.t) : State.t =
-  let init_sp = { SPVal.func = (a, 0); timestamp = 0L } in
+  let init_sp = { SPVal.func = (a, 0); timestamp = 0L; offset = 0L } in
   {
     timestamp = 0L;
     regs =
@@ -15,3 +15,10 @@ let from_signature (p : Prog.t) (a : Addr.t) : State.t =
     cont = Cont.of_func_entry_loc p (a, 0) |> Result.get_ok;
     stack = [];
   }
+
+let default (p : Prog.t) : State.t =
+  (List.find
+     (fun (x : Func.t) ->
+       String.equal (Option.value x.nameo ~default:"") "main")
+     p.funcs)
+    .entry |> fst |> from_signature p

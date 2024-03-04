@@ -149,34 +149,28 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
       let sv = eval_vn value s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       Store.store_mem s addrv sv
-  | Ilload { offset; output } ->
+  | Isload { offset; output } ->
       let addrv =
-        Value.localP
-          { func = fst func; timestamp = snd func; offset = offset.value }
+        Value.NonNum
+          (SP
+             {
+               SPVal.func = fst func;
+               timestamp = snd func;
+               offset = offset.value;
+             })
       in
       let* lv = Store.load_mem s addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
       Ok { s with regs = RegFile.add_reg s.regs output lv }
-  | Ilstore { offset; value } ->
+  | Isstore { offset; value } ->
       let addrv =
-        Value.localP
-          { func = fst func; timestamp = snd func; offset = offset.value }
-      in
-      let sv = eval_vn value s in
-      [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
-      Store.store_mem s addrv sv
-  | Ipload { offset; output } ->
-      let addrv =
-        Value.paramP
-          { func = fst func; timestamp = snd func; offset = offset.value }
-      in
-      let* lv = Store.load_mem s addrv output.width in
-      [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-      Ok { s with regs = RegFile.add_reg s.regs output lv }
-  | Ipstore { offset; value } ->
-      let addrv =
-        Value.paramP
-          { func = fst func; timestamp = snd func; offset = offset.value }
+        Value.NonNum
+          (SP
+             {
+               SPVal.func = fst func;
+               timestamp = snd func;
+               offset = offset.value;
+             })
       in
       let sv = eval_vn value s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
@@ -220,15 +214,14 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
                 RegFile.add_reg s.sto.regs
                   { id = RegId.Register 32l; offset = 0l; width = 8l }
                   (Value.sp
-                     { func = calln; timestamp = Int64Ext.succ s.timestamp });
+                     {
+                       func = calln;
+                       timestamp = Int64Ext.succ s.timestamp;
+                       offset = 0L;
+                     });
               local =
                 s.sto.local
-                |> LocalMemory.add
-                     (Local, calln, Int64Ext.succ s.timestamp)
-                     nlocal
-                |> LocalMemory.add
-                     (Param, calln, Int64Ext.succ s.timestamp)
-                     nlocal;
+                |> LocalMemory.add (calln, Int64Ext.succ s.timestamp) nlocal;
             };
         }
   | Some name ->

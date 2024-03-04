@@ -9,12 +9,12 @@ let post_single_instr (i : Inst.t) (c : t) : AccessD.t * t =
   | Inst.INop -> (AccessD.bottom, c)
   | Inst.Iassignment { expr; output } ->
       (AccessD.bottom, process_assignment c expr output)
-  | Inst.Iload { pointer; _ } ->
+  | Inst.Iload { pointer; output; _ } ->
       [%log debug "load: %a" SPVal.pp (eval_varnode c pointer)];
-      (AccessD.log_access (eval_varnode c pointer), c)
-  | Inst.Istore { pointer; _ } ->
+      (AccessD.log_access output.width (eval_varnode c pointer), c)
+  | Inst.Istore { pointer; value } ->
       [%log debug "store: %a" SPVal.pp (eval_varnode c pointer)];
-      (AccessD.log_access (eval_varnode c pointer), c)
+      (AccessD.log_access (VarNode.width value) (eval_varnode c pointer), c)
 
 let post_single_jmp (i : Jmp.t) (c : t) (sp_num : Int32.t) : t =
   match i with

@@ -5,5 +5,5 @@
  (flags -w -20-33-3)
  (preprocess
   (pps ppx_log))
- (libraries stdlibExt ppx_log common_language l0 l1 l2 l3)
- (modules Data Dumper Loader))
+ (libraries angstrom stdlibExt ppx_log common_language l0 l1 l2 l3)
+ (modules Data Dumper Loader CFA_repl L3_repl))

@@ -46,15 +46,7 @@ let interp_l2 l2 =
   | Error e -> [%log error "Error: %s\n" e]
 
 let interp_l3 l3 =
-  (match
-     L3.Interp.interp l3
-       (L3.Init.from_signature l3
-          ((List.find
-              (fun (x : L3.Func.t) ->
-                String.equal (Option.value x.nameo ~default:"") "main")
-              l3.funcs)
-             .entry |> fst))
-   with
+  (match L3.Interp.interp l3 (L3.Init.default l3) with
   | Ok _ -> [%log info "Success"]
   | Error e -> [%log error "Error: %s\n" e]);
   ()

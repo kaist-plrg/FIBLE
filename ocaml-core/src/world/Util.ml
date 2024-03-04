@@ -3,9 +3,9 @@ open Basic
 
 let _ = Random.self_init ()
 
-let create_server_socket () =
+let create_server_socket ?(default_port = 0) () =
   let fd = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-  let port = 0 in
+  let port = default_port in
   let _ = Unix.bind fd (Unix.ADDR_INET (Unix.inet_addr_loopback, port)) in
   let _ = Unix.listen fd 1 in
   let port =

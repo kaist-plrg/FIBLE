@@ -68,16 +68,13 @@ let compute_dd_inst (i : Inst.t) : astate =
       }
   | Istore
       { pointer = Basic.VarNode.Const _; value = Basic.VarNode.Register rs }
-  | Ilstore { value = Basic.VarNode.Register rs; _ }
-  | Ipstore { value = Basic.VarNode.Register rs; _ } ->
+  | Isstore { value = Basic.VarNode.Register rs; _ } ->
       {
         must_def_regs = RegIdSetD.bot;
         may_def_regs = RegIdSetD.bot;
         dependent_regs = RegIdSetD.Set (RegIdSet.singleton rs.id);
       }
-  | Iload { pointer = Basic.VarNode.Const _; output }
-  | Ilload { output; _ }
-  | Ipload { output; _ } ->
+  | Iload { pointer = Basic.VarNode.Const _; output } | Isload { output; _ } ->
       {
         must_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         may_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);

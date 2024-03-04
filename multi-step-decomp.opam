@@ -12,6 +12,7 @@ depends: [
   "ocamlformat"
   "ctypes"
   "ctypes-foreign"
+  "angstrom"
   "odoc" {with-doc}
 ]
 build: [

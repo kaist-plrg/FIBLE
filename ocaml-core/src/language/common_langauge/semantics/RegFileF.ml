@@ -9,6 +9,7 @@ module Make (Value : sig
   val get : t -> Int32.t -> Int32.t -> t
   val extend : t -> Int32.t -> t
   val set : t -> t -> Int32.t -> t
+  val pp : Format.formatter -> t -> unit
 end) =
 struct
   include RegIdMap
@@ -34,4 +35,9 @@ struct
       |> fun o -> Value.set o v r.offset
     in
     RegIdMap.add r.id v s
+
+  let pp fmt (s : t) =
+    RegIdMap.iter
+      (fun k v -> Format.fprintf fmt "%a: %a@ " RegId.pp k Value.pp v)
+      s
 end

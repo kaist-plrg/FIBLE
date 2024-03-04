@@ -4,7 +4,7 @@ open Basic_domain
 open Value_domain
 open World
 
-let usage_msg = "interpreter -i <ifile>"
+let usage_msg = "cfa_analyzer -i <ifile>"
 let ghidra_path = ref ""
 let ifile = ref ""
 let func_name = ref ""
@@ -61,7 +61,7 @@ let main () =
             externs = Util.ExternalFunction.to_addrMap server.external_function;
           }
         in
-        (if !repl then L0.CFA_repl.repl_analysis l0 addr
+        (if !repl then Artifact.CFA_repl.repl_analysis l0 addr
          else
            let _ = L0.CFA.Immutable.follow_flow l0 addr in
            ());

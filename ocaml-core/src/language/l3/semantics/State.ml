@@ -11,5 +11,5 @@ type t = {
 }
 
 let pp fmt (s : t) : unit =
-  Format.fprintf fmt "func: %a@%Ld\n cont: %a\n" Loc.pp (fst s.func)
-    (snd s.func) Cont.pp s.cont
+  Format.fprintf fmt "func: %a@%Ld\n cont: %a\nstack: %a\nregs: %a\n" Loc.pp
+    (fst s.func) (snd s.func) Cont.pp s.cont Stack.pp s.stack RegFile.pp s.regs
