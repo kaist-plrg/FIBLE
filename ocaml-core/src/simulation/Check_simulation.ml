@@ -15,12 +15,12 @@ let check_simu_state (s0 : L0.State.t) (s1 : L1.State.t)
   let* _ = check_pc s0.pc s1.cont s2.cont in
   Ok ()
 
-let collect_errors (nl0 : (L0.State.t, String.t) Result.t)
-    (nl1 : (L1.State.t, String.t) Result.t)
-    (nl2 : (L2Partial.State.t, String.t) Result.t) : String.t =
-  let l0_err = match nl0 with Ok _ -> "" | Error e -> e in
-  let l1_err = match nl1 with Ok _ -> "" | Error e -> e in
-  let l2_err = match nl2 with Ok _ -> "" | Error e -> e in
+let collect_errors (nl0 : (L0.State.t, StopEvent.t) Result.t)
+    (nl1 : (L1.State.t, StopEvent.t) Result.t)
+    (nl2 : (L2Partial.State.t, StopEvent.t) Result.t) : String.t =
+  let l0_err = match nl0 with Ok _ -> "" | Error e -> "" in
+  let l1_err = match nl1 with Ok _ -> "" | Error e -> "" in
+  let l2_err = match nl2 with Ok _ -> "" | Error e -> "" in
   String.concat "\n" [ "L0: " ^ l0_err; "L1: " ^ l1_err; "L2: " ^ l2_err ]
 
 let run (rspec : Int32.t Int32Map.t) (l0 : L0.Prog.t) (l1 : L1.Prog.t)

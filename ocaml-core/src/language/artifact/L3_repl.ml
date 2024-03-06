@@ -7,7 +7,8 @@ type show_type =
   | ShowCurInst
   | ShowCont
   | ShowBlock of Loc.t
-  | ShowMem of Value.t
+  | ShowMem of (Int.t * Value.t)
+  | ShowString of Value.t
 
 type repl_cmd =
   | Quit
@@ -47,6 +48,9 @@ let parse_loc : Loc.t Angstrom.t =
   parse_hex >>= fun n ->
   Angstrom.char ':' *> parse_num >>| fun l -> (n, l)
 
+let parse_val : Value.t Angstrom.t =
+  parse_hex >>| fun n -> Value.Num (Common_language.NumericValue.of_int64 n 8l)
+
 let parse_step =
   lex
     (Angstrom.char 's' *> Angstrom.return Step
@@ -69,7 +73,9 @@ let parse_show =
      <|> lex
            (Angstrom.string "curc" *> Angstrom.return (Show ShowCont)
            <|> ( lex (Angstrom.string "b") *> parse_loc >>| fun l ->
-                 Show (ShowBlock l) )))
+                 Show (ShowBlock l) ))
+     <|> ( lex (Angstrom.string "mem") *> parse_val >>= fun l ->
+           Angstrom.char ',' *> parse_num >>| fun n -> Show (ShowMem (n, l)) ))
 
 let parse_blist =
   lex
@@ -108,7 +114,9 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
         else
           match L3.Interp.step p s with
           | Ok s -> aux s bs continue
-          | Error e ->
+          | Error NormalStop ->
+              Format.fprintf out_formatter "Program terminated\n%!"
+          | Error (FailStop e) ->
               Format.fprintf out_formatter "Error: %s\n%!" e;
               aux s bs continue)
     | Show ShowState ->
@@ -146,6 +154,23 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
               out_formatter b.body;
             Format.fprintf out_formatter "%a\n%!" L3.Jmp.pp_full b.jmp
         | None -> Format.fprintf out_formatter "Block %a not found\n%!" Loc.pp l);
+        aux s bs continue
+    | Show (ShowMem (n, v)) ->
+        (match Store.load_bytes s.sto v (Int32.of_int n) with
+        | Ok s ->
+            Format.fprintf out_formatter "Memory at %a: %a\n%!" Value.pp v
+              (Format.pp_print_list
+                 (fun fmt (b : Char.t) ->
+                   Format.fprintf fmt "%02x" (Char.code b))
+                 ~pp_sep:(fun fmt _ -> Format.fprintf fmt " "))
+              (String.to_seq s |> List.of_seq)
+        | Error e -> Format.fprintf out_formatter "Error: %s\n%!" e);
+        aux s bs continue
+    | Show (ShowString v) ->
+        (match Store.load_string s.sto v with
+        | Ok s ->
+            Format.fprintf out_formatter "String at %a: %s\n%!" Value.pp v s
+        | Error e -> Format.fprintf out_formatter "Error: %s\n%!" e);
         aux s bs continue
     | BList ->
         Format.fprintf out_formatter "Breakpoints:\n%a\n%!"

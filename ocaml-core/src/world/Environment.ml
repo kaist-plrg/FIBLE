@@ -21,33 +21,6 @@ let cgc_funcs : String.t List.t =
 let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
   StringMap.of_list
     [
-      ( "putchar",
-        ( { Interop.params = [ Interop.T32 ]; result = T32 },
-          Hide (int @-> returning int) ) );
-      ( "puts",
-        ( { Interop.params = [ Interop.TString ]; result = T32 },
-          Hide (string @-> returning int) ) );
-      ( "printf",
-        ( { Interop.params = [ Interop.TString; Interop.T64 ]; result = T32 },
-          Hide (string @-> int64_t @-> returning int) ) );
-      (* Incorrect; todo *)
-      ( "__printf_chk",
-        ( {
-            Interop.params = [ Interop.T32; Interop.TString; Interop.T64 ];
-            result = T32;
-          },
-          Hide (int @-> string @-> int64_t @-> returning int) ) );
-      (* Incorrect; todo *)
-      ( "memcmp",
-        ( {
-            Interop.params = [ Interop.TString; Interop.TString; Interop.T32 ];
-            result = T32;
-          },
-          Hide (string @-> string @-> int @-> returning int) ) );
-      (* Incorrect; todo *)
-      ( "fopen",
-        ( { Interop.params = [ Interop.TString; Interop.TString ]; result = T64 },
-          Hide (string @-> string @-> returning int64_t) ) );
       ( "_terminate",
         ( { Interop.params = [ Interop.T32 ]; result = T32 },
           Hide (int @-> returning int) ) );
@@ -175,55 +148,63 @@ let rec call_with_signature : type a. a fn -> a -> Interop.t list -> Interop.t =
       call_with_signature b (f (to_ctype a h)) rest
   | _ -> [%log fatal "Not implemented"]
 
-let request_call (fname : String.t) (arg : Interop.t list) :
-    (Int.t * Interop.t) list * Interop.t =
+type event_t =
+  | EventTerminate
+  | EventReturn of (Int.t * Interop.t) list * Interop.t
+
+let request_call (fname : String.t) (arg : Interop.t list) : event_t =
   if List.mem fname cgc_funcs then (
     Global.initialize_cgc_lib ();
     match fname with
-    | "_terminate" -> failwith "Terminate"
+    | "_terminate" -> EventTerminate
     | "transmit" ->
         let _, Hide fn = StringMap.find_opt fname signature_map |> Option.get in
-        ( [ (3, List.nth arg 3) ],
-          call_with_signature fn
-            (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
-            arg )
+        EventReturn
+          ( [ (3, List.nth arg 3) ],
+            call_with_signature fn
+              (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
+              arg )
     | "receive" ->
         let _, Hide fn = StringMap.find_opt fname signature_map |> Option.get in
-        ( [ (1, List.nth arg 1); (3, List.nth arg 3) ],
-          call_with_signature fn
-            (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
-            arg )
+        EventReturn
+          ( [ (1, List.nth arg 1); (3, List.nth arg 3) ],
+            call_with_signature fn
+              (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
+              arg )
     | "fdwait" ->
         let _, Hide fn = StringMap.find_opt fname signature_map |> Option.get in
-        ( [ (1, List.nth arg 1); (2, List.nth arg 2); (4, List.nth arg 4) ],
-          call_with_signature fn
-            (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
-            arg )
+        EventReturn
+          ( [ (1, List.nth arg 1); (2, List.nth arg 2); (4, List.nth arg 4) ],
+            call_with_signature fn
+              (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
+              arg )
     | "allocate" -> (
         match (List.nth arg 0, List.nth arg 2) with
         | Interop.V64 v, Interop.VBuffer b ->
             Bytes.set_int64_le b 0 !Global.global_blk_offset;
             Global.global_blk_offset := Int64.add v !Global.global_blk_offset;
-            ([ (2, Interop.VBuffer b) ], Interop.V32 0l)
+            EventReturn ([ (2, Interop.VBuffer b) ], Interop.V32 0l)
         | _ -> [%log fatal "Not reacahble"])
-    | "deallocate" -> ([], Interop.V32 0l)
+    | "deallocate" -> EventReturn ([], Interop.V32 0l)
     | "cgc_random" ->
         let _, Hide fn = StringMap.find_opt fname signature_map |> Option.get in
-        ( [ (0, List.nth arg 0); (2, List.nth arg 2) ],
-          call_with_signature fn
-            (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
-            arg )
+        EventReturn
+          ( [ (0, List.nth arg 0); (2, List.nth arg 2) ],
+            call_with_signature fn
+              (Foreign.foreign ~from:(!Global.cgc_lib |> Option.get) fname fn)
+              arg )
     | "random" ->
         let _, Hide fn = StringMap.find_opt fname signature_map |> Option.get in
-        ( [ (0, List.nth arg 0); (2, List.nth arg 2) ],
-          call_with_signature fn
-            (Foreign.foreign
-               ~from:(!Global.cgc_lib |> Option.get)
-               "cgc_random" fn)
-            arg )
+        EventReturn
+          ( [ (0, List.nth arg 0); (2, List.nth arg 2) ],
+            call_with_signature fn
+              (Foreign.foreign
+                 ~from:(!Global.cgc_lib |> Option.get)
+                 "cgc_random" fn)
+              arg )
     | _ -> [%log fatal "Not reacahble"])
   else
     match StringMap.find_opt fname signature_map with
     | Some (_, Hide fn) ->
-        ([], call_with_signature fn (Foreign.foreign fname fn) arg)
+        EventReturn ([], call_with_signature fn (Foreign.foreign fname fn) arg)
     | None -> [%log fatal "Not implemented"]

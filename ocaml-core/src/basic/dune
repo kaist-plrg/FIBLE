@@ -16,4 +16,5 @@
   Assignable
   PrettySpec
   MemoryBlock
-  DMem))
+  DMem
+  StopEvent))

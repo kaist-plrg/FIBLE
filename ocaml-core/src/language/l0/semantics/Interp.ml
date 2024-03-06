@@ -146,10 +146,10 @@ let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
   in
   aux [] fsig.params reg_list
 
-let handle_extern (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
+let handle_extern (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   match AddrMap.find_opt (Loc.to_addr s.pc) p.externs with
   | None -> Ok s
-  | Some name ->
+  | Some name -> (
       [%log debug "Calling %s" name];
       let retpointer =
         State.get_reg s { id = RegId.Register 32l; offset = 0l; width = 8l }
@@ -157,31 +157,39 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
       let retaddr = State.load_mem s (Value.to_addr retpointer) 8l in
       let* fsig, _ =
         StringMap.find_opt name World.Environment.signature_map
-        |> Option.to_result ~none:"No external function"
+        |> Option.to_result ~none:(StopEvent.FailStop "No external function")
       in
       let args = build_args s fsig in
-      let _, retv = World.Environment.request_call name args in
-      Ok
-        (build_ret
-           {
-             s with
-             pc = Value.to_loc retaddr;
-             regs =
-               RegFile.add_reg s.regs
-                 { id = RegId.Register 32l; offset = 0l; width = 8l }
-                 (Value.of_int64 (Int64.add (Value.value_64 retpointer) 8L) 8l);
-           }
-           retv)
+      match World.Environment.request_call name args with
+      | World.Environment.EventTerminate -> Error StopEvent.NormalStop
+      | World.Environment.EventReturn (_, retv) ->
+          Ok
+            (build_ret
+               {
+                 s with
+                 pc = Value.to_loc retaddr;
+                 regs =
+                   RegFile.add_reg s.regs
+                     { id = RegId.Register 32l; offset = 0l; width = 8l }
+                     (Value.of_int64
+                        (Int64.add (Value.value_64 retpointer) 8L)
+                        8l);
+               }
+               retv))
 
-let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
+let step (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   let* ins =
     Prog.get_ins p s.pc
     |> Option.to_result
-         ~none:(Format.asprintf "No instruction at %a" Loc.pp s.pc)
+         ~none:
+           (StopEvent.FailStop
+              (Format.asprintf "No instruction at %a" Loc.pp s.pc))
   in
-  let* ns = step_ins p ins s in
+  let* ns =
+    step_ins p ins s |> Result.map_error (fun e -> StopEvent.FailStop e)
+  in
   handle_extern p ns
 
-let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
+let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   let s' = step p s in
   match s' with Error _ -> s' | Ok s' -> interp p s'

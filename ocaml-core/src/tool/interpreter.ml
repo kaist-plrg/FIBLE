@@ -29,8 +29,8 @@ let interp_l1 l1 =
              l1.funcs)
             .entry |> fst))
   with
-  | Ok _ -> [%log info "Success"]
-  | Error e -> [%log error "Error: %s\n" e]
+  | Ok _ | Error NormalStop -> ()
+  | Error (FailStop e) -> [%log error "Error: %s\n" e]
 
 let interp_l2 l2 =
   match
@@ -42,13 +42,13 @@ let interp_l2 l2 =
              l2.funcs)
             .entry |> fst))
   with
-  | Ok _ -> [%log info "Success"]
-  | Error e -> [%log error "Error: %s\n" e]
+  | Ok _ | Error NormalStop -> ()
+  | Error (FailStop e) -> [%log error "Error: %s\n" e]
 
 let interp_l3 l3 =
   (match L3.Interp.interp l3 (L3.Init.default l3) with
-  | Ok _ -> [%log info "Success"]
-  | Error e -> [%log error "Error: %s\n" e]);
+  | Ok _ | Error NormalStop -> ()
+  | Error (FailStop e) -> [%log error "Error: %s\n" e]);
   ()
 
 let main () =

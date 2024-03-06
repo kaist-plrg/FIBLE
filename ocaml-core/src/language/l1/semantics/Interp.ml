@@ -134,17 +134,18 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
       step_ret p retn s
   | Junimplemented -> Error "unimplemented jump"
 
-let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
+let step (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   match s.cont with
-  | { remaining = []; jmp } -> step_jmp p jmp s
+  | { remaining = []; jmp } -> step_jmp p jmp s |> StopEvent.of_str_res
   | { remaining = i :: []; jmp } ->
-      let* sto' = step_ins p i.ins s.sto in
-      step_jmp p jmp { s with sto = sto' }
+      let* sto' = step_ins p i.ins s.sto |> StopEvent.of_str_res in
+      step_jmp p jmp { s with sto = sto' } |> StopEvent.of_str_res
   | { remaining = i :: res; jmp } ->
-      let* sto' = step_ins p i.ins s.sto in
+      let* sto' = step_ins p i.ins s.sto |> StopEvent.of_str_res in
       Ok { s with sto = sto'; cont = { remaining = res; jmp } }
+      |> StopEvent.of_str_res
 
-let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
+let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   let s' = step p s in
   match s' with
   | Error _ -> s'

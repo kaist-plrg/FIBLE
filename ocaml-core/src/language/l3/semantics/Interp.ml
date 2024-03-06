@@ -189,11 +189,13 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) (func : Loc.t * Int64.t)
   | INop -> Ok s
 
 let step_call_extern (p : Prog.t) (spdiff : Int64.t) (name : String.t)
-    (retn : Loc.t) (s : State.t) =
+    (retn : Loc.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   [%log debug "Calling %s" name];
   let* fsig, _ =
     StringMap.find_opt name World.Environment.signature_map
-    |> Option.to_result ~none:(Format.asprintf "No external function %s" name)
+    |> Option.to_result
+         ~none:
+           (StopEvent.FailStop (Format.asprintf "No external function %s" name))
   in
   let values, args = build_args s fsig |> List.split in
   [%log
@@ -204,7 +206,11 @@ let step_call_extern (p : Prog.t) (spdiff : Int64.t) (name : String.t)
     debug "Call args: %a"
       (Format.pp_print_list ~pp_sep:Format.pp_print_space Interop.pp)
       args];
-  let sides, retv = World.Environment.request_call name args in
+  let* sides, retv =
+    match World.Environment.request_call name args with
+    | EventReturn (sides, retv) -> Ok (sides, retv)
+    | EventTerminate -> Error StopEvent.NormalStop
+  in
   [%log
     debug "Side values: %a"
       (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun fmt (i, v) ->
@@ -217,10 +223,11 @@ let step_call_extern (p : Prog.t) (spdiff : Int64.t) (name : String.t)
     Value.eval_bop Bop.Bint_add sp_curr
       (Num (NumericValue.of_int64 spdiff 8l))
       8l
+    |> StopEvent.of_str_res
   in
 
-  let* ncont = Cont.of_block_loc p (fst s.func) retn in
-  let* s_side = build_sides s values sides in
+  let* ncont = Cont.of_block_loc p (fst s.func) retn |> StopEvent.of_str_res in
+  let* s_side = build_sides s values sides |> StopEvent.of_str_res in
   Ok
     (build_ret
        {
@@ -277,17 +284,18 @@ let get_sp_saved (s : State.t) (spdiff : Int64.t) : (Value.t, String.t) Result.t
 
 let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
     (outputs : RegId.t List.t) (inputs : VarNode.t List.t) (calln : Loc.t)
-    (retn : Loc.t) (s : State.t) : (State.t, String.t) Result.t =
+    (retn : Loc.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   match AddrMap.find_opt (Loc.to_addr calln) p.externs with
   | None ->
-      let* currf = get_current_function p s in
-      let* f = get_func_from p calln in
+      let* currf = get_current_function p s |> StopEvent.of_str_res in
+      let* f = get_func_from p calln |> StopEvent.of_str_res in
       let* _ =
-        if f.sp_diff = spdiff then Ok () else Error "jcall: spdiff not match"
+        if f.sp_diff = spdiff then Ok ()
+        else Error (StopEvent.FailStop "jcall: spdiff not match")
       in
-      let* ncont = Cont.of_func_entry_loc p calln in
-      let* nlocal = build_local_frame s copydepth in
-      let* sp_saved = get_sp_saved s spdiff in
+      let* ncont = Cont.of_func_entry_loc p calln |> StopEvent.of_str_res in
+      let* nlocal = build_local_frame s copydepth |> StopEvent.of_str_res in
+      let* sp_saved = get_sp_saved s spdiff |> StopEvent.of_str_res in
       Ok
         {
           State.timestamp = Int64Ext.succ s.timestamp;
@@ -324,23 +332,21 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
               s.sto with
               local =
                 s.sto.local
-                |> LocalMemory.add
-                     (calln, Int64Ext.succ s.timestamp)
-                     nlocal;
+                |> LocalMemory.add (calln, Int64Ext.succ s.timestamp) nlocal;
             };
         }
   | Some name -> step_call_extern p spdiff name retn s
 
 let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
-    (calln : Loc.t) (retn : Loc.t) (s : State.t) : (State.t, String.t) Result.t
-    =
+    (calln : Loc.t) (retn : Loc.t) (s : State.t) :
+    (State.t, StopEvent.t) Result.t =
   match AddrMap.find_opt (Loc.to_addr calln) p.externs with
   | None ->
-      let* currf = get_current_function p s in
-      let* f = get_func_from p calln in
+      let* currf = get_current_function p s |> StopEvent.of_str_res in
+      let* f = get_func_from p calln |> StopEvent.of_str_res in
       let* _ =
         if f.sp_diff = spdiff then Ok ()
-        else Error "jcall_ind: spdiff not match"
+        else Error (StopEvent.FailStop "jcall_ind: spdiff not match")
       in
       (* TODO: think ind copydepth
          let* _ =
@@ -348,9 +354,11 @@ let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
            else Error "jcall_ind: copydepth not match"
          in
       *)
-      let* ncont = Cont.of_func_entry_loc p calln in
-      let* nlocal = build_local_frame s (snd f.sp_boundary) in
-      let* sp_saved = get_sp_saved s spdiff in
+      let* ncont = Cont.of_func_entry_loc p calln |> StopEvent.of_str_res in
+      let* nlocal =
+        build_local_frame s (snd f.sp_boundary) |> StopEvent.of_str_res
+      in
+      let* sp_saved = get_sp_saved s spdiff |> StopEvent.of_str_res in
       Ok
         {
           State.timestamp = Int64Ext.succ s.timestamp;
@@ -378,48 +386,54 @@ let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
               s.sto with
               local =
                 s.sto.local
-                |> LocalMemory.add
-                     (calln, Int64Ext.succ s.timestamp)
-                     nlocal;
+                |> LocalMemory.add (calln, Int64Ext.succ s.timestamp) nlocal;
             };
         }
   | Some name -> step_call_extern p spdiff name retn s
 
 let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
-    (State.t, String.t) Result.t =
+    (State.t, StopEvent.t) Result.t =
   match jmp.jmp with
   | Jjump l ->
-      let* ncont = Cont.of_block_loc p (fst s.func) l in
+      let* ncont = Cont.of_block_loc p (fst s.func) l |> StopEvent.of_str_res in
       Ok { s with cont = ncont }
   | Jfallthrough l ->
-      let* ncont = Cont.of_block_loc p (fst s.func) l in
+      let* ncont = Cont.of_block_loc p (fst s.func) l |> StopEvent.of_str_res in
       Ok { s with cont = ncont }
   | Jjump_ind { target; candidates; _ } ->
-      let* loc = Value.try_loc (eval_vn target s) in
+      let* loc = Value.try_loc (eval_vn target s) |> StopEvent.of_str_res in
       if LocSet.mem loc candidates then
-        let* ncont = Cont.of_block_loc p (fst s.func) loc in
+        let* ncont =
+          Cont.of_block_loc p (fst s.func) loc |> StopEvent.of_str_res
+        in
         Ok { s with cont = ncont }
-      else Error "jump_ind: Not a valid jump"
+      else Error (StopEvent.FailStop "jump_ind: Not a valid jump")
   | Jcbranch { condition; target_true; target_false } ->
       let v = eval_vn condition s in
       [%log debug "Jcbranch %a" Value.pp v];
-      let* iz = Value.try_isZero v in
+      let* iz = Value.try_isZero v |> StopEvent.of_str_res in
       if iz then
-        let* ncont = Cont.of_block_loc p (fst s.func) target_false in
+        let* ncont =
+          Cont.of_block_loc p (fst s.func) target_false |> StopEvent.of_str_res
+        in
         Ok { s with cont = ncont }
       else
-        let* ncont = Cont.of_block_loc p (fst s.func) target_true in
+        let* ncont =
+          Cont.of_block_loc p (fst s.func) target_true |> StopEvent.of_str_res
+        in
         Ok { s with cont = ncont }
   | Jcall { reserved_stack; sp_diff; outputs; inputs; target; fallthrough } ->
       step_call p reserved_stack sp_diff outputs inputs target fallthrough s
   | Jcall_ind { reserved_stack; sp_diff; target; fallthrough } ->
-      let* calln = Value.try_loc (eval_vn target s) in
+      let* calln = Value.try_loc (eval_vn target s) |> StopEvent.of_str_res in
       step_call_ind p reserved_stack sp_diff calln fallthrough s
   | Jret values -> (
       match s.stack with
-      | [] -> Error (Format.asprintf "Empty stack")
+      | [] -> Error StopEvent.NormalStop
       | (calln, outputs, regs', sp_saved, retn') :: stack' ->
-          let* ncont = Cont.of_block_loc p (fst calln) retn' in
+          let* ncont =
+            Cont.of_block_loc p (fst calln) retn' |> StopEvent.of_str_res
+          in
           let values =
             List.fold_left
               (fun acc o ->
@@ -449,28 +463,28 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
                   { id = RegId.Register 32l; offset = 0l; width = 8l }
                   sp_saved;
             })
-  | Jtailcall _ | Jtailcall_ind _ | Junimplemented -> Error "unimplemented jump"
+  | Jtailcall _ | Jtailcall_ind _ | Junimplemented ->
+      Error (StopEvent.FailStop "unimplemented jump")
 
-let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
+let step (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   match s.cont with
-  | { remaining = []; jmp } ->
-      step_jmp p jmp s
-      |> Result.map_error (fun e -> Format.asprintf "%a: %s" Loc.pp jmp.loc e)
+  | { remaining = []; jmp } -> step_jmp p jmp s
   | { remaining = i :: []; jmp } ->
       let* s' =
         step_ins p i.ins s s.func
         |> Result.map_error (fun e -> Format.asprintf "%a: %s" Loc.pp i.loc e)
+        |> StopEvent.of_str_res
       in
       step_jmp p jmp s'
-      |> Result.map_error (fun e -> Format.asprintf "%a: %s" Loc.pp jmp.loc e)
   | { remaining = i :: res; jmp } ->
       let* s' =
         step_ins p i.ins s s.func
         |> Result.map_error (fun e -> Format.asprintf "%a: %s" Loc.pp i.loc e)
+        |> StopEvent.of_str_res
       in
       Ok { s' with cont = { remaining = res; jmp } }
 
-let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
+let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   let s' = step p s in
   match s' with
   | Error _ -> s'
