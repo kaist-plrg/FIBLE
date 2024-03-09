@@ -1,7 +1,6 @@
 open StdlibExt
+open Notation
 open Basic
-
-let ( let* ) = Result.bind
 
 let check_pc (s0 : Loc.t) (s1 : L1.Cont.t) (s2 : L2Partial.Cont.t) :
     (Unit.t, String.t) Result.t =

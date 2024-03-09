@@ -1,4 +1,1 @@
-open StdlibExt
-open Basic
-open Common_language
-include BlockF.Make (Inst) (Jmp)
+include Common_language.BlockF.Make (Inst) (Jmp)

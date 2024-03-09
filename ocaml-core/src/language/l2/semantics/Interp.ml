@@ -197,7 +197,11 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
            { id = RegId.Register 32l; offset = 0l; width = 8l }
        in
        let* passing_val = Store.load_mem s.sto sp_curr 8l in
-       let nlocal = Frame.store_mem Frame.empty 0L passing_val in
+       let* nlocal =
+         Frame.store_mem
+           (Frame.empty (fst f.sp_boundary) (snd f.sp_boundary))
+           0L passing_val
+       in
        let* sp_saved =
          Value.eval_bop Bop.Bint_add sp_curr
            (Num (NumericValue.of_int64 spdiff 8l))

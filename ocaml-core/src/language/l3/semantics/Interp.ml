@@ -7,7 +7,7 @@ let ( let* ) = Result.bind
 
 let eval_vn (vn : VarNode.t) (s : State.t) : Value.t =
   match vn with
-  | Register r -> RegFile.get_reg s.regs r
+  | Register r -> Store.get_reg s.sto r
   | Const v -> Num (NumericValue.of_int64 v.value v.width)
   | Ram v ->
       Store.load_mem s.sto (Num (NumericValue.of_int64 v.value 8l)) v.width
@@ -68,32 +68,32 @@ let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
   | V8 c ->
       {
         s with
-        regs =
-          RegFile.add_reg s.regs
+        sto =
+          Store.add_reg s.sto
             { id = RegId.Register 0l; offset = 0l; width = 8l }
             (Value.Num (NumericValue.of_int64 (Int64.of_int (Char.code c)) 8l));
       }
   | V16 i ->
       {
         s with
-        regs =
-          RegFile.add_reg s.regs
+        sto =
+          Store.add_reg s.sto
             { id = RegId.Register 0l; offset = 0l; width = 8l }
             (Value.Num (NumericValue.of_int64 (Int64.of_int32 i) 8l));
       }
   | V32 i ->
       {
         s with
-        regs =
-          RegFile.add_reg s.regs
+        sto =
+          Store.add_reg s.sto
             { id = RegId.Register 0l; offset = 0l; width = 8l }
             (Value.Num (NumericValue.of_int64 (Int64.of_int32 i) 8l));
       }
   | V64 i ->
       {
         s with
-        regs =
-          RegFile.add_reg s.regs
+        sto =
+          Store.add_reg s.sto
             { id = RegId.Register 0l; offset = 0l; width = 8l }
             (Value.Num (NumericValue.of_int64 i 8l));
       }
@@ -107,8 +107,7 @@ let build_args (s : State.t) (fsig : Interop.func_sig) :
   let val_list =
     List.map
       (fun r ->
-        RegFile.get_reg s.regs
-          { id = RegId.Register r; offset = 0l; width = 8l })
+        Store.get_reg s.sto { id = RegId.Register r; offset = 0l; width = 8l })
       reg_list
   in
   (let nondep_tags =
@@ -157,12 +156,12 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) (func : Loc.t * Int64.t)
   match ins with
   | Iassignment { expr; output } ->
       let* v = eval_assignment expr s output.width in
-      Ok { s with regs = RegFile.add_reg s.regs output v }
+      Ok { s with sto = Store.add_reg s.sto output v }
   | Iload { pointer; output; _ } ->
       let addrv = eval_vn pointer s in
       let* lv = Store.load_mem s.sto addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-      Ok { s with regs = RegFile.add_reg s.regs output lv }
+      Ok { s with sto = Store.add_reg s.sto output lv }
   | Istore { pointer; value; _ } ->
       let addrv = eval_vn pointer s in
       let sv = eval_vn value s in
@@ -176,7 +175,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) (func : Loc.t * Int64.t)
       in
       let* lv = Store.load_mem s.sto addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-      Ok { s with regs = RegFile.add_reg s.regs output lv }
+      Ok { s with sto = Store.add_reg s.sto output lv }
   | Isstore { offset; value } ->
       let addrv =
         Value.sp
@@ -217,7 +216,7 @@ let step_call_extern (p : Prog.t) (spdiff : Int64.t) (name : String.t)
            Format.fprintf fmt "%d: %a" i Interop.pp v))
       sides];
   let sp_curr =
-    RegFile.get_reg s.regs { id = RegId.Register 32l; offset = 0l; width = 8l }
+    Store.get_reg s.sto { id = RegId.Register 32l; offset = 0l; width = 8l }
   in
   let* sp_saved =
     Value.eval_bop Bop.Bint_add sp_curr
@@ -232,8 +231,8 @@ let step_call_extern (p : Prog.t) (spdiff : Int64.t) (name : String.t)
     (build_ret
        {
          s_side with
-         regs =
-           RegFile.add_reg s_side.regs
+         sto =
+           Store.add_reg s_side.sto
              { id = RegId.Register 32l; offset = 0l; width = 8l }
              sp_saved;
          cont = ncont;
@@ -251,9 +250,10 @@ let get_current_function (p : Prog.t) (s : State.t) :
   get_func_from p (fst s.func)
 
 let get_sp_curr (s : State.t) (regid : Int32.t) : Value.t =
-  RegFile.get_reg s.regs { id = RegId.Register 32l; offset = 0l; width = 8l }
+  Store.get_reg s.sto { id = RegId.Register 32l; offset = 0l; width = 8l }
 
-let build_local_frame (s : State.t) (copydepth : Int64.t) =
+let build_local_frame (s : State.t) (bnd : Int64.t * Int64.t)
+    (copydepth : Int64.t) =
   let sp_curr = get_sp_curr s 32l in
   let* passing_vals =
     List.fold_left
@@ -272,10 +272,10 @@ let build_local_frame (s : State.t) (copydepth : Int64.t) =
                  (Num (NumericValue.of_int64 (Int64.of_int (x * 8)) 8l))
                  8l )))
   in
-  Ok
-    (List.fold_left
-       (fun acc (i, j) -> Frame.store_mem acc i j)
-       Frame.empty passing_vals)
+  List.fold_left
+    (fun acc (i, j) -> Result.bind acc (fun acc -> Frame.store_mem acc i j))
+    (Frame.empty (fst bnd) (snd bnd) |> Result.ok)
+    passing_vals
 
 let get_sp_saved (s : State.t) (spdiff : Int64.t) : (Value.t, String.t) Result.t
     =
@@ -294,42 +294,44 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
         else Error (StopEvent.FailStop "jcall: spdiff not match")
       in
       let* ncont = Cont.of_func_entry_loc p calln |> StopEvent.of_str_res in
-      let* nlocal = build_local_frame s copydepth |> StopEvent.of_str_res in
+      let* nlocal =
+        build_local_frame s f.sp_boundary copydepth |> StopEvent.of_str_res
+      in
       let* sp_saved = get_sp_saved s spdiff |> StopEvent.of_str_res in
       Ok
         {
           State.timestamp = Int64Ext.succ s.timestamp;
           cont = ncont;
-          stack = (s.func, outputs, s.regs, sp_saved, retn) :: s.stack;
-          regs =
-            RegFile.add_reg
-              (List.fold_left
-                 (fun r (i, v) ->
-                   RegFile.add_reg r
-                     { id = i; offset = 0l; width = 8l }
-                     (eval_vn v s))
-                 (RegFile.of_seq Seq.empty)
-                 (try List.combine f.inputs inputs
-                  with Invalid_argument _ ->
-                    [%log
-                      fatal
-                        "Mismatched number of arguments for call inputs,\n\
-                        \                      %d for %s and %d for call \
-                         instruction"
-                        (List.length f.inputs)
-                        (f.nameo |> Option.value ~default:"noname")
-                        (List.length inputs)]))
-              { id = RegId.Register 32l; offset = 0l; width = 8l }
-              (Value.sp
-                 {
-                   func = calln;
-                   timestamp = Int64Ext.succ s.timestamp;
-                   offset = 0L;
-                 });
+          stack = (s.func, outputs, s.sto.regs, sp_saved, retn) :: s.stack;
           func = (calln, Int64Ext.succ s.timestamp);
           sto =
             {
               s.sto with
+              regs =
+                RegFile.add_reg
+                  (List.fold_left
+                     (fun r (i, v) ->
+                       RegFile.add_reg r
+                         { id = i; offset = 0l; width = 8l }
+                         (eval_vn v s))
+                     (RegFile.of_seq Seq.empty)
+                     (try List.combine f.inputs inputs
+                      with Invalid_argument _ ->
+                        [%log
+                          fatal
+                            "Mismatched number of arguments for call inputs,\n\
+                            \                      %d for %s and %d for call \
+                             instruction"
+                            (List.length f.inputs)
+                            (f.nameo |> Option.value ~default:"noname")
+                            (List.length inputs)]))
+                  { id = RegId.Register 32l; offset = 0l; width = 8l }
+                  (Value.sp
+                     {
+                       func = calln;
+                       timestamp = Int64Ext.succ s.timestamp;
+                       offset = 0L;
+                     });
               local =
                 s.sto.local
                 |> LocalMemory.add (calln, Int64Ext.succ s.timestamp) nlocal;
@@ -356,34 +358,35 @@ let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
       *)
       let* ncont = Cont.of_func_entry_loc p calln |> StopEvent.of_str_res in
       let* nlocal =
-        build_local_frame s (snd f.sp_boundary) |> StopEvent.of_str_res
+        build_local_frame s f.sp_boundary (snd f.sp_boundary)
+        |> StopEvent.of_str_res
       in
       let* sp_saved = get_sp_saved s spdiff |> StopEvent.of_str_res in
       Ok
         {
           State.timestamp = Int64Ext.succ s.timestamp;
           cont = ncont;
-          stack = (s.func, f.outputs, s.regs, sp_saved, retn) :: s.stack;
-          regs =
-            RegFile.add_reg
-              (List.fold_left
-                 (fun r i ->
-                   RegFile.add_reg r
-                     { id = i; offset = 0l; width = 8l }
-                     (RegFile.get_reg s.regs
-                        { id = i; offset = 0l; width = 8l }))
-                 (RegFile.of_seq Seq.empty) f.inputs)
-              { id = RegId.Register 32l; offset = 0l; width = 8l }
-              (Value.sp
-                 {
-                   func = calln;
-                   timestamp = Int64Ext.succ s.timestamp;
-                   offset = 0L;
-                 });
+          stack = (s.func, f.outputs, s.sto.regs, sp_saved, retn) :: s.stack;
           func = (calln, Int64Ext.succ s.timestamp);
           sto =
             {
               s.sto with
+              regs =
+                RegFile.add_reg
+                  (List.fold_left
+                     (fun r i ->
+                       RegFile.add_reg r
+                         { id = i; offset = 0l; width = 8l }
+                         (Store.get_reg s.sto
+                            { id = i; offset = 0l; width = 8l }))
+                     (RegFile.of_seq Seq.empty) f.inputs)
+                  { id = RegId.Register 32l; offset = 0l; width = 8l }
+                  (Value.sp
+                     {
+                       func = calln;
+                       timestamp = Int64Ext.succ s.timestamp;
+                       offset = 0L;
+                     });
               local =
                 s.sto.local
                 |> LocalMemory.add (calln, Int64Ext.succ s.timestamp) nlocal;
@@ -453,15 +456,20 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
               timestamp = s.timestamp;
               stack = stack';
               func = calln;
-              sto = s.sto;
-              regs =
-                RegFile.add_reg
-                  (List.fold_left
-                     (fun r (o, v) ->
-                       RegFile.add_reg r { id = o; offset = 0l; width = 8l } v)
-                     regs' output_values)
-                  { id = RegId.Register 32l; offset = 0l; width = 8l }
-                  sp_saved;
+              sto =
+                {
+                  s.sto with
+                  regs =
+                    RegFile.add_reg
+                      (List.fold_left
+                         (fun r (o, v) ->
+                           RegFile.add_reg r
+                             { id = o; offset = 0l; width = 8l }
+                             v)
+                         regs' output_values)
+                      { id = RegId.Register 32l; offset = 0l; width = 8l }
+                      sp_saved;
+                };
             })
   | Jtailcall _ | Jtailcall_ind _ | Junimplemented ->
       Error (StopEvent.FailStop "unimplemented jump")

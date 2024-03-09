@@ -1,1 +1,1 @@
-include Common_language.Block.Make (Inst) (Jmp)
+include Common_language.BlockF.Make (Inst) (Jmp)

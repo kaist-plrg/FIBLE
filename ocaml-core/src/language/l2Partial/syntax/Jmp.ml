@@ -77,6 +77,12 @@ module Inner = struct
     | Jjump_ind { candidates; _ } -> LocSet.to_seq candidates |> List.of_seq
 
   let is_ret jmp = match jmp with Jret _ -> true | _ -> false
+
+  let get_call_target (j : t) : Loc.t option =
+    match j with
+    | Jcall { target; _ } -> Some target
+    | Jtailcall { target; _ } -> Some target
+    | _ -> None
 end
 
 include Inner

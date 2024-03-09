@@ -1,4 +1,5 @@
 open StdlibExt
+open Notation
 open Basic
 open Basic_collection
 
@@ -16,8 +17,6 @@ module Make (Value : sig
   val of_either : (NumericValue.t, NonNumericValue.t) Either.t -> t
 end) =
 struct
-  let ( let* ) = Result.bind
-
   type t = {
     left : DMemCombinedFailableMemory.t;
     right : Value.NonNumericValue.t AddrMap.t;

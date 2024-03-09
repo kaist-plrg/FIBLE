@@ -1,8 +1,7 @@
+open StdlibExt.Notation
 open Basic
 open Basic_collection
 include AddrMap
-
-let ( let* ) = Result.bind
 
 type storable = Byte of Char.t | Undef
 type t = { ram : storable AddrMap.t; rom : DMem.t }

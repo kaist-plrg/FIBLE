@@ -74,6 +74,11 @@ struct
           |> Result.ok
     else "Bound exceed" |> Result.error
 
-  let store_bytes (s : t) (addr : Addr.t) (v : String.t) : t =
-    { s with left = FailableMemory.store_bytes s.left addr v }
+  let store_bytes (s : t) (addr : Addr.t) (v : String.t) :
+      (t, String.t) Result.t =
+    if
+      s.min_addr <= addr
+      && Int64.add addr (Int64.of_int (String.length v)) <= s.max_addr
+    then { s with left = FailableMemory.store_bytes s.left addr v } |> Result.ok
+    else "Bound exceed" |> Result.error
 end

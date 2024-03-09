@@ -1,8 +1,7 @@
 open StdlibExt
+open Notation
 open Basic
 open Basic_collection
-
-let ( let* ) = Result.bind
 
 let eval (u : Uop.t) (v : NumericValue.t) (outwidth : Int32.t) :
     (NumericValue.t, String.t) Result.t =

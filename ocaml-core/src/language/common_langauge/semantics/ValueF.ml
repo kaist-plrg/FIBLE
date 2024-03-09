@@ -1,4 +1,5 @@
 open StdlibExt
+open Notation
 open Basic
 
 module Make (NonNumericValue : sig
@@ -15,19 +16,29 @@ module Make (NonNumericValue : sig
 
   val width : t -> Int32.t
   val undefined : Int32.t -> t
+  val get_sp : t -> SPVal.t option
 end) =
 struct
-  let ( let* ) = Result.bind
-
   module NonNumericValue = NonNumericValue
 
   type t = Num of NumericValue.t | NonNum of NonNumericValue.t
+
+  let of_num (n : NumericValue.t) : t = Num n
+  let of_nonnum (n : NonNumericValue.t) : t = NonNum n
 
   let to_either (v : t) : (NumericValue.t, NonNumericValue.t) Either.t =
     match v with Num n -> Left n | NonNum n -> Right n
 
   let of_either (v : (NumericValue.t, NonNumericValue.t) Either.t) : t =
     match v with Left n -> Num n | Right n -> NonNum n
+
+  let get_space (v : t) : (NumericValue.t, SPVal.t, Unit.t) Either3.t =
+    match v with
+    | Num n -> First n
+    | NonNum n -> (
+        match NonNumericValue.get_sp n with
+        | Some sp -> Second sp
+        | None -> Third ())
 
   let zero w = Num (NumericValue.zero w)
 

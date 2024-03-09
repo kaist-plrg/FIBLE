@@ -17,6 +17,8 @@
   DMemCombinedFailableMemory
   MemoryF
   FrameF
+  LocalMemoryF
+  HighStoreF
   ContF
   NumericBop
   NumericUop

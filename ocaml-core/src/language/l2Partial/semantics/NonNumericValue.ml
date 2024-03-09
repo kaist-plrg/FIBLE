@@ -64,3 +64,6 @@ let eval_bop (b : Bop.t)
 
 let width (v : t) : Int32.t = match v with SP _ -> 8l | Undef width -> width
 let undefined width = Undef width
+
+let get_sp (v : t) : SPVal.t Option.t =
+  match v with SP v -> Some v | _ -> None

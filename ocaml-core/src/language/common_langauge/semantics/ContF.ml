@@ -1,4 +1,5 @@
 open StdlibExt
+open Notation
 open Basic
 
 module Make (Inst : sig
@@ -28,8 +29,6 @@ end) (Prog : sig
   val get_func_opt : t -> Loc.t -> Func.t option
 end) =
 struct
-  let ( let* ) = Result.bind
-
   type t = { remaining : Inst.t_full list; jmp : Jmp.t_full }
 
   let of_block (b : Block.t) : t =
