@@ -12,7 +12,6 @@
   Inst
   Jmp
   Prog
-  SPVal
   NonNumericValue
   Value
   Cont

@@ -19,7 +19,6 @@
   Inst
   Jmp
   Prog
-  SPVal
   NonNumericValue
   Value
   RegFile

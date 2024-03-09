@@ -2,8 +2,6 @@ open Basic
 open Basic_collection
 open Common_language
 
-type loctype = Param | Local
-
 module FuncTimestampMap = Map.Make (struct
   type t = Loc.t * Int64.t
 

@@ -12,6 +12,7 @@ module Make (Value : sig
     val undefined : Int32.t -> t
   end
 
+  val width : t -> Int32.t
   val to_either : t -> (NumericValue.t, NonNumericValue.t) Either.t
   val of_either : (NumericValue.t, NonNumericValue.t) Either.t -> t
 end) =
@@ -21,9 +22,12 @@ struct
   type t = {
     left : FailableMemory.t;
     right : Value.NonNumericValue.t AddrMap.t;
+    min_addr : Addr.t;
+    max_addr : Addr.t;
   }
 
-  let empty = { left = FailableMemory.empty; right = AddrMap.empty }
+  let empty (min_addr : Addr.t) (max_addr : Addr.t) =
+    { left = FailableMemory.empty; right = AddrMap.empty; min_addr; max_addr }
 
   let load_mem (s : t) (addr : Addr.t) (width : Int32.t) : Value.t =
     match
@@ -48,18 +52,27 @@ struct
       (String.t, String.t) Result.t =
     FailableMemory.load_bytes s.left addr size
 
-  let store_mem (s : t) (addr : Addr.t) (v : Value.t) : t =
-    match Value.to_either v with
-    | Right v ->
-        {
-          left = FailableMemory.undef_mem s.left addr 8l;
-          right = AddrMap.add addr v s.right;
-        }
-    | Left v ->
-        {
-          left = FailableMemory.store_mem s.left addr v;
-          right = AddrMap.remove addr s.right;
-        }
+  let store_mem (s : t) (addr : Addr.t) (v : Value.t) : (t, String.t) Result.t =
+    if
+      s.min_addr <= addr
+      && Int64.add addr (Int64.of_int32 (Value.width v)) <= s.max_addr
+    then
+      match Value.to_either v with
+      | Right v ->
+          {
+            s with
+            left = FailableMemory.undef_mem s.left addr 8l;
+            right = AddrMap.add addr v s.right;
+          }
+          |> Result.ok
+      | Left v ->
+          {
+            s with
+            left = FailableMemory.store_mem s.left addr v;
+            right = AddrMap.remove addr s.right;
+          }
+          |> Result.ok
+    else "Bound exceed" |> Result.error
 
   let store_bytes (s : t) (addr : Addr.t) (v : String.t) : t =
     { s with left = FailableMemory.store_bytes s.left addr v }

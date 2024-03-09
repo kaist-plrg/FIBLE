@@ -17,9 +17,14 @@
   DMemCombinedFailableMemory
   MemoryF
   FrameF
+  ContF
   NumericBop
   NumericUop
-  Block
+  BlockF
+  FuncHelperF
   RawInst
+  InstFullF
+  JmpFullF
+  SPVal
   ICFG
   CG))

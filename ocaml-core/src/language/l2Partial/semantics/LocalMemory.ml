@@ -2,6 +2,8 @@ open Basic
 open Basic_collection
 open Common_language
 
+let ( let* ) = Result.bind
+
 module FuncTimestampMap = Map.Make (struct
   type t = Loc.t * Int64.t
 
@@ -19,7 +21,7 @@ let load_mem (s : t) (addr : SPVal.t) (width : Int32.t) : Value.t =
     Frame.load_mem
       (FuncTimestampMap.find (addr.func, addr.timestamp) s)
       addr.offset width
-  else Num (NumericValue.zero width)
+  else NonNum (NonNumericValue.undefined width)
 
 let load_string (s : t) (addr : SPVal.t) : (String.t, String.t) Result.t =
   if FuncTimestampMap.mem (addr.func, addr.timestamp) s then
@@ -28,16 +30,9 @@ let load_string (s : t) (addr : SPVal.t) : (String.t, String.t) Result.t =
       addr.offset
   else Ok ""
 
-let store_mem (s : t) (addr : SPVal.t) (v : Value.t) : t =
-  if FuncTimestampMap.mem (addr.func, addr.timestamp) s then
-    FuncTimestampMap.add
-      (addr.func, addr.timestamp)
-      (Frame.store_mem
-         (FuncTimestampMap.find (addr.func, addr.timestamp) s)
-         addr.offset v)
-      s
-  else
-    FuncTimestampMap.add
-      (addr.func, addr.timestamp)
-      (Frame.store_mem Frame.empty addr.offset v)
-      s
+let store_mem (s : t) (addr : SPVal.t) (v : Value.t) : (t, String.t) Result.t =
+  match FuncTimestampMap.find_opt (addr.func, addr.timestamp) s with
+  | Some frame ->
+      let* nf = Frame.store_mem frame addr.offset v in
+      FuncTimestampMap.add (addr.func, addr.timestamp) nf s |> Result.ok
+  | None -> "store_mem: frame not found" |> Result.error
