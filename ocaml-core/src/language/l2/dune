@@ -17,6 +17,9 @@
   Block
   Func
   Inst
+  JCall
+  JTailCall
+  JRet
   Jmp
   Prog
   NonNumericValue

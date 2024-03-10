@@ -5,12 +5,12 @@ open Basic_collection
 let translate_stmt (loc : Loc.t) (i : L0.Inst.t_full) : Inst.t_full =
   match i.ins with
   | Iassignment { expr; output } ->
-      { loc; ins = Iassignment { expr; output }; mnem = i.mnem }
+      { loc; ins = IA { expr; output }; mnem = i.mnem }
   | Iload { space; pointer; output } ->
-      { loc; ins = Iload { space; pointer; output }; mnem = i.mnem }
+      { loc; ins = ILS (Load { space; pointer; output }); mnem = i.mnem }
   | Istore { space; pointer; value } ->
-      { loc; ins = Istore { space; pointer; value }; mnem = i.mnem }
-  | _ -> { loc; ins = INop; mnem = i.mnem }
+      { loc; ins = ILS (Store { space; pointer; value }); mnem = i.mnem }
+  | _ -> { loc; ins = IN INop; mnem = i.mnem }
 
 let translate_jmp (p : L0.Prog.t) (loc : Loc.t) (i : L0.Inst.t_full)
     (next : Loc.t) (jmps : Loc.t List.t) (known_addrs : LocSet.t LocMap.t) :
@@ -24,37 +24,44 @@ let translate_jmp (p : L0.Prog.t) (loc : Loc.t) (i : L0.Inst.t_full)
              (not (AddrMap.mem (Loc.to_addr target) p.externs))
              && (String.starts_with ~prefix:"J" i.mnem
                 || String.starts_with ~prefix:"M" i.mnem)
-           then Jjump target
+           then JI (Jjump target)
            else if L0.Prog.get_ins p target |> Option.is_some then
-             Jcall { target; fallthrough = next }
-           else Jtailcall target);
+             JC
+               {
+                 target = Cdirect { target; attr = () };
+                 fallthrough = next;
+                 attr = ();
+               }
+           else JT { target = Cdirect { target; attr = () }; attr = () });
         mnem = i.mnem;
       }
   | Ijump_ind target ->
       {
         loc;
         jmp =
-          (if String.equal i.mnem "RET" then Jret target
+          (if String.equal i.mnem "RET" then JR { attr = target }
            else if String.equal i.mnem "CALL" then
-             Jcall_ind { target; fallthrough = next }
+             JC { target = Cind { target }; fallthrough = next; attr = () }
            else if LocMap.mem loc known_addrs then
-             Jjump_ind
-               {
-                 target;
-                 candidates = LocMap.find loc known_addrs;
-                 sound = false;
-               }
+             JI
+               (Jjump_ind
+                  {
+                    target;
+                    candidates = LocMap.find loc known_addrs;
+                    sound = false;
+                  })
            else JswitchStop target);
         mnem = i.mnem;
       }
   | Icbranch { condition; target } ->
       {
         loc;
-        jmp = Jcbranch { condition; target_true = target; target_false = next };
+        jmp =
+          JI (Jcbranch { condition; target_true = target; target_false = next });
         mnem = i.mnem;
       }
-  | Iunimplemented -> { loc; jmp = Junimplemented; mnem = i.mnem }
-  | _ -> { loc; jmp = Jfallthrough next; mnem = i.mnem }
+  | Iunimplemented -> { loc; jmp = JI Junimplemented; mnem = i.mnem }
+  | _ -> { loc; jmp = JI (Jfallthrough next); mnem = i.mnem }
 
 let translate_block (p0 : L0.Prog.t) (fentry : Loc.t) (entry : Loc.t)
     (cf : L0.Shallow_CFA.t) (entries : LocSetD.t)
@@ -67,7 +74,7 @@ let translate_block (p0 : L0.Prog.t) (fentry : Loc.t) (entry : Loc.t)
           fLoc = fentry;
           loc = entry;
           body = List.rev acc;
-          jmp = { loc; jmp = Junimplemented; mnem = "" };
+          jmp = { loc; jmp = JI Junimplemented; mnem = "" };
         }
     | Some i ->
         if L0.JumpG.G.mem_vertex cf.sound_jump loc then
@@ -95,7 +102,7 @@ let translate_block (p0 : L0.Prog.t) (fentry : Loc.t) (entry : Loc.t)
             fLoc = fentry;
             loc = entry;
             body = List.rev (translate_stmt loc i :: acc);
-            jmp = { loc; jmp = Junimplemented; mnem = i.mnem };
+            jmp = { loc; jmp = JI Junimplemented; mnem = i.mnem };
           }
   in
 

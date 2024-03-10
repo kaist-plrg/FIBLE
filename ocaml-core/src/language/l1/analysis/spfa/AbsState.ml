@@ -6,19 +6,18 @@ include NonRelStateD
 
 let post_single_instr (i : Inst.t) (c : t) : AccessD.t * t =
   match i with
-  | Inst.INop -> (AccessD.bottom, c)
-  | Inst.Iassignment { expr; output } ->
-      (AccessD.bottom, process_assignment c expr output)
-  | Inst.Iload { pointer; output; _ } ->
+  | IN _ -> (AccessD.bottom, c)
+  | IA { expr; output } -> (AccessD.bottom, process_assignment c expr output)
+  | ILS (Load { pointer; output; _ }) ->
       [%log debug "load: %a" SPVal.pp (eval_varnode c pointer)];
       (AccessD.log_access output.width (eval_varnode c pointer), c)
-  | Inst.Istore { pointer; value } ->
+  | ILS (Store { pointer; value }) ->
       [%log debug "store: %a" SPVal.pp (eval_varnode c pointer)];
       (AccessD.log_access (VarNode.width value) (eval_varnode c pointer), c)
 
 let post_single_jmp (i : Jmp.t) (c : t) (sp_num : Int32.t) : t =
   match i with
-  | Jmp.Jcall _ | Jmp.Jcall_ind _ ->
+  | JC _ ->
       add (RegId.Register sp_num)
         (SPVal.add
            (eval_varnode c

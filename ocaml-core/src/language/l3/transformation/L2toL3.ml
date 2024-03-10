@@ -15,34 +15,51 @@ let translate_jmp (j : L2.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
     (fMap : (RegId.t List.t * RegId.t List.t) LocMap.t) : Jmp.t_full =
   let njmp : Jmp.t =
     match j.jmp with
-    | Junimplemented -> Junimplemented
-    | Jfallthrough n -> Jfallthrough n
-    | Jjump n -> Jjump n
-    | Jjump_ind { target; candidates; sound } ->
-        Jjump_ind { target; candidates; sound }
-    | Jcbranch { condition; target_true; target_false } ->
-        Jcbranch { condition; target_true; target_false }
-    | L2.Jmp.Jcall { reserved_stack; sp_diff; target; fallthrough } ->
+    | JI j -> JI j
+    | JC
+        {
+          target = Cdirect { target; _ };
+          fallthrough;
+          attr = { reserved_stack; sp_diff };
+        } ->
         let inputs, outputs =
           match LocMap.find_opt target fMap with
           | Some (i, o) -> (i, o)
           | None -> (default_input, default_output)
         in
-        Jcall
+        JC
           {
-            reserved_stack;
-            sp_diff;
-            outputs;
-            inputs =
-              inputs
-              |> List.map (fun n ->
-                     VarNode.Register { id = n; offset = 0l; width = 8l });
-            target;
+            target =
+              Cdirect
+                {
+                  target;
+                  attr =
+                    {
+                      outputs;
+                      inputs =
+                        inputs
+                        |> List.map (fun n ->
+                               VarNode.Register
+                                 { id = n; offset = 0l; width = 8l });
+                    };
+                };
             fallthrough;
+            attr = { reserved_stack; sp_diff };
           }
-    | Jcall_ind { reserved_stack; sp_diff; target; fallthrough } ->
-        Jcall_ind { reserved_stack; sp_diff; target; fallthrough }
-    | Jtailcall { reserved_stack; sp_diff; target } ->
+    | JC
+        {
+          target = Cind { target; _ };
+          fallthrough;
+          attr = { reserved_stack; sp_diff };
+        } ->
+        JC
+          {
+            target = Cind { target };
+            fallthrough;
+            attr = { reserved_stack; sp_diff };
+          }
+    | JT { target = Cdirect { target; _ }; attr = { reserved_stack; sp_diff } }
+      ->
         let inputs, outputs =
           match LocMap.find_opt target fMap with
           | Some (i, o) -> (i, o)
@@ -53,32 +70,42 @@ let translate_jmp (j : L2.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
           |> List.map (fun n ->
                  VarNode.Register { id = n; offset = 0l; width = 8l })
         in
-        Jtailcall
+        JT
           {
-            reserved_stack;
-            sp_diff;
-            returns;
-            outputs;
-            inputs =
-              inputs
-              |> List.map (fun n ->
-                     VarNode.Register { id = n; offset = 0l; width = 8l });
-            target;
+            target =
+              Cdirect
+                {
+                  target;
+                  attr =
+                    {
+                      outputs;
+                      inputs =
+                        inputs
+                        |> List.map (fun n ->
+                               VarNode.Register
+                                 { id = n; offset = 0l; width = 8l });
+                    };
+                };
+            attr = { reserved_stack; sp_diff; returns };
           }
-    | L2.Jmp.Jtailcall_ind { reserved_stack; sp_diff; target } ->
+    | JT { target = Cind { target; _ }; attr = { reserved_stack; sp_diff } } ->
         let returns =
           snd la
           |> List.map (fun n ->
                  VarNode.Register { id = n; offset = 0l; width = 8l })
         in
-        Jtailcall_ind { reserved_stack; sp_diff; returns; target }
-    | L2.Jmp.Jret ->
+        JT
+          {
+            target = Cind { target };
+            attr = { reserved_stack; sp_diff; returns };
+          }
+    | JR { attr = () } ->
         let retvs =
           snd la
           |> List.map (fun n ->
                  VarNode.Register { id = n; offset = 0l; width = 8l })
         in
-        Jret retvs
+        JR { attr = retvs }
   in
 
   { jmp = njmp; loc = j.loc; mnem = j.mnem }

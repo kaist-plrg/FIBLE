@@ -48,7 +48,7 @@ module Lattice_noBot = struct
 
   let post_single (rom : DMem.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
     match i with
-    | Iassignment { expr; output } ->
+    | IA { expr; output } ->
         {
           value_nonrel =
             NonRelStateD.process_assignment a.value_nonrel a.value_octagon expr
@@ -59,7 +59,7 @@ module Lattice_noBot = struct
             BoolPowerD.process_assignment a.value_boolpower a.value_octagon expr
               output;
         }
-    | Iload { pointer; output; _ } ->
+    | ILS (Load { pointer; output; _ }) ->
         let addrSet = gen_aexpr_set a.value_octagon pointer in
         let regSet = AExprSet.used_regs addrSet in
         let inter_regSet =
@@ -85,7 +85,7 @@ module Lattice_noBot = struct
             BoolPowerD.process_load rom a.value_boolpower a.value_octagon output
               addrSet;
         }
-    | Istore { pointer; value; _ } ->
+    | ILS (Store { pointer; value; _ }) ->
         let addrSet = gen_aexpr_set a.value_octagon pointer in
         let regSet = AExprSet.used_regs addrSet in
         let inter_regSet =
@@ -109,7 +109,7 @@ module Lattice_noBot = struct
             BoolPowerD.process_store a.value_boolpower a.value_octagon value
               addrSet;
         }
-    | INop -> a
+    | IN _ -> a
 
   let filter_branch (a : t) (condv : VarNode.t) (trueloc : Loc.t)
       (targetloc : Loc.t) : t =
@@ -193,7 +193,7 @@ let analyze_noBot (e : edge) (a : Lattice_noBot.t) (rom : DMem.t) :
   | Flow -> (
       let srcBlock = ICFG.G.E.src e in
       match srcBlock.block.jmp.jmp with
-      | Jcbranch { condition; target_true; target_false } ->
+      | JI (Jcbranch { condition; target_true; target_false }) ->
           Lattice_noBot.filter_branch a condition target_true
             (ICFG.G.E.dst e).block.loc
       | _ -> a)

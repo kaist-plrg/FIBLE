@@ -3,47 +3,56 @@ let translate_jmp (j : L1.Jmp.t_full)
     (ga : L1.SPFA.Immutable.t) (la : L1.AbsState.t) : Jmp.t_full =
   let njmp : Jmp.t =
     match j.jmp with
-    | Junimplemented -> Junimplemented
-    | Jfallthrough l -> Jfallthrough l
-    | Jjump l -> Jjump l
-    | Jjump_ind { target; candidates; sound } ->
-        Jjump_ind { target; candidates; sound }
-    | Jcbranch { condition; target_true; target_false } ->
-        Jcbranch { condition; target_true; target_false }
-    | Jcall { target; fallthrough } ->
+    | JI v -> JI v
+    | JR v -> JR v
+    | JC { target = Cdirect { target; attr }; fallthrough } ->
         let x =
           List.find_opt (fun ((f, _) : L1.Func.t * _) -> f.entry = target) alist
           |> Option.map (fun ((_, a) : _ * L1.SPFA.Immutable.t) -> a.accesses)
         in
-        Jcall
+        JC
           {
-            reserved_stack =
-              (match x with
-              | Some (Fin s) -> L1.AccessD.FinSet.max_elt s
-              | _ -> 0L);
-            sp_diff = 8L;
-            target;
+            target = Cdirect { target; attr };
             fallthrough;
+            attr =
+              {
+                reserved_stack =
+                  (match x with
+                  | Some (Fin s) -> L1.AccessD.FinSet.max_elt s
+                  | _ -> 0L);
+                sp_diff = 8L;
+              };
           }
-    | Jcall_ind { target; fallthrough } ->
-        Jcall_ind { reserved_stack = 0L; sp_diff = 8L; target; fallthrough }
-    | Jtailcall target ->
+    | JC { target = Cind { target; _ }; fallthrough } ->
+        JC
+          {
+            target = Cind { target };
+            fallthrough;
+            attr = { reserved_stack = 0L; sp_diff = 8L };
+          }
+    | JT { target = Cdirect { target; attr } } ->
         let x =
           List.find_opt (fun ((f, _) : L1.Func.t * _) -> f.entry = target) alist
           |> Option.map (fun ((_, a) : _ * L1.SPFA.Immutable.t) -> a.accesses)
         in
-        Jtailcall
+        JT
           {
-            reserved_stack =
-              (match x with
-              | Some (Fin s) -> L1.AccessD.FinSet.max_elt s
-              | _ -> 0L);
-            sp_diff = 8L;
-            target;
+            target = Cdirect { target; attr };
+            attr =
+              {
+                reserved_stack =
+                  (match x with
+                  | Some (Fin s) -> L1.AccessD.FinSet.max_elt s
+                  | _ -> 0L);
+                sp_diff = 8L;
+              };
           }
-    | Jtailcall_ind target ->
-        Jtailcall_ind { reserved_stack = 0L; sp_diff = 8L; target }
-    | Jret vn -> Jret vn
+    | JT { target = Cind { target } } ->
+        JT
+          {
+            target = Cind { target };
+            attr = { reserved_stack = 0L; sp_diff = 8L };
+          }
   in
 
   { jmp = njmp; loc = j.loc; mnem = j.mnem }
@@ -52,24 +61,24 @@ let translate_inst (i : L1.Inst.t_full) (ga : L1.SPFA.Immutable.t)
     (la : L1.AbsState.t) : Inst.t_full =
   let nins : Inst.t =
     match i.ins with
-    | INop -> INop
-    | Iassignment { expr; output } -> Iassignment { expr; output }
-    | Iload { space; pointer; output } -> (
+    | IN v -> IN v
+    | IA v -> IA v
+    | ILS (Load { space; pointer; output }) -> (
         match pointer with
         | Register r -> (
             match L1.AbsState.find_opt r.id la with
             | Some { have_sp = Flat true; offset = Flat c } ->
-                Isload { offset = { value = c; width = 8l }; output }
-            | _ -> Iload { space; pointer; output })
-        | _ -> Iload { space; pointer; output })
-    | Istore { space; pointer; value } -> (
+                ISLS (Sload { offset = { value = c; width = 8l }; output })
+            | _ -> ILS (Load { space; pointer; output }))
+        | _ -> ILS (Load { space; pointer; output }))
+    | ILS (Store { space; pointer; value }) -> (
         match pointer with
         | Register r -> (
             match L1.AbsState.find_opt r.id la with
             | Some { have_sp = Flat true; offset = Flat c } ->
-                Isstore { offset = { value = c; width = 8l }; value }
-            | _ -> Istore { space; pointer; value })
-        | _ -> Istore { space; pointer; value })
+                ISLS (Sstore { offset = { value = c; width = 8l }; value })
+            | _ -> ILS (Store { space; pointer; value }))
+        | _ -> ILS (Store { space; pointer; value }))
   in
   { ins = nins; loc = i.loc; mnem = i.mnem }
 

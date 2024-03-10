@@ -27,7 +27,7 @@ let gen_dep_locs (pdg : PDG.ALocSet.t LocMap.t) (init_locs : Loc.t List.t) :
   aux LocSet.empty init_locs
 
 let anonymize (jmp : Jmp.t_full) : Jmp.t_full =
-  { jmp with jmp = Jmp.Junimplemented }
+  { jmp with jmp = JI Junimplemented }
 
 let extract_loc (f : Func.t) (locs : LocSet.t) : Func.t =
   let blocks =

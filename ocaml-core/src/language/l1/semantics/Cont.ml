@@ -1,3 +1,1 @@
-open Basic
-open Common_language
-include ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)
+include Common_language.ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)

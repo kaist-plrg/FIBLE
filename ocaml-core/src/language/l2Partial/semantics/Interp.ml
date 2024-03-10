@@ -136,20 +136,20 @@ let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
     : (Store.t, String.t) Result.t =
   match ins with
-  | Iassignment { expr; output } ->
+  | IA { expr; output } ->
       let* v = eval_assignment expr s output.width in
       Ok { s with regs = RegFile.add_reg s.regs output v }
-  | Iload { pointer; output } ->
+  | ILS (Load { pointer; output }) ->
       let addrv = eval_vn pointer s in
       let* lv = Store.load_mem s addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
       Ok { s with regs = RegFile.add_reg s.regs output lv }
-  | Istore { pointer; value } ->
+  | ILS (Store { pointer; value }) ->
       let addrv = eval_vn pointer s in
       let sv = eval_vn value s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       Store.store_mem s addrv sv
-  | Isload { offset; output } ->
+  | ISLS (Sload { offset; output }) ->
       let addrv =
         Value.NonNum
           (SP
@@ -162,7 +162,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
       let* lv = Store.load_mem s addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
       Ok { s with regs = RegFile.add_reg s.regs output lv }
-  | Isstore { offset; value } ->
+  | ISLS (Sstore { offset; value }) ->
       let addrv =
         Value.NonNum
           (SP
@@ -175,7 +175,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
       let sv = eval_vn value s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       Store.store_mem s addrv sv
-  | INop -> Ok s
+  | IN _ -> Ok s
 
 let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
     (calln : Loc.t) (retn : Loc.t) (s : State.t) :
@@ -281,13 +281,13 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
 let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
     (State.t, StopEvent.t) Result.t =
   match jmp.jmp with
-  | Jjump l ->
+  | JI (Jjump l) ->
       let* ncont = Cont.of_block_loc p (fst s.func) l |> StopEvent.of_str_res in
       Ok { s with cont = ncont }
-  | Jfallthrough l ->
+  | JI (Jfallthrough l) ->
       let* ncont = Cont.of_block_loc p (fst s.func) l |> StopEvent.of_str_res in
       Ok { s with cont = ncont }
-  | Jjump_ind { target; candidates; _ } ->
+  | JI (Jjump_ind { target; candidates; _ }) ->
       let* loc = Value.try_loc (eval_vn target s.sto) |> StopEvent.of_str_res in
       if LocSet.mem loc candidates then
         let* ncont =
@@ -295,7 +295,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
         in
         Ok { s with cont = ncont }
       else Error (StopEvent.FailStop "jump_ind: Not a valid jump")
-  | Jcbranch { condition; target_true; target_false } ->
+  | JI (Jcbranch { condition; target_true; target_false }) ->
       let v = eval_vn condition s.sto in
       let* iz = Value.try_isZero v |> StopEvent.of_str_res in
       if iz then
@@ -308,14 +308,24 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
           Cont.of_block_loc p (fst s.func) target_true |> StopEvent.of_str_res
         in
         Ok { s with cont = ncont }
-  | Jcall { reserved_stack; sp_diff; target; fallthrough } ->
+  | JC
+      {
+        target = Cdirect { target; _ };
+        fallthrough;
+        attr = { reserved_stack; sp_diff };
+      } ->
       step_call p reserved_stack sp_diff target fallthrough s
-  | Jcall_ind { reserved_stack; sp_diff; target; fallthrough } ->
+  | JC
+      {
+        target = Cind { target; _ };
+        fallthrough;
+        attr = { reserved_stack; sp_diff };
+      } ->
       let* calln =
         Value.try_loc (eval_vn target s.sto) |> StopEvent.of_str_res
       in
       step_call p reserved_stack sp_diff calln fallthrough s
-  | Jret retvn -> (
+  | JR { attr = retvn } -> (
       let* retn = Value.try_loc (eval_vn retvn s.sto) |> StopEvent.of_str_res in
       match s.stack with
       | [] -> Error StopEvent.NormalStop
@@ -339,8 +349,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
                   { id = RegId.Register 32l; offset = 0l; width = 8l }
                   sp_saved;
             })
-  | Jtailcall _ | Jtailcall_ind _ | Junimplemented ->
-      Error (StopEvent.FailStop "unimplemented jump")
+  | JT _ | JI Junimplemented -> Error (StopEvent.FailStop "unimplemented jump")
 
 let step (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   match s.cont with

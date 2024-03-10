@@ -41,18 +41,15 @@ let process_sstore (c : t) (offset : Const.t) (i : ASymb.t) =
 
 let post_single_instr (i : Inst.t) (c : t) : t =
   match i with
-  | Inst.INop -> c
-  | Inst.Iassignment { expr; output } -> process_assignment c expr output
-  | Inst.Iload _ -> c
-  | Inst.Istore _ -> c
-  | Inst.Isload { offset; output } -> process_sload c offset output
-  | Inst.Isstore { offset; value } ->
+  | IN _ -> c
+  | IA { expr; output } -> process_assignment c expr output
+  | ILS _ -> c
+  | ISLS (Sload { offset; output }) -> process_sload c offset output
+  | ISLS (Sstore { offset; value }) ->
       process_sstore c offset (eval_varnode c value)
 
 let post_single_jmp (i : Jmp.t) (c : t) : t =
-  match i with
-  | Jmp.Jcall _ | Jmp.Jcall_ind _ -> { c with regs = ARegFile.top }
-  | _ -> c
+  match i with JC _ -> { c with regs = ARegFile.top } | _ -> c
 
 let post_single_block (b : Block.t) (c : t) : t =
   Block.fold_left (fun c i -> post_single_instr i.ins c) c b |> fun c ->

@@ -15,6 +15,10 @@
   l1Partial)
  (modules
   Inst
+  CallTarget
+  JCall
+  JTailCall
+  JRet
   Jmp
   Block
   Func

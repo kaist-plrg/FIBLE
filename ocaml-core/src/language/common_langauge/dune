@@ -24,6 +24,15 @@
   NumericUop
   BlockF
   FuncHelperF
+  CallTargetF
+  ILoadStore
+  ISLoadStore
+  IAssignment
+  INop
+  JIntra
+  JCallF
+  JRetF
+  JTailCallF
   RawInst
   InstFullF
   JmpFullF

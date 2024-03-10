@@ -67,28 +67,26 @@ let to_graph (p : Prog.t) : G.t =
               (fun g (b' : Block.t) ->
                 G.add_edge_e g
                   ( { block = b; time = Post },
-                    (match b.jmp.jmp with
-                    | Jcall _ | Jcall_ind _ | Jtailcall _ | Jtailcall_ind _ ->
-                        Call
-                    | _ -> Flow),
+                    (match b.jmp.jmp with JC _ | JT _ -> Call | _ -> Flow),
                     { block = b'; time = Pre } ))
               g
               (match b.jmp.jmp with
-              | Jcall { target; _ } | Jtailcall { target; _ } ->
+              | JC { target = Cdirect { target; _ }; _ }
+              | JT { target = Cdirect { target; _ }; _ } ->
                   LocMap.find_opt target bbMap
                   |> Fun.flip Option.bind (fun (bbs : Block.t LocMap.t) ->
                          LocMap.find_opt target bbs)
                   |> Option.to_list
-              | Jcall_ind _ | Jtailcall_ind _ -> []
-              | Jjump n | Jfallthrough n ->
+              | JC { target = Cind _; _ } | JT { target = Cind _; _ } -> []
+              | JI (Jjump n) | JI (Jfallthrough n) ->
                   LocMap.find_opt n bbs |> Option.to_list
-              | Junimplemented -> []
-              | Jret -> []
-              | Jjump_ind { candidates; _ } ->
+              | JI Junimplemented -> []
+              | JR _ -> []
+              | JI (Jjump_ind { candidates; _ }) ->
                   LocSet.to_list candidates
                   |> List.map (fun l -> LocMap.find_opt l bbs)
                   |> List.filter_map Fun.id
-              | Jcbranch { target_true; target_false; _ } ->
+              | JI (Jcbranch { target_true; target_false; _ }) ->
                   (LocMap.find_opt target_true bbs |> Option.to_list)
                   @ (LocMap.find_opt target_false bbs |> Option.to_list)))
           bbs g)
@@ -103,7 +101,7 @@ let to_graph (p : Prog.t) : G.t =
           G.pred g { block = entry; time = Pre }
           |> List.filter_map (fun (b : vertex_t) ->
                  match b.block.jmp.jmp with
-                 | Jcall { fallthrough; _ } | Jcall_ind { fallthrough; _ } ->
+                 | JC { fallthrough; _ } ->
                      LocMap.find_opt b.block.fLoc bbMap
                      |> Fun.flip Option.bind (fun (bbs : Block.t LocMap.t) ->
                             LocMap.find_opt fallthrough bbs)

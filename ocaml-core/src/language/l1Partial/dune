@@ -8,6 +8,10 @@
  (libraries stdlibExt ppx_log basic basic_domain l0 common_language)
  (modules
   Inst
+  CallTarget
+  JCall
+  JTailCall
+  JRet
   Jmp
   Block
   Func

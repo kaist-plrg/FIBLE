@@ -2,38 +2,17 @@ let translate_jmp (j : L2Partial.Jmp.t_full) (la : L2Partial.AbsState.t) :
     Jmp.t_full =
   let njmp : Jmp.t =
     match j.jmp with
-    | Junimplemented -> Junimplemented
-    | Jfallthrough l -> Jfallthrough l
-    | Jjump l -> Jjump l
-    | Jjump_ind { target; candidates; sound } ->
-        Jjump_ind { target; candidates; sound }
-    | Jcbranch { condition; target_true; target_false } ->
-        Jcbranch { condition; target_true; target_false }
-    | Jcall { reserved_stack; sp_diff; target; fallthrough } ->
-        Jcall { reserved_stack; sp_diff; target; fallthrough }
-    | Jcall_ind { reserved_stack; sp_diff; target; fallthrough } ->
-        Jcall_ind { reserved_stack; sp_diff; target; fallthrough }
-    | Jtailcall { reserved_stack; sp_diff; target } ->
-        Jtailcall { reserved_stack; sp_diff; target }
-    | Jtailcall_ind { reserved_stack; sp_diff; target } ->
-        Jtailcall_ind { reserved_stack; sp_diff; target }
-    | Jret vn -> Jret
+    | JI j -> JI j
+    | JC j -> JC j
+    | JT j -> JT j
+    | JR { attr = vn } -> JR { attr = () }
   in
 
   { jmp = njmp; loc = j.loc; mnem = j.mnem }
 
 let translate_inst (i : L2Partial.Inst.t_full) (la : L2Partial.AbsState.t) :
     Inst.t_full =
-  let nins : Inst.t =
-    match i.ins with
-    | INop -> INop
-    | Iassignment { expr; output } -> Iassignment { expr; output }
-    | Iload { space; pointer; output } -> Iload { space; pointer; output }
-    | Istore { space; pointer; value } -> Istore { space; pointer; value }
-    | Isload { offset; output } -> Isload { offset; output }
-    | Isstore { offset; value } -> Isstore { offset; value }
-  in
-  { ins = nins; loc = i.loc; mnem = i.mnem }
+  i
 
 let translate_block (b : L2Partial.Block.t) (ga : L2Partial.CSA.Immutable.t) :
     Block.t =

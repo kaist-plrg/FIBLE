@@ -154,21 +154,21 @@ let build_sides (s : State.t) (values : Value.t List.t)
 let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) (func : Loc.t * Int64.t)
     : (State.t, String.t) Result.t =
   match ins with
-  | Iassignment { expr; output } ->
+  | IA { expr; output } ->
       let* v = eval_assignment expr s output.width in
       Ok { s with sto = Store.add_reg s.sto output v }
-  | Iload { pointer; output; _ } ->
+  | ILS (Load { pointer; output; _ }) ->
       let addrv = eval_vn pointer s in
       let* lv = Store.load_mem s.sto addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
       Ok { s with sto = Store.add_reg s.sto output lv }
-  | Istore { pointer; value; _ } ->
+  | ILS (Store { pointer; value; _ }) ->
       let addrv = eval_vn pointer s in
       let sv = eval_vn value s in
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       let* sto' = Store.store_mem s.sto addrv sv in
       Ok { s with sto = sto' }
-  | Isload { offset; output } ->
+  | ISLS (Sload { offset; output }) ->
       let addrv =
         Value.sp
           { func = fst func; timestamp = snd func; offset = offset.value }
@@ -176,7 +176,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) (func : Loc.t * Int64.t)
       let* lv = Store.load_mem s.sto addrv output.width in
       [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
       Ok { s with sto = Store.add_reg s.sto output lv }
-  | Isstore { offset; value } ->
+  | ISLS (Sstore { offset; value }) ->
       let addrv =
         Value.sp
           { func = fst func; timestamp = snd func; offset = offset.value }
@@ -185,7 +185,7 @@ let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) (func : Loc.t * Int64.t)
       [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
       let* sto' = Store.store_mem s.sto addrv sv in
       Ok { s with sto = sto' }
-  | INop -> Ok s
+  | IN _ -> Ok s
 
 let step_call_extern (p : Prog.t) (spdiff : Int64.t) (name : String.t)
     (retn : Loc.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
@@ -397,13 +397,13 @@ let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
 let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
     (State.t, StopEvent.t) Result.t =
   match jmp.jmp with
-  | Jjump l ->
+  | JI (Jjump l) ->
       let* ncont = Cont.of_block_loc p (fst s.func) l |> StopEvent.of_str_res in
       Ok { s with cont = ncont }
-  | Jfallthrough l ->
+  | JI (Jfallthrough l) ->
       let* ncont = Cont.of_block_loc p (fst s.func) l |> StopEvent.of_str_res in
       Ok { s with cont = ncont }
-  | Jjump_ind { target; candidates; _ } ->
+  | JI (Jjump_ind { target; candidates; _ }) ->
       let* loc = Value.try_loc (eval_vn target s) |> StopEvent.of_str_res in
       if LocSet.mem loc candidates then
         let* ncont =
@@ -411,7 +411,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
         in
         Ok { s with cont = ncont }
       else Error (StopEvent.FailStop "jump_ind: Not a valid jump")
-  | Jcbranch { condition; target_true; target_false } ->
+  | JI (Jcbranch { condition; target_true; target_false }) ->
       let v = eval_vn condition s in
       [%log debug "Jcbranch %a" Value.pp v];
       let* iz = Value.try_isZero v |> StopEvent.of_str_res in
@@ -425,12 +425,22 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
           Cont.of_block_loc p (fst s.func) target_true |> StopEvent.of_str_res
         in
         Ok { s with cont = ncont }
-  | Jcall { reserved_stack; sp_diff; outputs; inputs; target; fallthrough } ->
+  | JC
+      {
+        target = Cdirect { attr = { outputs; inputs }; target };
+        attr = { reserved_stack; sp_diff };
+        fallthrough;
+      } ->
       step_call p reserved_stack sp_diff outputs inputs target fallthrough s
-  | Jcall_ind { reserved_stack; sp_diff; target; fallthrough } ->
+  | JC
+      {
+        target = Cind { target };
+        attr = { reserved_stack; sp_diff };
+        fallthrough;
+      } ->
       let* calln = Value.try_loc (eval_vn target s) |> StopEvent.of_str_res in
       step_call_ind p reserved_stack sp_diff calln fallthrough s
-  | Jret values -> (
+  | JR { attr = values } -> (
       match s.stack with
       | [] -> Error StopEvent.NormalStop
       | (calln, outputs, regs', sp_saved, retn') :: stack' ->
@@ -471,8 +481,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
                       sp_saved;
                 };
             })
-  | Jtailcall _ | Jtailcall_ind _ | Junimplemented ->
-      Error (StopEvent.FailStop "unimplemented jump")
+  | JT _ | JI Junimplemented -> Error (StopEvent.FailStop "unimplemented jump")
 
 let step (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   match s.cont with
