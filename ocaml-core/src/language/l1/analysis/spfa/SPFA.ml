@@ -95,14 +95,7 @@ module Immutable = struct
   let rec a_fixpoint_worklist (f : Func.t) (c : t) (ls : Loc.t List.t)
       (sp_num : Int32.t) : t =
     match ls with
-    | [] ->
-        {
-          c with
-          accesses =
-            (match c.accesses with
-            | Top -> Top
-            | Fin s -> Fin (Int64SetD.add 512L s));
-        }
+    | [] -> c
     | l :: ls ->
         let nc, newLs = post_worklist f c l sp_num in
         a_fixpoint_worklist f nc

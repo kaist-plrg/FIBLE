@@ -106,8 +106,11 @@ let translate_func (f : L1.Func.t)
     boundaries = f.boundaries;
     sp_diff = 8L;
     sp_boundary =
+      (* MUST FIX: TODO *)
       (match a.accesses with
-      | Fin s -> (L1.AccessD.FinSet.min_elt s, L1.AccessD.FinSet.max_elt s)
+      | Fin s ->
+          ( L1.AccessD.FinSet.min_elt s,
+            Int64.add (L1.AccessD.FinSet.max_elt s) 512L )
       | _ ->
           [%log
             raise
