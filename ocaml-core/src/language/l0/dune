@@ -18,8 +18,7 @@
   Inst
   Prog
   Value
-  RegFile
-  Memory
+  Store
   State
   Init
   Interp

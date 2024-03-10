@@ -61,8 +61,8 @@ let varnode_raw_to_varnode (si : SpaceInfo.t) (rspec : RegSpec.t)
   else if v.space = si.ram then Ram { value = v.offset; width = v.size }
   else [%log fatal "Unknown space %ld" v.space]
 
-let pcode_raw_to_pcode (si : SpaceInfo.t) (rspec : RegSpec.t) (p : PCode_Raw.t)
-    : RawInst.t_full =
+let pcode_raw_to_pcode (si : SpaceInfo.t) (rspec : RegSpec.t) (addr : Addr.t)
+    (seqn : Int.t) (p : PCode_Raw.t) : RawInst.t_full =
   [%log debug "Converting %a" PCode_Raw.pp p];
   let inputs i = varnode_raw_to_varnode si rspec p.inputs.(i) in
   let output_raw () =
@@ -85,28 +85,30 @@ let pcode_raw_to_pcode (si : SpaceInfo.t) (rspec : RegSpec.t) (p : PCode_Raw.t)
   in
   let mkJIump _ = RawInst.Ijump_ind (inputs 0) in
   let mkUop op =
-    RawInst.Iassignment { expr = Auop (op, inputs 0); output = output () }
+    RawInst.IA { expr = Auop (op, inputs 0); output = output () }
   in
   let mkBop op =
-    RawInst.Iassignment
-      { expr = Abop (op, inputs 0, inputs 1); output = output () }
+    RawInst.IA { expr = Abop (op, inputs 0, inputs 1); output = output () }
   in
   let (inst : RawInst.t) =
     match p.opcode with
     | 0l -> Iunimplemented
     | 1l -> (
         match output_raw () with
-        | Register r -> Iassignment { expr = Avar (inputs 0); output = r }
+        | Register r -> IA { expr = Avar (inputs 0); output = r }
         | Ram { value = a; width = w } ->
-            Istore
-              {
-                space = Const { value = Int64.of_int32 si.ram; width = 8l };
-                pointer = Const { value = a; width = 8l };
-                value = inputs 0;
-              }
+            ILS
+              (Store
+                 {
+                   space = Const { value = Int64.of_int32 si.ram; width = 8l };
+                   pointer = Const { value = a; width = 8l };
+                   value = inputs 0;
+                 })
         | _ -> [%log fatal "Output is not a register or ram"])
-    | 2l -> Iload { space = inputs 0; pointer = inputs 1; output = output () }
-    | 3l -> Istore { space = inputs 0; pointer = inputs 1; value = inputs 2 }
+    | 2l ->
+        ILS (Load { space = inputs 0; pointer = inputs 1; output = output () })
+    | 3l ->
+        ILS (Store { space = inputs 0; pointer = inputs 1; value = inputs 2 })
     | 4l -> mkJump ()
     | 5l ->
         Icbranch
@@ -173,10 +175,10 @@ let pcode_raw_to_pcode (si : SpaceInfo.t) (rspec : RegSpec.t) (p : PCode_Raw.t)
     | 63l -> mkBop Bsubpiece
     | 72l -> mkUop Upopcount
     | 73l -> mkUop Ulzcount
-    | 999l -> INop
+    | 999l -> IN INop
     | _ -> Iunimplemented
   in
-  { ins = inst; mnem = p.mnemonic }
+  { ins = inst; mnem = p.mnemonic; loc = (addr, seqn) }
 
 let get_func_addr (server : t) (x : string) : int64 =
   Interaction.put_char 'f';
@@ -230,7 +232,9 @@ let make_server ifile ghidra_path tmp_path cwd : t =
       if inst_len = 0l then None
       else
         let pcodes =
-          List.map (pcode_raw_to_pcode spaceinfo regspec) (get_pcode_list fd)
+          List.mapi
+            (pcode_raw_to_pcode spaceinfo regspec addr)
+            (get_pcode_list fd)
         in
         [%log debug "Received %d pcodes" (List.length pcodes)];
         List.iter (fun x -> [%log debug "%a\n" RawInst.pp_full x]) pcodes;

@@ -16,6 +16,7 @@ module Make (NonNumericValue : sig
 
   val width : t -> Int32.t
   val undefined : Int32.t -> t
+  val sp : SPVal.t -> t
   val get_sp : t -> SPVal.t option
 end) =
 struct
@@ -130,4 +131,6 @@ struct
           && NonNumericValue.width orig = NonNumericValue.width inserted
         then NonNum inserted
         else NonNum (NonNumericValue.undefined (NonNumericValue.width inserted))
+
+  let sp (sp : SPVal.t) : t = NonNum (NonNumericValue.sp sp)
 end

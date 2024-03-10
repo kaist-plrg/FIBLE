@@ -5,13 +5,4 @@ open Basic_collection
 let init_sp = 0x7FFFFFFFC000L
 
 let from_signature (p : Prog.t) (a : Addr.t) : State.t =
-  {
-    regs =
-      RegFile.add_reg (RegFile.empty p.rspec)
-        { id = RegId.Register 32l; offset = 0l; width = 8l }
-        (Value.of_int64 init_sp 8l);
-    mem =
-      Memory.store_mem (Memory.from_rom p.rom) init_sp
-        (Value.of_int64 0xDEADBEEFL 8l);
-    pc = (a, 0);
-  }
+  { sto = Store.init_from_sig p.rom p.rspec init_sp; pc = (a, 0) }

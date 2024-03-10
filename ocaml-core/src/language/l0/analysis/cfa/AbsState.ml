@@ -32,7 +32,7 @@ let pp fmt (a : t) =
 
 let post_single (p : Prog.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
   match i with
-  | Iassignment { expr; output } ->
+  | IA { expr; output } ->
       {
         value_nonrel =
           NonRelStateD.process_assignment a.value_nonrel a.value_octagon expr
@@ -42,7 +42,7 @@ let post_single (p : Prog.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
           BoolPowerD.process_assignment a.value_boolpower a.value_octagon expr
             output;
       }
-  | Iload { pointer; output } ->
+  | ILS (Load { pointer; output }) ->
       {
         value_nonrel =
           NonRelStateD.process_load p a.value_nonrel a.value_octagon pointer
@@ -50,7 +50,7 @@ let post_single (p : Prog.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
         value_octagon = OctagonD.process_load p a.value_octagon pointer output;
         value_boolpower = a.value_boolpower;
       }
-  | Istore _ ->
+  | ILS (Store _) ->
       {
         value_nonrel = NonRelStateD.clear_memref a.value_nonrel;
         value_octagon = OctagonD.clear_memref a.value_octagon;
@@ -59,7 +59,7 @@ let post_single (p : Prog.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
   | Icbranch _ -> a
   | Ijump _ -> a
   | Ijump_ind _ -> a
-  | INop -> a
+  | IN _ -> a
   | Iunimplemented -> a
 
 let filter_single (_ : Prog.t) (_ : Loc.t) (lf : Loc.t) (a : t) (i : Inst.t) : t

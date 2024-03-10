@@ -26,8 +26,6 @@
   Value
   Cont
   Stack
-  RegFile
-  Memory
   Store
   State
   Init

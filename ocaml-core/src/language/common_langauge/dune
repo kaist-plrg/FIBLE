@@ -5,7 +5,14 @@
  (flags -w -20-33-3)
  (preprocess
   (pps ppx_log))
- (libraries ocamlgraph ppx_log stdlibExt basic basic_collection)
+ (libraries
+  ocamlgraph
+  ctypes
+  ctypes-foreign
+  ppx_log
+  stdlibExt
+  basic
+  basic_collection)
  (modules
   NumericValue
   ValueF
@@ -18,12 +25,14 @@
   MemoryF
   FrameF
   LocalMemoryF
+  LowStore
   HighStoreF
   ContF
   NumericBop
   NumericUop
   BlockF
   FuncHelperF
+  StateHelperF
   CallTargetF
   ILoadStore
   ISLoadStore

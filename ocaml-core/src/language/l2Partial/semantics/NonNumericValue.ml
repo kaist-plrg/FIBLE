@@ -6,6 +6,8 @@ let ( let* ) = Result.bind
 
 type t = SP of SPVal.t | Undef of Int32.t
 
+let sp (sp : SPVal.t) : t = SP sp
+
 let pp fmt = function
   | SP sp -> SPVal.pp fmt sp
   | Undef i -> Format.fprintf fmt "undef_%ld" i

@@ -4,12 +4,8 @@ open Basic_collection
 
 let translate_stmt (loc : Loc.t) (i : L0.Inst.t_full) : Inst.t_full =
   match i.ins with
-  | Iassignment { expr; output } ->
-      { loc; ins = IA { expr; output }; mnem = i.mnem }
-  | Iload { space; pointer; output } ->
-      { loc; ins = ILS (Load { space; pointer; output }); mnem = i.mnem }
-  | Istore { space; pointer; value } ->
-      { loc; ins = ILS (Store { space; pointer; value }); mnem = i.mnem }
+  | IA x -> { loc; ins = IA x; mnem = i.mnem }
+  | ILS x -> { loc; ins = ILS x; mnem = i.mnem }
   | _ -> { loc; ins = IN INop; mnem = i.mnem }
 
 let translate_jmp (p : L0.Prog.t) (loc : Loc.t) (i : L0.Inst.t_full)

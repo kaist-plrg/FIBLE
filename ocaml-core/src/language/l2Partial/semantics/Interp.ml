@@ -1,9 +1,8 @@
 open StdlibExt
+open Notation
 open Basic
 open Basic_collection
 open Common_language
-
-let ( let* ) = Result.bind
 
 let eval_vn (vn : VarNode.t) (s : Store.t) : Value.t =
   match vn with
