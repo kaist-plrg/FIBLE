@@ -98,74 +98,19 @@ let step_call_extern (p : Prog.t) (spdiff : Int64.t) (name : String.t)
   in
   Ok { s with sto; cont = ncont; stack = s.stack }
 
-let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
-    (outputs : RegId.t List.t) (inputs : VarNode.t List.t) (calln : Loc.t)
-    (retn : Loc.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
-  match AddrMap.find_opt (Loc.to_addr calln) p.externs with
-  | None ->
-      let* currf = get_current_function s p |> StopEvent.of_str_res in
-      let* f = get_func_from p calln |> StopEvent.of_str_res in
-      let* _ =
-        if f.sp_diff = spdiff then Ok ()
-        else Error (StopEvent.FailStop "jcall: spdiff not match")
-      in
-      let* ncont = Cont.of_func_entry_loc p calln |> StopEvent.of_str_res in
-      let* nlocal =
-        build_local_frame s p f.sp_boundary copydepth |> StopEvent.of_str_res
-      in
-      let* sp_saved = build_saved_sp s p spdiff |> StopEvent.of_str_res in
-      Ok
-        {
-          State.timestamp = Int64Ext.succ s.timestamp;
-          cont = ncont;
-          stack = (s.func, outputs, s.sto.regs, sp_saved, retn) :: s.stack;
-          func = (calln, Int64Ext.succ s.timestamp);
-          sto =
-            {
-              s.sto with
-              regs =
-                RegFile.add_reg
-                  (List.fold_left
-                     (fun r (i, v) ->
-                       RegFile.add_reg r
-                         { id = i; offset = 0l; width = 8l }
-                         (Store.eval_vn s.sto v |> Result.get_ok))
-                     (RegFile.of_seq Seq.empty)
-                     (try List.combine f.inputs inputs
-                      with Invalid_argument _ ->
-                        [%log
-                          fatal
-                            "Mismatched number of arguments for call inputs,\n\
-                            \                      %d for %s and %d for call \
-                             instruction"
-                            (List.length f.inputs)
-                            (f.nameo |> Option.value ~default:"noname")
-                            (List.length inputs)]))
-                  { id = RegId.Register 32l; offset = 0l; width = 8l }
-                  (Value.sp
-                     {
-                       func = calln;
-                       timestamp = Int64Ext.succ s.timestamp;
-                       offset = 0L;
-                     });
-              local =
-                s.sto.local
-                |> LocalMemory.add (calln, Int64Ext.succ s.timestamp) nlocal;
-            };
-        }
-  | Some name -> step_call_extern p spdiff name retn s
-
-let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
-    (calln : Loc.t) (retn : Loc.t) (s : State.t) :
+let step_call (p : Prog.t)
+    ({ reserved_stack = copydepth; sp_diff } : JCall.Inner.t) (retn : Loc.t)
+    (calln : Loc.t) (attr : CallTarget.Inner.t option) (s : State.t) :
     (State.t, StopEvent.t) Result.t =
   match AddrMap.find_opt (Loc.to_addr calln) p.externs with
   | None ->
       let* currf = get_current_function s p |> StopEvent.of_str_res in
       let* f = get_func_from p calln |> StopEvent.of_str_res in
       let* _ =
-        if f.sp_diff = spdiff then Ok ()
+        if f.sp_diff = sp_diff then Ok ()
         else Error (StopEvent.FailStop "jcall_ind: spdiff not match")
       in
+
       (* TODO: think ind copydepth
          let* _ =
            if snd f.sp_boundary <= copydepth then Ok ()
@@ -173,62 +118,85 @@ let step_call_ind (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
          in
       *)
       let* ncont = Cont.of_func_entry_loc p calln |> StopEvent.of_str_res in
-      let* nlocal =
-        build_local_frame s p f.sp_boundary (snd f.sp_boundary)
-        |> StopEvent.of_str_res
+      let* sp_saved = build_saved_sp s p sp_diff |> StopEvent.of_str_res in
+      let* ndepth, regs, outputs =
+        match attr with
+        | Some { inputs; outputs } ->
+            let regs =
+              List.fold_left
+                (fun r (i, v) ->
+                  RegFile.add_reg r
+                    { id = i; offset = 0l; width = 8l }
+                    (Store.eval_vn s.sto v |> Result.get_ok))
+                (RegFile.of_seq Seq.empty)
+                (try List.combine f.inputs inputs
+                 with Invalid_argument _ ->
+                   [%log
+                     fatal
+                       "Mismatched number of arguments for call inputs,\n\
+                       \                      %d for %s and %d for call \
+                        instruction"
+                       (List.length f.inputs)
+                       (f.nameo |> Option.value ~default:"noname")
+                       (List.length inputs)])
+            in
+            (copydepth, regs, outputs) |> Result.ok
+        | None ->
+            let regs =
+              List.fold_left
+                (fun r i ->
+                  RegFile.add_reg r
+                    { id = i; offset = 0l; width = 8l }
+                    (Store.get_reg s.sto { id = i; offset = 0l; width = 8l }))
+                (RegFile.of_seq Seq.empty) f.inputs
+            in
+            ((snd f.sp_boundary), regs, f.outputs) |> Result.ok
       in
-      let* sp_saved = build_saved_sp s p spdiff |> StopEvent.of_str_res in
-      Ok
+      let* nlocal =
+        build_local_frame s p f.sp_boundary ndepth
+        |> StopEvent.of_str_res in
+      let regs =
+        RegFile.add_reg regs
+          { id = RegId.Register p.sp_num; offset = 0l; width = 8l }
+          (Value.sp
+             {
+               func = calln;
+               timestamp = Int64Ext.succ s.timestamp;
+               offset = 0L;
+             })
+      in
+      let sto =
         {
-          State.timestamp = Int64Ext.succ s.timestamp;
-          cont = ncont;
-          stack = (s.func, f.outputs, s.sto.regs, sp_saved, retn) :: s.stack;
-          func = (calln, Int64Ext.succ s.timestamp);
-          sto =
-            {
-              s.sto with
-              regs =
-                RegFile.add_reg
-                  (List.fold_left
-                     (fun r i ->
-                       RegFile.add_reg r
-                         { id = i; offset = 0l; width = 8l }
-                         (Store.get_reg s.sto
-                            { id = i; offset = 0l; width = 8l }))
-                     (RegFile.of_seq Seq.empty) f.inputs)
-                  { id = RegId.Register 32l; offset = 0l; width = 8l }
-                  (Value.sp
-                     {
-                       func = calln;
-                       timestamp = Int64Ext.succ s.timestamp;
-                       offset = 0L;
-                     });
-              local =
-                s.sto.local
-                |> LocalMemory.add (calln, Int64Ext.succ s.timestamp) nlocal;
-            };
+          s.sto with
+          regs;
+          local =
+            s.sto.local
+            |> LocalMemory.add (calln, Int64Ext.succ s.timestamp) nlocal;
         }
-  | Some name -> step_call_extern p spdiff name retn s
+      in
+      {
+        State.timestamp = Int64Ext.succ s.timestamp;
+        cont = ncont;
+        stack = (s.func, outputs, s.sto.regs, sp_saved, retn) :: s.stack;
+        func = (calln, Int64Ext.succ s.timestamp);
+        sto;
+      }
+      |> Result.ok
+  | Some name -> step_call_extern p sp_diff name retn s
 
 let step_JC (s : State.t) (p : Prog.t) (jc : JCall.t) :
     (State.t, StopEvent.t) Result.t =
-  match jc with
-  | {
-   target = Cdirect { attr = { outputs; inputs }; target };
-   attr = { reserved_stack; sp_diff };
-   fallthrough;
-  } ->
-      step_call p reserved_stack sp_diff outputs inputs target fallthrough s
-  | {
-   target = Cind { target };
-   attr = { reserved_stack; sp_diff };
-   fallthrough;
-  } ->
-      let* calln =
-        Result.bind (Store.eval_vn s.sto target) Value.try_loc
-        |> StopEvent.of_str_res
-      in
-      step_call_ind p reserved_stack sp_diff calln fallthrough s
+  let* target, attr =
+    match jc.target with
+    | Cdirect { target; attr } -> (target, Some attr) |> Result.ok
+    | Cind { target } ->
+        let* calln =
+          Result.bind (Store.eval_vn s.sto target) Value.try_loc
+          |> StopEvent.of_str_res
+        in
+        (calln, None) |> Result.ok
+  in
+  step_call p jc.attr jc.fallthrough target attr s
 
 let step_JR (s : State.t) (p : Prog.t) ({ attr } : JRet.t) :
     (State.t, StopEvent.t) Result.t =
@@ -266,7 +234,7 @@ let step_JR (s : State.t) (p : Prog.t) ({ attr } : JRet.t) :
                      (fun r (o, v) ->
                        RegFile.add_reg r { id = o; offset = 0l; width = 8l } v)
                      regs' output_values)
-                  { id = RegId.Register 32l; offset = 0l; width = 8l }
+                  { id = RegId.Register p.sp_num; offset = 0l; width = 8l }
                   sp_saved;
             };
         }
