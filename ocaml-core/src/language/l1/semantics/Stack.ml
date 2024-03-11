@@ -1,3 +1,1 @@
-open Basic
-
-type t = (Loc.t * Loc.t) list
+include L1Partial.Stack

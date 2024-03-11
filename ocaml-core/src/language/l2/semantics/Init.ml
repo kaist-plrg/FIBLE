@@ -6,7 +6,7 @@ open Common_language
 let from_signature (p : Prog.t) (a : Addr.t) : State.t =
   let init_sp = { SPVal.func = (a, 0); timestamp = 0L; offset = 0L } in
   {
-    timestamp = 0L;
+    attr = { timestamp = 0L };
     sto =
       {
         regs =
@@ -16,7 +16,7 @@ let from_signature (p : Prog.t) (a : Addr.t) : State.t =
         mem = Memory.from_rom p.rom;
         local = LocalMemory.empty;
       };
-    func = ((a, 0), 0L);
+    cursor = { func = (a, 0); tick = 0L };
     cont = Cont.of_func_entry_loc p (a, 0) |> Result.get_ok;
     stack = [];
   }

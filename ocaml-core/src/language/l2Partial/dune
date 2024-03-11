@@ -19,6 +19,7 @@
   NonNumericValue
   Value
   Cont
+  Cursor
   Stack
   RegFile
   Memory

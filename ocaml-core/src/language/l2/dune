@@ -29,6 +29,7 @@
   Frame
   LocalMemory
   Cont
+  Cursor
   Stack
   Store
   State

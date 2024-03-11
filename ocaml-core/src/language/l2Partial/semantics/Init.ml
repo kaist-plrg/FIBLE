@@ -17,7 +17,7 @@ let from_signature (p : Prog.t) (a : Addr.t) : State.t =
     |> Result.get_ok
   in
   {
-    timestamp = 0L;
+    attr = { timestamp = 0L };
     sto =
       {
         regs =
@@ -27,7 +27,7 @@ let from_signature (p : Prog.t) (a : Addr.t) : State.t =
         mem = Memory.from_rom p.rom;
         local;
       };
-    func = ((a, 0), 0L);
+    cursor = { func = (a, 0); tick = 0L };
     cont = Cont.of_func_entry_loc p (a, 0) |> Result.get_ok;
     stack = [];
   }

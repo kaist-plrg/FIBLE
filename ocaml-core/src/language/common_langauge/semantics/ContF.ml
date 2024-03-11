@@ -34,8 +34,8 @@ struct
   let of_block (b : Block.t) : t =
     { remaining = Block.get_body b; jmp = Block.get_jmp b }
 
-  let of_block_loc (p : Prog.t) (floc : Loc.t) (bloc : Loc.t) :
-      (t, String.t) Result.t =
+  let of_loc (p : Prog.t) (floc : Loc.t) (bloc : Loc.t) : (t, String.t) Result.t
+      =
     let* f =
       Prog.get_func_opt p floc
       |> Option.to_result

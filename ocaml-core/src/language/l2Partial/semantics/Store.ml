@@ -1,1 +1,3 @@
-include Common_language.HighStoreF.Make (Value) (RegFile) (Memory) (LocalMemory)
+include
+  Common_language.HighStoreF.Make (Value) (Cursor) (RegFile) (Memory)
+    (LocalMemory)

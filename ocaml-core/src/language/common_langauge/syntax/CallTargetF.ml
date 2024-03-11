@@ -10,6 +10,8 @@ struct
     | Cdirect of { target : Loc.t; attr : Attr.t }
     | Cind of { target : VarNode.t }
 
+  type resolved_t = { target : Loc.t; attr_opt : Attr.t option }
+
   let pp fmt = function
     | Cdirect { target; attr } ->
         Format.fprintf fmt "%a [%a]" Loc.pp target Attr.pp attr

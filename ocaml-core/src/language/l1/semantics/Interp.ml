@@ -15,14 +15,23 @@ let step_call (p : Prog.t) (calln : Loc.t) (retn : Loc.t) (s : State.t) :
   match AddrMap.find_opt (Loc.to_addr calln) p.externs with
   | None ->
       let* ncont = Cont.of_func_entry_loc p calln in
+      let ncursor : Cursor.t =
+        { func = calln; tick = Common_language.UnitTimeStamp.succ s.attr }
+      in
+
       Ok
-        { s with cont = ncont; stack = (s.func, retn) :: s.stack; func = calln }
+        {
+          s with
+          cont = ncont;
+          stack = (s.cursor, retn) :: s.stack;
+          cursor = ncursor;
+        }
   | Some name ->
       [%log debug "Calling %s" name];
       let retpointer =
         Store.get_reg s.sto { id = RegId.Register 32l; offset = 0l; width = 8l }
       in
-      let* ncont = Cont.of_block_loc p s.func retn in
+      let* ncont = Cont.of_loc p (Cursor.get_func_loc s.cursor) retn in
       Ok
         {
           s with
@@ -39,7 +48,10 @@ let step_tailcall (p : Prog.t) (calln : Loc.t) (s : State.t) :
   match AddrMap.find_opt (Loc.to_addr calln) p.externs with
   | None ->
       let* ncont = Cont.of_func_entry_loc p calln in
-      Ok { s with cont = ncont; stack = s.stack; func = calln }
+      let ncursor : Cursor.t =
+        { func = calln; tick = Common_language.UnitTimeStamp.succ s.attr }
+      in
+      Ok { s with cont = ncont; stack = s.stack; cursor = ncursor }
   | Some name -> (
       [%log debug "Calling %s" name];
       let retpointer =
@@ -57,8 +69,8 @@ let step_tailcall (p : Prog.t) (calln : Loc.t) (s : State.t) :
       match s_after.stack with
       | [] -> Error (Format.asprintf "ret to Empty stack")
       | (calln, retn') :: stack' ->
-          let* ncont = Cont.of_block_loc p calln retn' in
-          Ok { s with cont = ncont; stack = stack'; func = calln })
+          let* ncont = Cont.of_loc p (Cursor.get_func_loc calln) retn' in
+          Ok { s with cont = ncont; stack = stack'; cursor = calln })
 
 let step_ret (p : Prog.t) (retn : Value.t) (s : State.t) :
     (State.t, String.t) Result.t =
@@ -66,8 +78,10 @@ let step_ret (p : Prog.t) (retn : Value.t) (s : State.t) :
   | [] -> Error (Format.asprintf "ret to %a: Empty stack" Value.pp retn)
   | (calln, retn') :: stack' ->
       if Loc.compare (Value.to_loc retn) retn' = 0 then
-        let* ncont = Cont.of_block_loc p calln (Value.to_loc retn) in
-        Ok { s with cont = ncont; stack = stack'; func = calln }
+        let* ncont =
+          Cont.of_loc p (Cursor.get_func_loc calln) (Value.to_loc retn)
+        in
+        Ok { s with cont = ncont; stack = stack'; cursor = calln }
       else
         Error
           (Format.asprintf "ret to %a: Expected %a" Value.pp retn Loc.pp retn')

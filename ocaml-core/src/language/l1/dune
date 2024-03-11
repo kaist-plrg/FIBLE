@@ -25,6 +25,7 @@
   Prog
   Value
   Cont
+  Cursor
   Stack
   Store
   State

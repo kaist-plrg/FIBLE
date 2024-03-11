@@ -4,8 +4,8 @@ open Basic
 open Basic_collection
 open Common_language
 
-let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (curr : Loc.t * Int64.t)
-    : (Store.t, String.t) Result.t =
+let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (curr : Cursor.t) :
+    (Store.t, String.t) Result.t =
   match ins with
   | IA i -> Store.step_IA s i
   | ILS i -> Store.step_ILS s i
@@ -44,10 +44,10 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
        in
        Ok
          {
-           State.timestamp = Int64Ext.succ s.timestamp;
+           State.attr = { timestamp = Int64Ext.succ s.attr.timestamp };
            cont = ncont;
-           stack = (s.func, sp_saved, retn) :: s.stack;
-           func = (calln, Int64Ext.succ s.timestamp);
+           stack = (s.cursor, sp_saved, retn) :: s.stack;
+           cursor = { func = calln; tick = Int64Ext.succ s.attr.timestamp };
            sto =
              {
                s.sto with
@@ -58,12 +58,12 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
                       (SP
                          {
                            SPVal.func = calln;
-                           timestamp = Int64Ext.succ s.timestamp;
+                           timestamp = Int64Ext.succ s.attr.timestamp;
                            offset = 0L;
                          }));
                local =
                  LocalMemory.add
-                   (calln, Int64Ext.succ s.timestamp)
+                   (calln, Int64Ext.succ s.attr.timestamp)
                    nlocal s.sto.local;
              };
          })
@@ -95,7 +95,8 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
       in
 
       let* ncont =
-        Cont.of_block_loc p (fst s.func) retn |> StopEvent.of_str_res
+        Cont.of_loc p (Cursor.get_func_loc s.cursor) retn
+        |> StopEvent.of_str_res
       in
 
       let* sto =
@@ -135,14 +136,15 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
       | [] -> Error StopEvent.NormalStop
       | (calln, sp_saved, retn') :: stack' ->
           let* ncont =
-            Cont.of_block_loc p (fst calln) retn' |> StopEvent.of_str_res
+            Cont.of_loc p (Cursor.get_func_loc calln) retn'
+            |> StopEvent.of_str_res
           in
           Ok
             {
               s with
               cont = ncont;
               stack = stack';
-              func = calln;
+              cursor = calln;
               sto =
                 Store.add_reg s.sto
                   { id = RegId.Register 32l; offset = 0l; width = 8l }
@@ -154,10 +156,10 @@ let step (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   match s.cont with
   | { remaining = []; jmp } -> step_jmp p jmp s
   | { remaining = i :: []; jmp } ->
-      let* sto' = step_ins p i.ins s.sto s.func |> StopEvent.of_str_res in
+      let* sto' = step_ins p i.ins s.sto s.cursor |> StopEvent.of_str_res in
       step_jmp p jmp { s with sto = sto' }
   | { remaining = i :: res; jmp } ->
-      let* sto' = step_ins p i.ins s.sto s.func |> StopEvent.of_str_res in
+      let* sto' = step_ins p i.ins s.sto s.cursor |> StopEvent.of_str_res in
       Ok { s with sto = sto'; cont = { remaining = res; jmp } }
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =

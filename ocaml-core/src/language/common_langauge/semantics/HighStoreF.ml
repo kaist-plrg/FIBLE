@@ -18,6 +18,11 @@ module Make (Value : sig
   val sp : SPVal.t -> t
   val pp : Format.formatter -> t -> unit
   val to_either : t -> (NumericValue.t, NonNumericValue.t) Either.t
+end) (HighCursor : sig
+  type t
+
+  val get_func_loc : t -> Loc.t
+  val get_timestamp : t -> Int64.t
 end) (RegFile : sig
   type t
 
@@ -157,13 +162,17 @@ struct
         [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
         store_mem s addrv sv
 
-  let step_ISLS (s : t) (v : ISLoadStore.t) (curr : Loc.t * Int64.t) :
+  let step_ISLS (s : t) (v : ISLoadStore.t) (curr : HighCursor.t) :
       (t, String.t) Result.t =
     match v with
     | Sload { offset; output } ->
         let addrv =
           Value.sp
-            { func = fst curr; timestamp = snd curr; offset = offset.value }
+            {
+              func = HighCursor.get_func_loc curr;
+              timestamp = HighCursor.get_timestamp curr;
+              offset = offset.value;
+            }
         in
         let* lv = load_mem s addrv output.width in
         [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
@@ -171,7 +180,11 @@ struct
     | Sstore { offset; value } ->
         let addrv =
           Value.sp
-            { func = fst curr; timestamp = snd curr; offset = offset.value }
+            {
+              func = HighCursor.get_func_loc curr;
+              timestamp = HighCursor.get_timestamp curr;
+              offset = offset.value;
+            }
         in
         let* sv = eval_vn s value in
         [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];

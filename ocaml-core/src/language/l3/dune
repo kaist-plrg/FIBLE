@@ -29,6 +29,7 @@
   Memory
   Frame
   LocalMemory
+  Cursor
   Cont
   Stack
   Store

@@ -1,11 +1,11 @@
 open Basic
 open Basic_collection
 
-type t = ((Loc.t * Int64.t) * RegId.t list * RegFile.t * Value.t * Loc.t) list
+type elem_t = Cursor.t * RegId.t list * RegFile.t * Value.t * Loc.t
+type t = elem_t list
 
 let pp fmt (v : t) =
-  Format.pp_print_list
-    ~pp_sep:(fun fmt () -> Format.fprintf fmt " ")
-    (fun fmt ((loc, tick), _, _, _, _) ->
-      Format.fprintf fmt "%a@%Ld" Loc.pp loc tick)
-    fmt v
+  let pp_elem fmt (c, _, _, v, l) =
+    Format.fprintf fmt "%a: %a" Cursor.pp c Value.pp v
+  in
+  Format.fprintf fmt "[%a]" (Format.pp_print_list pp_elem) v
