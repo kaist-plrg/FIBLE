@@ -32,7 +32,8 @@
   NumericUop
   BlockF
   FuncHelperF
-  StateHelperF
+  StateStoreF
+  StateIntraJumpF
   CallTargetF
   ILoadStore
   ISLoadStore

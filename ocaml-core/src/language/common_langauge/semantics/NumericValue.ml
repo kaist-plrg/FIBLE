@@ -5,6 +5,7 @@ type t = String.t
 
 let zero width = String.make (Int32.to_int width) '\x00'
 let isZero x = String.for_all (Char.equal '\x00') x
+let try_isZero (x : t) : (Bool.t, String.t) Result.t = isZero x |> Result.ok
 let width (x : t) = Int32.of_int (String.length x)
 
 let extend (x : t) (size : Int32.t) =
@@ -17,6 +18,7 @@ let value_64 (x : t) : Int64.t = String.get_int64_le (extend x 8l) 0
 let value_32 (x : t) : Int32.t = String.get_int32_le (extend x 4l) 0
 let to_addr (x : t) : Addr.t = value_64 x
 let to_loc (x : t) : Loc.t = (to_addr x, 0)
+let try_loc (x : t) : (Loc.t, String.t) Result.t = to_loc x |> Result.ok
 
 let pp fmt (x : t) =
   Format.fprintf fmt "%a:%d"

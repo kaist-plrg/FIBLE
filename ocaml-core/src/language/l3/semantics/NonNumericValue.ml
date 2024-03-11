@@ -2,8 +2,6 @@ open StdlibExt
 open Basic
 open Common_language
 
-let ( let* ) = Result.bind
-
 type t = SP of SPVal.t | Undef of Int32.t
 
 let pp fmt = function

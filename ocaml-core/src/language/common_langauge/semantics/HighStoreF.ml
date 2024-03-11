@@ -115,25 +115,29 @@ struct
         { s with local } |> Result.ok
     | Third _ -> "store: Undefined address" |> Result.error
 
-  let eval_vn (s : t) (vn : VarNode.t) : Value.t =
+  let eval_vn (s : t) (vn : VarNode.t) : (Value.t, String.t) Result.t =
     match vn with
-    | Register r -> get_reg s r
-    | Const v -> NumericValue.of_int64 v.value v.width |> Value.of_num
+    | Register r -> get_reg s r |> Result.ok
+    | Const v ->
+        NumericValue.of_int64 v.value v.width |> Value.of_num |> Result.ok
     | Ram v ->
         load_mem s (NumericValue.of_int64 v.value 8l |> Value.of_num) v.width
-        |> Result.get_ok
 
   let eval_assignment (s : t) (a : Assignable.t) (outwidth : Int32.t) :
       (Value.t, String.t) Result.t =
     match a with
-    | Avar vn -> Ok (eval_vn s vn)
-    | Auop (u, vn) -> Value.eval_uop u (eval_vn s vn) outwidth
+    | Avar vn -> eval_vn s vn
+    | Auop (u, vn) ->
+        let* v = eval_vn s vn in
+        Value.eval_uop u v outwidth
     | Abop (Bop.Bint_xor, lv, rv) when VarNode.compare lv rv = 0 ->
-        Ok (Value.zero outwidth)
+        Value.zero outwidth |> Result.ok
     | Abop (Bop.Bint_sub, lv, rv) when VarNode.compare lv rv = 0 ->
-        Ok (Value.zero outwidth)
+        Value.zero outwidth |> Result.ok
     | Abop (b, lv, rv) ->
-        Value.eval_bop b (eval_vn s lv) (eval_vn s rv) outwidth
+        let* lv = eval_vn s lv in
+        let* rv = eval_vn s rv in
+        Value.eval_bop b lv rv outwidth
 
   let step_IA (s : t) ({ expr; output } : IAssignment.t) :
       (t, String.t) Result.t =
@@ -143,13 +147,13 @@ struct
   let step_ILS (s : t) (v : ILoadStore.t) : (t, String.t) Result.t =
     match v with
     | Load { pointer; output; _ } ->
-        let addrv = eval_vn s pointer in
+        let* addrv = eval_vn s pointer in
         let* lv = load_mem s addrv output.width in
         [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
         add_reg s output lv |> Result.ok
     | Store { pointer; value; _ } ->
-        let addrv = eval_vn s pointer in
-        let sv = eval_vn s value in
+        let* addrv = eval_vn s pointer in
+        let* sv = eval_vn s value in
         [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
         store_mem s addrv sv
 
@@ -169,7 +173,7 @@ struct
           Value.sp
             { func = fst curr; timestamp = snd curr; offset = offset.value }
         in
-        let sv = eval_vn s value in
+        let* sv = eval_vn s value in
         [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
         store_mem s addrv sv
 

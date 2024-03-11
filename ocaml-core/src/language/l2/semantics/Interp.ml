@@ -1,181 +1,16 @@
 open StdlibExt
+open Notation
 open Basic
 open Basic_collection
 open Common_language
 
-let ( let* ) = Result.bind
-
-let eval_vn (vn : VarNode.t) (s : Store.t) : Value.t =
-  match vn with
-  | Register r -> Store.get_reg s r
-  | Const v -> Num (NumericValue.of_int64 v.value v.width)
-  | Ram v ->
-      Store.load_mem s (Num (NumericValue.of_int64 v.value 8l)) v.width
-      |> Result.get_ok
-
-let eval_assignment (a : Assignable.t) (s : Store.t) (outwidth : Int32.t) :
-    (Value.t, String.t) Result.t =
-  match a with
-  | Avar vn -> Ok (eval_vn vn s)
-  | Auop (u, vn) -> Value.eval_uop u (eval_vn vn s) outwidth
-  | Abop (b, lv, rv) -> Value.eval_bop b (eval_vn lv s) (eval_vn rv s) outwidth
-
-let build_arg (s : State.t) (tagv : Common_language.Interop.tag) (v : Value.t) :
-    Common_language.Interop.t =
-  match tagv with
-  | TString -> VString (Store.load_string s.sto v |> Result.get_ok)
-  | T8 ->
-      V8
-        (Char.chr
-           (match v with
-           | Num value -> Int64.to_int (NumericValue.value_64 value)
-           | _ -> [%log fatal "Not a number"]))
-  | T16 ->
-      V16
-        (Int64.to_int32
-           (match v with
-           | Num value -> NumericValue.value_64 value
-           | _ -> [%log fatal "Not a number"]))
-  | T32 ->
-      V32
-        (Int64.to_int32
-           (match v with
-           | Num value -> NumericValue.value_64 value
-           | _ -> [%log fatal "Not a number"]))
-  | T64 ->
-      V64
-        (match v with
-        | Num value ->
-            if NumericValue.value_64 value < 0x1000L then
-              NumericValue.value_64 value
-            else
-              Foreign.foreign "strdup"
-                (Ctypes_static.( @-> ) Ctypes.string
-                   (Ctypes.returning Ctypes_static.int64_t))
-                "[null]"
-        | _ ->
-            Foreign.foreign "strdup"
-              (Ctypes_static.( @-> ) Ctypes.string
-                 (Ctypes.returning Ctypes_static.int64_t))
-              "[null]")
-  | _ -> [%log fatal "Not supported"]
-
-let build_ret (s : State.t) (v : Common_language.Interop.t) : State.t =
-  match v with
-  | V8 c ->
-      {
-        s with
-        sto =
-          {
-            s.sto with
-            regs =
-              RegFile.add_reg s.sto.regs
-                { id = RegId.Register 0l; offset = 0l; width = 8l }
-                (Value.Num
-                   (NumericValue.of_int64 (Int64.of_int (Char.code c)) 8l));
-          };
-      }
-  | V16 i ->
-      {
-        s with
-        sto =
-          {
-            s.sto with
-            regs =
-              RegFile.add_reg s.sto.regs
-                { id = RegId.Register 0l; offset = 0l; width = 8l }
-                (Value.Num (NumericValue.of_int64 (Int64.of_int32 i) 8l));
-          };
-      }
-  | V32 i ->
-      {
-        s with
-        sto =
-          {
-            s.sto with
-            regs =
-              RegFile.add_reg s.sto.regs
-                { id = RegId.Register 0l; offset = 0l; width = 8l }
-                (Value.Num (NumericValue.of_int64 (Int64.of_int32 i) 8l));
-          };
-      }
-  | V64 i ->
-      {
-        s with
-        sto =
-          {
-            s.sto with
-            regs =
-              RegFile.add_reg s.sto.regs
-                { id = RegId.Register 0l; offset = 0l; width = 8l }
-                (Value.Num (NumericValue.of_int64 i 8l));
-          };
-      }
-  | _ -> [%log fatal "Unsupported return type"]
-
-let build_args (s : State.t) (fsig : Common_language.Interop.func_sig) :
-    Common_language.Interop.t list =
-  if List.length fsig.params > 6 then
-    [%log fatal "At most 6 argument is supported for external functions"];
-  let reg_list = [ 56l; 48l; 16l; 8l; 128l; 136l ] in
-  let rec aux (acc : Common_language.Interop.t list)
-      (param_tags : Common_language.Interop.tag list) (regs : Int32.t list) :
-      Common_language.Interop.t list =
-    match (param_tags, regs) with
-    | [], _ -> List.rev acc
-    | tag :: param_tags, reg :: regs ->
-        let v =
-          Store.get_reg s.sto
-            { id = RegId.Register reg; offset = 0l; width = 8l }
-        in
-        aux (build_arg s tag v :: acc) param_tags regs
-    | _ -> [%log fatal "Not enough registers"]
-  in
-  aux [] fsig.params reg_list
-
-let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (func : Loc.t * Int64.t)
+let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (curr : Loc.t * Int64.t)
     : (Store.t, String.t) Result.t =
   match ins with
-  | IA { expr; output } ->
-      let* v = eval_assignment expr s output.width in
-      Ok { s with regs = RegFile.add_reg s.regs output v }
-  | ILS (Load { pointer; output; _ }) ->
-      let addrv = eval_vn pointer s in
-      let* lv = Store.load_mem s addrv output.width in
-      [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-      Ok { s with regs = RegFile.add_reg s.regs output lv }
-  | ILS (Store { pointer; value; _ }) ->
-      let addrv = eval_vn pointer s in
-      let sv = eval_vn value s in
-      [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
-      Store.store_mem s addrv sv
-  | ISLS (Sload { offset; output }) ->
-      let addrv =
-        Value.NonNum
-          (SP
-             {
-               SPVal.func = fst func;
-               timestamp = snd func;
-               offset = offset.value;
-             })
-      in
-      let* lv = Store.load_mem s addrv output.width in
-      [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-      Ok { s with regs = RegFile.add_reg s.regs output lv }
-  | ISLS (Sstore { offset; value }) ->
-      let addrv =
-        Value.NonNum
-          (SP
-             {
-               SPVal.func = fst func;
-               timestamp = snd func;
-               offset = offset.value;
-             })
-      in
-      let sv = eval_vn value s in
-      [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
-      Store.store_mem s addrv sv
-  | IN _ -> Ok s
+  | IA i -> Store.step_IA s i
+  | ILS i -> Store.step_ILS s i
+  | ISLS i -> Store.step_ISLS s i curr
+  | IN i -> Store.step_IN s i
 
 let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
     (calln : Loc.t) (retn : Loc.t) (s : State.t) :
@@ -219,18 +54,20 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
                regs =
                  RegFile.add_reg s.sto.regs
                    { id = RegId.Register 32l; offset = 0l; width = 8l }
-                   (Value.sp
-                      {
-                        func = calln;
-                        timestamp = Int64Ext.succ s.timestamp;
-                        offset = 0L;
-                      });
+                   (NonNum
+                      (SP
+                         {
+                           SPVal.func = calln;
+                           timestamp = Int64Ext.succ s.timestamp;
+                           offset = 0L;
+                         }));
                local =
-                 s.sto.local
-                 |> LocalMemory.add (calln, Int64Ext.succ s.timestamp) nlocal;
+                 LocalMemory.add
+                   (calln, Int64Ext.succ s.timestamp)
+                   nlocal s.sto.local;
              };
          })
-      |> StopEvent.of_str_res
+      |> Result.map_error (fun e -> StopEvent.FailStop e)
   | Some name ->
       [%log debug "Calling %s" name];
       let* fsig, _ =
@@ -240,7 +77,8 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
                (StopEvent.FailStop
                   (Format.asprintf "No external function %s" name))
       in
-      let args = build_args s fsig in
+      let* bargs = Store.build_args s.sto fsig |> StopEvent.of_str_res in
+      let values, args = bargs |> List.split in
       let* _, retv =
         match World.Environment.request_call name args with
         | EventReturn (_, retv) -> Ok ((), retv)
@@ -259,53 +97,21 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
       let* ncont =
         Cont.of_block_loc p (fst s.func) retn |> StopEvent.of_str_res
       in
-      Ok
-        (build_ret
-           {
-             s with
-             sto =
-               {
-                 s.sto with
-                 regs =
-                   RegFile.add_reg s.sto.regs
-                     { id = RegId.Register 32l; offset = 0l; width = 8l }
-                     sp_saved;
-               };
-             cont = ncont;
-             stack = s.stack;
-           }
-           retv)
+
+      let* sto =
+        Store.build_ret
+          (Store.add_reg s.sto
+             { id = RegId.Register 32l; offset = 0l; width = 8l }
+             sp_saved)
+          retv
+        |> StopEvent.of_str_res
+      in
+      Ok { s with sto; cont = ncont; stack = s.stack }
 
 let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
     (State.t, StopEvent.t) Result.t =
   match jmp.jmp with
-  | JI (Jjump l) ->
-      let* ncont = Cont.of_block_loc p (fst s.func) l |> StopEvent.of_str_res in
-      Ok { s with cont = ncont }
-  | JI (Jfallthrough l) ->
-      let* ncont = Cont.of_block_loc p (fst s.func) l |> StopEvent.of_str_res in
-      Ok { s with cont = ncont }
-  | JI (Jjump_ind { target; candidates; _ }) ->
-      let* loc = Value.try_loc (eval_vn target s.sto) |> StopEvent.of_str_res in
-      if LocSet.mem loc candidates then
-        let* ncont =
-          Cont.of_block_loc p (fst s.func) loc |> StopEvent.of_str_res
-        in
-        Ok { s with cont = ncont }
-      else Error (StopEvent.FailStop "jump_ind: Not a valid jump")
-  | JI (Jcbranch { condition; target_true; target_false }) ->
-      let v = eval_vn condition s.sto in
-      let* iz = Value.try_isZero v |> StopEvent.of_str_res in
-      if iz then
-        let* ncont =
-          Cont.of_block_loc p (fst s.func) target_false |> StopEvent.of_str_res
-        in
-        Ok { s with cont = ncont }
-      else
-        let* ncont =
-          Cont.of_block_loc p (fst s.func) target_true |> StopEvent.of_str_res
-        in
-        Ok { s with cont = ncont }
+  | JI j -> State.step_JI s p j |> StopEvent.of_str_res
   | JC
       {
         target = Cdirect { target; _ };
@@ -320,7 +126,8 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
         attr = { reserved_stack; sp_diff };
       } ->
       let* calln =
-        Value.try_loc (eval_vn target s.sto) |> StopEvent.of_str_res
+        Value.try_loc (Store.eval_vn s.sto target |> Result.get_ok)
+        |> StopEvent.of_str_res
       in
       step_call p reserved_stack sp_diff calln fallthrough s
   | JR _ -> (
@@ -341,7 +148,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
                   { id = RegId.Register 32l; offset = 0l; width = 8l }
                   sp_saved;
             })
-  | JT _ | JI Junimplemented -> Error (StopEvent.FailStop "unimplemented jump")
+  | JT _ -> Error (StopEvent.FailStop "unimplemented jump")
 
 let step (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   match s.cont with
@@ -355,8 +162,4 @@ let step (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   let s' = step p s in
-  match s' with
-  | Error _ -> s'
-  | Ok s' ->
-      [%log debug "%a" State.pp s'];
-      interp p s'
+  match s' with Error _ -> s' | Ok s' -> interp p s'

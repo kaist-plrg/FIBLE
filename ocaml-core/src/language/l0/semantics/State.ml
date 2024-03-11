@@ -13,4 +13,4 @@ module Inner = struct
 end
 
 include Inner
-include Common_language.StateHelperF.Make (Value) (Store) (Inner)
+include Common_language.StateStoreF.Make (Value) (Store) (Inner)

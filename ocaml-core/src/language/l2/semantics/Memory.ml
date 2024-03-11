@@ -1,1 +1,1 @@
-include Common_language.MemoryF.Make (Value)
+include L2Partial.Memory

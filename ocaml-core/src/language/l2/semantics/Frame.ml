@@ -1,1 +1,1 @@
-include Common_language.FrameF.Make (Value)
+include L2Partial.Frame

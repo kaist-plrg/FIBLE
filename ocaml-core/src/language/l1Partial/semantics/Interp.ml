@@ -39,26 +39,7 @@ let step_call (p : Prog.t) (calln : Loc.t) (retn : Loc.t) (s : State.t) :
 let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
     (State.t, String.t) Result.t =
   match jmp.jmp with
-  | JI (Jjump l) ->
-      let* ncont = Cont.of_block_loc p s.func l in
-      Ok { s with cont = ncont }
-  | JI (Jfallthrough l) ->
-      let* ncont = Cont.of_block_loc p s.func l in
-      Ok { s with cont = ncont }
-  | JI (Jjump_ind { target; candidates; _ }) ->
-      let* v = Store.eval_vn s.sto target in
-      if LocSet.mem (Value.to_loc v) candidates then
-        let* ncont = Cont.of_block_loc p s.func (Value.to_loc v) in
-        Ok { s with cont = ncont }
-      else Error "jump_ind: Not a valid jump"
-  | JI (Jcbranch { condition; target_true; target_false }) ->
-      let* v = Store.eval_vn s.sto condition in
-      if Value.isZero v then
-        let* ncont = Cont.of_block_loc p s.func target_true in
-        Ok { s with cont = ncont }
-      else
-        let* ncont = Cont.of_block_loc p s.func target_false in
-        Ok { s with cont = ncont }
+  | JI ji -> State.step_JI s p ji
   | JC { target = Cdirect { target; _ }; fallthrough } ->
       step_call p target fallthrough s
   | JC { target = Cind { target; _ }; fallthrough } ->
@@ -76,7 +57,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
             Error
               (Format.asprintf "ret to %a: Expected %a" Value.pp retn Loc.pp
                  retn'))
-  | JT _ | JI Junimplemented -> Error "unimplemented jump"
+  | JT _ -> Error "unimplemented jump"
   | JswitchStop _ -> Error "switch stop"
 
 let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
@@ -91,8 +72,4 @@ let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
   let s' = step p s in
-  match s' with
-  | Error _ -> s'
-  | Ok s' ->
-      [%log debug "%a" State.pp s'];
-      interp p s'
+  match s' with Error _ -> s' | Ok s' -> interp p s'
