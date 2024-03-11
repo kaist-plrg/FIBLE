@@ -10,6 +10,7 @@ type t = {
   externs : String.t AddrMap.t;
 }
 
+let get_externs (p : t) : String.t AddrMap.t = p.externs
 let get_rom_byte (p : t) (addr : Addr.t) : Char.t = DMem.get_byte p.rom addr
 
 let get_rom_raw (rom : DMem.t) (addr : Addr.t) (width : Int32.t) :

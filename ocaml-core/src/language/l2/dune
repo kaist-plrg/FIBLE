@@ -17,22 +17,14 @@
   Block
   Func
   Inst
+  CallTarget
   JCall
   JTailCall
   JRet
   Jmp
   Prog
   NonNumericValue
-  Value
-  RegFile
-  Memory
-  Frame
-  LocalMemory
-  Cont
-  Cursor
-  Stack
-  Store
-  State
+  Sem
   Init
   Interp
   IPCFG

@@ -36,7 +36,7 @@ let process_load (p : Prog.t) (a : t) (d : OctagonD.t) (pointerv : VarNode.t)
                (LimSetD.LimSet
                   (Int64Set.map
                      (fun x ->
-                       Value.value_64 (Prog.get_rom p x (RegId.width outv)))
+                       Sem.Value.value_64 (Prog.get_rom p x (RegId.width outv)))
                      vset)))
             a
       | None ->

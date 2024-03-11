@@ -2,6 +2,7 @@ open StdlibExt
 open Basic
 open Basic_collection
 open Common_language
+open Sem
 
 let from_signature (p : Prog.t) (a : Addr.t) : State.t =
   let init_sp = { SPVal.func = (a, 0); timestamp = 0L; offset = 0L } in
@@ -13,7 +14,7 @@ let from_signature (p : Prog.t) (a : Addr.t) : State.t =
       LocalMemory.empty
   in
   {
-    attr = { timestamp = 0L };
+    timestamp = 0L;
     sto =
       {
         regs =

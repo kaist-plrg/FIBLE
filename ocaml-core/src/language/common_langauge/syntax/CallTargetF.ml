@@ -6,6 +6,8 @@ module Make (Attr : sig
   val pp : Format.formatter -> t -> unit
 end) =
 struct
+  module Attr = Attr
+
   type t =
     | Cdirect of { target : Loc.t; attr : Attr.t }
     | Cind of { target : VarNode.t }
@@ -18,4 +20,15 @@ struct
     | Cind { target } -> Format.fprintf fmt "*%a" VarNode.pp target
 
   let get_loc_opt = function Cdirect v -> Some v.target | Cind _ -> None
+
+  let to_either (v : t) : (Loc.t * Attr.t, VarNode.t) Either.t =
+    match v with
+    | Cdirect { target; attr } -> Left (target, attr)
+    | Cind { target } -> Right target
+
+  let mk_direct (target : Loc.t) (attr : Attr.t) : resolved_t =
+    { target; attr_opt = Some attr }
+
+  let mk_indirect (target : Loc.t) : resolved_t = { target; attr_opt = None }
+  let get_target_resolved (v : resolved_t) : Loc.t = v.target
 end

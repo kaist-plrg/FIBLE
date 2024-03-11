@@ -2,6 +2,7 @@ open StdlibExt
 open Basic
 open Basic_collection
 open Common_language
+open Sem
 
 let from_signature (p : Prog.t) (a : Addr.t) : State.t =
   let f = Prog.get_func_opt p (a, 0) |> Option.get in
@@ -17,7 +18,7 @@ let from_signature (p : Prog.t) (a : Addr.t) : State.t =
     |> Result.get_ok
   in
   {
-    attr = { timestamp = 0L };
+    timestamp = 0L;
     sto =
       {
         regs =

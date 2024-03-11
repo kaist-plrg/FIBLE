@@ -3,7 +3,11 @@ open Notation
 open Basic
 open Basic_collection
 
-module Make (Value : sig
+module Make (Prog : sig
+  type t
+
+  val get_sp_num : t -> Int32.t
+end) (Value : sig
   type t
 
   module NonNumericValue : sig
@@ -315,4 +319,8 @@ struct
       (fun s (i, t) ->
         Result.bind s (fun s -> build_side s (List.nth values i) t))
       (Ok s) sides
+
+  let get_sp_curr (s : t) (p : Prog.t) : Value.t =
+    get_reg s
+      { id = RegId.Register (Prog.get_sp_num p); offset = 0l; width = 8l }
 end

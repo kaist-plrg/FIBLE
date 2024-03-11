@@ -17,16 +17,7 @@
   Jmp
   Prog
   NonNumericValue
-  Value
-  Cont
-  Cursor
-  Stack
-  RegFile
-  Memory
-  Frame
-  LocalMemory
-  Store
-  State
+  Sem
   Init
   Interp
   ASymb

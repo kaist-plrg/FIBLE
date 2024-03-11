@@ -1,6 +1,7 @@
 open Basic
 open L3
-open L3.State
+open L3.Sem
+open State
 
 type show_type =
   | ShowState
@@ -120,7 +121,7 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
               Format.fprintf out_formatter "Error: %s\n%!" e;
               aux s bs continue)
     | Show ShowState ->
-        Format.fprintf out_formatter "State:\n%a\n%!" L3.State.pp s;
+        Format.fprintf out_formatter "State:\n%a\n%!" State.pp s;
         aux s bs continue
     | Show ShowCurInst ->
         (match s.cont.remaining with
@@ -192,6 +193,6 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
   aux s bs continue
 
 let repl ((in_chan, out_chan) : In_channel.t * Out_channel.t) (p : L3.Prog.t)
-    (s : L3.State.t) : (Unit.t, String.t) Result.t =
+    (s : State.t) : (Unit.t, String.t) Result.t =
   repl_in in_chan (Format.formatter_of_out_channel out_chan) p s s [] false;
   Ok ()

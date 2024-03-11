@@ -23,12 +23,7 @@
   Block
   Func
   Prog
-  Value
-  Cont
-  Cursor
-  Stack
-  Store
-  State
+  Sem
   Init
   Interp
   NonRelStateD

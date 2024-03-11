@@ -2,6 +2,7 @@ open StdlibExt
 open Basic
 open Basic_collection
 open Notation
+open Sem
 
 let fallthrough (p : Prog.t) (pc : Loc.t) (s : (Store.t, String.t) Result.t) :
     (State.t, String.t) Result.t =

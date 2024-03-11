@@ -17,9 +17,7 @@
  (modules
   Inst
   Prog
-  Value
-  Store
-  State
+  Sem
   Init
   Interp
   NonRelStateD

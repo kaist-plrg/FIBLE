@@ -3,22 +3,11 @@ open Basic
 open Basic_collection
 open Common_language
 open Notation
-
-let get_func_from (p : Prog.t) (target : Loc.t) : (Func.t, String.t) Result.t =
-  Prog.get_func_opt p target
-  |> Option.to_result
-       ~none:(Format.asprintf "jcall: not found function %a" Loc.pp target)
-
-let get_current_function (s : State.t) (p : Prog.t) :
-    (Func.t, String.t) Result.t =
-  get_func_from p (Cursor.get_func_loc s.cursor)
-
-let get_sp_curr (s : State.t) (p : Prog.t) : Value.t =
-  Store.get_reg s.sto { id = RegId.Register p.sp_num; offset = 0l; width = 8l }
+open Sem
 
 let build_local_frame (s : State.t) (p : Prog.t) (bnd : Int64.t * Int64.t)
     (copydepth : Int64.t) =
-  let sp_curr = get_sp_curr s p in
+  let sp_curr = Store.get_sp_curr s.sto p in
   let* passing_vals =
     List.fold_left
       (fun acc (i, x) ->
@@ -43,7 +32,7 @@ let build_local_frame (s : State.t) (p : Prog.t) (bnd : Int64.t * Int64.t)
 
 let build_saved_sp (s : State.t) (p : Prog.t) (spdiff : Int64.t) :
     (Value.t, String.t) Result.t =
-  let sp_curr = get_sp_curr s p in
+  let sp_curr = Store.get_sp_curr s.sto p in
   Value.eval_bop Bop.Bint_add sp_curr (Num (NumericValue.of_int64 spdiff 8l)) 8l
 
 let step_call_external (s : State.t) (p : Prog.t) (name : String.t)
@@ -97,8 +86,8 @@ let step_call_internal (s : State.t) (p : Prog.t)
        fallthrough = retn;
      } :
       JCall.resolved_t) : (Store.t * Stack.elem_t, StopEvent.t) Result.t =
-  let* currf = get_current_function s p |> StopEvent.of_str_res in
-  let* f = get_func_from p calln |> StopEvent.of_str_res in
+  let* currf = State.get_current_function s p |> StopEvent.of_str_res in
+  let* f = State.get_func_from p calln |> StopEvent.of_str_res in
   let* _ =
     if f.sp_diff = sp_diff then Ok ()
     else Error (StopEvent.FailStop "jcall_ind: spdiff not match")
@@ -150,59 +139,35 @@ let step_call_internal (s : State.t) (p : Prog.t)
     RegFile.add_reg regs
       { id = RegId.Register p.sp_num; offset = 0l; width = 8l }
       (Value.sp
-         {
-           func = calln;
-           timestamp = Int64Ext.succ s.attr.timestamp;
-           offset = 0L;
-         })
+         { func = calln; timestamp = Int64Ext.succ s.timestamp; offset = 0L })
   in
   let sto =
     {
       s.sto with
       regs;
       local =
-        s.sto.local
-        |> LocalMemory.add (calln, Int64Ext.succ s.attr.timestamp) nlocal;
+        s.sto.local |> LocalMemory.add (calln, Int64Ext.succ s.timestamp) nlocal;
     }
   in
-  (sto, (s.cursor, outputs, s.sto.regs, sp_saved, retn)) |> Result.ok
-
-let step_call (s : State.t) (p : Prog.t) (jcr : JCall.resolved_t) :
-    (State.t, StopEvent.t) Result.t =
-  match AddrMap.find_opt (Loc.to_addr jcr.target.target) p.externs with
-  | None ->
-      let* sto, selem = step_call_internal s p jcr in
-      let* ncont =
-        Cont.of_func_entry_loc p jcr.target.target |> StopEvent.of_str_res
-      in
-      let ncursor : Cursor.t =
-        {
-          func = jcr.target.target;
-          tick = Int64TimeStamp.succ s.attr.timestamp;
-        }
-      in
-      Ok
-        {
-          State.attr = { timestamp = Int64TimeStamp.succ s.attr.timestamp };
-          cont = ncont;
-          stack = selem :: s.stack;
-          cursor = ncursor;
-          sto;
-        }
-  | Some name ->
-      let* sto = step_call_external s p name jcr in
-      let* ncont =
-        Cont.of_loc p (Cursor.get_func_loc s.cursor) jcr.fallthrough
-        |> StopEvent.of_str_res
-      in
-      Ok { s with cont = ncont; sto }
+  ( sto,
+    {
+      Stack.cursor = s.cursor;
+      outputs;
+      sregs = s.sto.regs;
+      saved_sp = sp_saved;
+      fallthrough = retn;
+    } )
+  |> Result.ok
 
 let step_ret (s : State.t) (p : Prog.t) ({ attr } : JRet.t)
-    ((calln, outputs, regs', sp_saved, retn') : Stack.elem_t) (stack' : Stack.t)
-    : (State.t, StopEvent.t) Result.t =
-  let* ncont =
-    Cont.of_loc p (Cursor.get_func_loc calln) retn' |> StopEvent.of_str_res
-  in
+    ({
+       cursor = calln;
+       outputs;
+       sregs = regs';
+       saved_sp = sp_saved;
+       fallthrough = retn';
+     } :
+      Stack.elem_t) : (Store.t, StopEvent.t) Result.t =
   let values =
     List.fold_left
       (fun acc o ->
@@ -218,48 +183,19 @@ let step_ret (s : State.t) (p : Prog.t) ({ attr } : JRet.t)
   in
   Ok
     {
-      State.cont = ncont;
-      attr = { timestamp = s.attr.timestamp };
-      stack = stack';
-      cursor = calln;
-      sto =
-        {
-          s.sto with
-          regs =
-            RegFile.add_reg
-              (List.fold_left
-                 (fun r (o, v) ->
-                   RegFile.add_reg r { id = o; offset = 0l; width = 8l } v)
-                 regs' output_values)
-              { id = RegId.Register p.sp_num; offset = 0l; width = 8l }
-              sp_saved;
-        };
+      s.sto with
+      regs =
+        RegFile.add_reg
+          (List.fold_left
+             (fun r (o, v) ->
+               RegFile.add_reg r { id = o; offset = 0l; width = 8l } v)
+             regs' output_values)
+          { id = RegId.Register p.sp_num; offset = 0l; width = 8l }
+          sp_saved;
     }
 
-let step_JC (s : State.t) (p : Prog.t) (jc : JCall.t) :
-    (State.t, StopEvent.t) Result.t =
-  let* (cr : CallTarget.resolved_t) =
-    match jc.target with
-    | Cdirect { target; attr } ->
-        { CallTarget.target; attr_opt = Some attr } |> Result.ok
-    | Cind { target } ->
-        let* calln =
-          Result.bind (Store.eval_vn s.sto target) Value.try_loc
-          |> StopEvent.of_str_res
-        in
-        { CallTarget.target = calln; attr_opt = None } |> Result.ok
-  in
-  let jcr : JCall.resolved_t =
-    { target = cr; attr = jc.attr; fallthrough = jc.fallthrough }
-  in
-  step_call s p jcr
-
-let step_JR (s : State.t) (p : Prog.t) (jr : JRet.t) :
-    (State.t, StopEvent.t) Result.t =
-  match s.stack with
-  | [] -> Error StopEvent.NormalStop
-  | (calln, outputs, regs', sp_saved, retn') :: stack' ->
-      step_ret s p jr (calln, outputs, regs', sp_saved, retn') stack'
+let step_JC = State.mk_step_JC step_call_internal step_call_external
+let step_JR = State.mk_step_JR step_ret
 
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (curr : Cursor.t) :
     (Store.t, String.t) Result.t =

@@ -3,6 +3,7 @@ open Notation
 open Basic
 open Basic_collection
 open Common_language
+open Sem
 
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (curr : Cursor.t) :
     (Store.t, String.t) Result.t =
@@ -44,10 +45,10 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
        in
        Ok
          {
-           State.attr = { timestamp = Int64Ext.succ s.attr.timestamp };
+           State.timestamp = Int64Ext.succ s.timestamp;
            cont = ncont;
            stack = (s.cursor, sp_saved, retn) :: s.stack;
-           cursor = { func = calln; tick = Int64Ext.succ s.attr.timestamp };
+           cursor = { func = calln; tick = Int64Ext.succ s.timestamp };
            sto =
              {
                s.sto with
@@ -58,12 +59,12 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
                       (SP
                          {
                            SPVal.func = calln;
-                           timestamp = Int64Ext.succ s.attr.timestamp;
+                           timestamp = Int64Ext.succ s.timestamp;
                            offset = 0L;
                          }));
                local =
                  LocalMemory.add
-                   (calln, Int64Ext.succ s.attr.timestamp)
+                   (calln, Int64Ext.succ s.timestamp)
                    nlocal s.sto.local;
              };
          })

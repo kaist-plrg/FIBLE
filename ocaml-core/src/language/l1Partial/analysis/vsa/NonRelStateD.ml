@@ -48,7 +48,8 @@ let process_load (rom : DMem.t) (a : t) (d : OctagonD.t) (outv : RegId.t_full)
            (LimSetD.LimSet
               (Int64Set.map
                  (fun x ->
-                   Value.value_64 (Prog.get_rom_raw rom x (RegId.width outv)))
+                   Sem.Value.value_64
+                     (Prog.get_rom_raw rom x (RegId.width outv)))
                  vset)))
         a
   | None -> clear_mr a outv.id

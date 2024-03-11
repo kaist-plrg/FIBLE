@@ -1,6 +1,7 @@
 open StdlibExt
 open Basic
 open Basic_collection
+open Sem
 
 let init_sp = 0x7FFFFFFFC000L
 

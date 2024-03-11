@@ -2,6 +2,7 @@ open StdlibExt
 open Notation
 open Basic
 open Basic_collection
+open Sem
 
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
     (Store.t, String.t) Result.t =
@@ -16,7 +17,7 @@ let step_call (p : Prog.t) (calln : Loc.t) (retn : Loc.t) (s : State.t) :
   | None ->
       let* ncont = Cont.of_func_entry_loc p calln in
       let ncursor : Cursor.t =
-        { func = calln; tick = Common_language.UnitTimeStamp.succ s.attr }
+        { func = calln; tick = Common_language.UnitTimeStamp.succ s.timestamp }
       in
 
       Ok
@@ -49,7 +50,7 @@ let step_tailcall (p : Prog.t) (calln : Loc.t) (s : State.t) :
   | None ->
       let* ncont = Cont.of_func_entry_loc p calln in
       let ncursor : Cursor.t =
-        { func = calln; tick = Common_language.UnitTimeStamp.succ s.attr }
+        { func = calln; tick = Common_language.UnitTimeStamp.succ s.timestamp }
       in
       Ok { s with cont = ncont; stack = s.stack; cursor = ncursor }
   | Some name -> (
