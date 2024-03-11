@@ -91,22 +91,19 @@ let build_arg (s : t) (tagv : Interop.tag) (v : Value.t) :
     (Interop.t, String.t) Result.t =
   match tagv with
   | TString ->
-      let* s = load_string s v in
-      Interop.VString s |> Result.ok
+      let* v = load_string s v in
+      Interop.VString v |> Result.ok
   | T8 -> Interop.V8 (Char.chr (Int64.to_int (Value.value_64 v))) |> Result.ok
   | T16 -> Interop.V16 (Int64.to_int32 (Value.value_64 v)) |> Result.ok
   | T32 -> Interop.V32 (Int64.to_int32 (Value.value_64 v)) |> Result.ok
   | T64 -> Interop.V64 (Value.value_64 v) |> Result.ok
-  | TFloat ->
-      Interop.VFloat (Int64.float_of_bits (Value.value_64 v)) |> Result.ok
-  | TDouble ->
-      Interop.VDouble (Int64.float_of_bits (Value.value_64 v)) |> Result.ok
-  | TVoid -> Interop.VUnit |> Result.ok
-  | TList _ -> "List not supported" |> Result.error
-  | TBuffer _ -> "Buffer not supported" |> Result.error
-  | TBuffer_dep _ -> "Buffer_dep not supported" |> Result.error
-  | TIBuffer _ -> "IBuffer not supported" |> Result.error
-  | TIBuffer_dep _ -> "IBuffer_dep not supported" |> Result.error
+  | TBuffer n ->
+      let* v = load_bytes s v (Int64.to_int32 n) in
+      Interop.VBuffer (v |> String.to_bytes) |> Result.ok
+  | TIBuffer n ->
+      let* v = load_bytes s v (Int64.to_int32 n) in
+      Interop.VIBuffer v |> Result.ok
+  | _ -> "Not supported" |> Result.error
 
 let build_ret (s : t) (v : Interop.t) : (t, String.t) Result.t =
   match v with
@@ -133,21 +130,64 @@ let build_ret (s : t) (v : Interop.t) : (t, String.t) Result.t =
   | _ -> "Unsupported return type" |> Result.error
 
 let build_args (s : t) (fsig : Interop.func_sig) :
-    (Interop.t list, String.t) Result.t =
+    ((Value.t * Interop.t) list, String.t) Result.t =
   if List.length fsig.params > 6 then
-    "At most 6 argument is supported for external functions" |> Result.error
-  else
-    let reg_list = [ 56l; 48l; 16l; 8l; 128l; 136l ] in
-    let rec aux (acc : Interop.t list) (param_tags : Interop.tag list)
-        (regs : Int32.t list) : (Interop.t list, String.t) Result.t =
-      match (param_tags, regs) with
-      | [], _ -> List.rev acc |> Result.ok
-      | tag :: param_tags, reg :: regs ->
-          let v =
-            get_reg s { id = RegId.Register reg; offset = 0l; width = 8l }
-          in
-          let* x = build_arg s tag v in
-          aux (x :: acc) param_tags regs
-      | _ -> "Not enough registers" |> Result.error
+    [%log fatal "At most 6 argument is supported for external functions"];
+  let reg_list = [ 56l; 48l; 16l; 8l; 128l; 136l ] in
+  let val_list =
+    List.map
+      (fun r -> get_reg s { id = RegId.Register r; offset = 0l; width = 8l })
+      reg_list
+  in
+  let* nondep_tags =
+    List.fold_right
+      (fun (tag : Interop.tag) (acc : (Interop.tag List.t, String.t) Result.t) ->
+        let* ntag =
+          match tag with
+          | TBuffer_dep n ->
+              let* k =
+                build_arg s (List.nth fsig.params n) (List.nth val_list n)
+              in
+              Interop.TBuffer (Interop.extract_64 k) |> Result.ok
+          | TIBuffer_dep n ->
+              let* k =
+                build_arg s (List.nth fsig.params n) (List.nth val_list n)
+              in
+              Interop.TIBuffer (Interop.extract_64 k) |> Result.ok
+          | _ -> tag |> Result.ok
+        in
+        match acc with Ok l -> Ok (ntag :: l) | Error e -> Error e)
+      fsig.params (Ok [])
+  in
+  try
+    let ndt =
+      List.combine nondep_tags (ListExt.take (List.length nondep_tags) val_list)
     in
-    aux [] fsig.params reg_list
+    List.fold_right
+      (fun (t, v) acc ->
+        let* k = build_arg s t v in
+        match acc with Ok acc -> Ok ((v, k) :: acc) | Error e -> Error e)
+      ndt (Ok [])
+  with Invalid_argument _ ->
+    "Mismatched number of arguments for external functions" |> Result.error
+
+let build_side (s : t) (value : Value.t) (t : Interop.t) :
+    (t, String.t) Result.t =
+  match t with
+  | Interop.VBuffer v ->
+      [%log debug "Storing extern_val at %a" Value.pp value];
+      store_bytes s value (Bytes.to_string v)
+  | _ -> Error "Unreachable"
+
+let build_sides (s : t) (values : Value.t List.t)
+    (sides : (Int.t * Interop.t) List.t) : (t, String.t) Result.t =
+  List.fold_left
+    (fun s (i, t) ->
+      Result.bind s (fun s -> build_side s (List.nth values i) t))
+    (Ok s) sides
+
+let sp_extern (_ : 'a) : RegId.t_full =
+  { id = RegId.Register 32l; offset = 0l; width = 8l }
+
+let add_sp_extern (s : t) (_ : 'a) : (Value.t, String.t) Result.t =
+  NumericBop.eval Bint_add (get_reg s (sp_extern ())) (Value.of_int64 8L 8l) 8l

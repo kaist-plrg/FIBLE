@@ -208,3 +208,9 @@ let request_call (fname : String.t) (arg : Interop.t list) : event_t =
     | Some (_, Hide fn) ->
         EventReturn ([], call_with_signature fn (Foreign.foreign fname fn) arg)
     | None -> [%log fatal "Not implemented"]
+
+let request_call_opt (fname : String.t) (arg : Interop.t list) :
+    ((Int.t * Interop.t) list * Interop.t) Option.t =
+  match request_call fname arg with
+  | EventReturn (a, b) -> Some (a, b)
+  | EventTerminate -> None

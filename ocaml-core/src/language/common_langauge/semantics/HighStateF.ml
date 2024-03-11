@@ -59,6 +59,16 @@ end) (Store : sig
   val store_mem : t -> Value.t -> Value.t -> (t, String.t) Result.t
   val store_bytes : t -> Value.t -> String.t -> (t, String.t) Result.t
   val eval_vn : t -> VarNode.t -> (Value.t, String.t) Result.t
+
+  val build_args :
+    t -> Interop.func_sig -> ((Value.t * Interop.t) List.t, String.t) Result.t
+
+  val build_sides :
+    t -> Value.t List.t -> (Int.t * Interop.t) List.t -> (t, String.t) Result.t
+
+  val build_ret : t -> Interop.t -> (t, String.t) Result.t
+  val add_sp_extern : t -> Prog.t -> (Value.t, String.t) Result.t
+  val sp_extern : Prog.t -> RegId.t_full
 end) (Cont : sig
   type t
 
@@ -79,6 +89,15 @@ end) (Stack : sig
   val get_cursor : elem_t -> Cursor.t
   val get_fallthrough : elem_t -> Loc.t
   val pp : Format.formatter -> t -> unit
+end) (Environment : sig
+  type hidden_fn
+
+  val signature_map : (Interop.func_sig * hidden_fn) StringMap.t
+
+  val request_call_opt :
+    String.t ->
+    Interop.t list ->
+    ((Int.t * Interop.t) list * Interop.t) Option.t
 end) =
 struct
   type t = {
@@ -127,19 +146,51 @@ struct
           set_cont s ncont |> Result.ok
     | Junimplemented -> "unimplemented jump" |> Result.error
 
+  let step_call_external (s : Store.t) (p : Prog.t) (name : String.t)
+      (jcr : JCall.resolved_t) : (Store.t, StopEvent.t) Result.t =
+    [%log debug "Calling %s" name];
+    let* fsig, _ =
+      StringMap.find_opt name Environment.signature_map
+      |> Option.to_result
+           ~none:
+             (StopEvent.FailStop
+                (Format.asprintf "No external function %s" name))
+    in
+    let* bargs = Store.build_args s fsig |> StopEvent.of_str_res in
+    let values, args = bargs |> List.split in
+    [%log
+      debug "Call values: %a"
+        (Format.pp_print_list ~pp_sep:Format.pp_print_space Value.pp)
+        values];
+    [%log
+      debug "Call args: %a"
+        (Format.pp_print_list ~pp_sep:Format.pp_print_space Interop.pp)
+        args];
+    let* sides, retv =
+      match Environment.request_call_opt name args with
+      | Some (sides, retv) -> Ok (sides, retv)
+      | None -> Error StopEvent.NormalStop
+    in
+    [%log
+      debug "Side values: %a"
+        (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun fmt (i, v) ->
+             Format.fprintf fmt "%d: %a" i Interop.pp v))
+        sides];
+    let* sp_saved = Store.add_sp_extern s p |> StopEvent.of_str_res in
+    let* sto_side = Store.build_sides s values sides |> StopEvent.of_str_res in
+    let* sto =
+      Store.build_ret (Store.add_reg sto_side (Store.sp_extern p) sp_saved) retv
+      |> StopEvent.of_str_res
+    in
+    Ok sto
+
   let mk_step_JC
       (s_internal :
         t ->
         Prog.t ->
         JCall.resolved_t ->
-        (Store.t * Stack.elem_t, StopEvent.t) result)
-      (s_external :
-        t ->
-        Prog.t ->
-        string ->
-        JCall.resolved_t ->
-        (Store.t, StopEvent.t) result) (s : t) (p : Prog.t) (jc : JCall.t) :
-      (t, StopEvent.t) Result.t =
+        (Store.t * Stack.elem_t, StopEvent.t) result) (s : t) (p : Prog.t)
+      (jc : JCall.t) : (t, StopEvent.t) Result.t =
     let step_call (s : t) (p : Prog.t) (jcr : JCall.resolved_t) :
         (t, StopEvent.t) Result.t =
       let target_loc =
@@ -163,7 +214,7 @@ struct
               sto;
             }
       | Some name ->
-          let* sto = s_external s p name jcr in
+          let* sto = step_call_external s.sto p name jcr in
           let* ncont =
             Cont.of_loc p
               (Cursor.get_func_loc s.cursor)

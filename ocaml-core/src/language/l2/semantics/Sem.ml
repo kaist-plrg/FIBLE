@@ -10,6 +10,7 @@ module Memory = Common_language.MemoryF.Make (Value)
 
 module Store =
   Common_language.HighStoreF.Make (Prog) (Value) (Cursor) (RegFile) (Memory)
+    (Frame)
     (LocalMemory)
 
 module Stack = struct
@@ -42,3 +43,4 @@ module State =
     (Cont)
     (Cursor)
     (Stack)
+    (World.Environment)

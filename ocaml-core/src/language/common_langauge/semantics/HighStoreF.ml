@@ -40,6 +40,11 @@ end) (Memory : sig
   val load_bytes : t -> Addr.t -> Int32.t -> (String.t, String.t) Result.t
   val store_mem : t -> Addr.t -> Value.t -> t
   val store_bytes : t -> Addr.t -> String.t -> t
+end) (Frame : sig
+  type t
+
+  val empty : Int64.t -> Int64.t -> t
+  val store_mem : t -> Int64.t -> Value.t -> (t, String.t) Result.t
 end) (LocalMemory : sig
   type t
 
@@ -323,4 +328,46 @@ struct
   let get_sp_curr (s : t) (p : Prog.t) : Value.t =
     get_reg s
       { id = RegId.Register (Prog.get_sp_num p); offset = 0l; width = 8l }
+
+  let build_local_frame (s : t) (p : Prog.t) (bnd : Int64.t * Int64.t)
+      (copydepth : Int64.t) =
+    let sp_curr = get_sp_curr s p in
+    let* passing_vals =
+      List.fold_left
+        (fun acc (i, x) ->
+          match acc with
+          | Error _ -> acc
+          | Ok acc ->
+              let* addr = x in
+              let* v = load_mem s addr 8l in
+              Ok ((i, v) :: acc))
+        (Ok [])
+        (Int64.div copydepth 8L |> Int64.succ |> Int64.to_int
+        |> Fun.flip List.init (fun x ->
+               ( Int64.of_int (x * 8),
+                 Value.eval_bop Bop.Bint_add sp_curr
+                   (Value.of_num
+                      (NumericValue.of_int64 (Int64.of_int (x * 8)) 8l))
+                   8l )))
+    in
+    List.fold_left
+      (fun acc (i, j) -> Result.bind acc (fun acc -> Frame.store_mem acc i j))
+      (Frame.empty (fst bnd) (snd bnd) |> Result.ok)
+      passing_vals
+
+  let build_saved_sp (s : t) (p : Prog.t) (spdiff : Int64.t) :
+      (Value.t, String.t) Result.t =
+    let sp_curr = get_sp_curr s p in
+    Value.eval_bop Bop.Bint_add sp_curr
+      (Value.of_num (NumericValue.of_int64 spdiff 8l))
+      8l
+
+  let sp_extern (p : Prog.t) : RegId.t_full =
+    { id = RegId.Register (Prog.get_sp_num p); offset = 0l; width = 8l }
+
+  let add_sp_extern (s : t) (p : Prog.t) : (Value.t, String.t) Result.t =
+    Value.eval_bop Bop.Bint_add
+      (get_reg s (sp_extern p))
+      (Value.of_num (NumericValue.of_int64 8L 8l))
+      8l
 end

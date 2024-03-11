@@ -5,80 +5,6 @@ open Common_language
 open Notation
 open Sem
 
-let build_local_frame (s : State.t) (p : Prog.t) (bnd : Int64.t * Int64.t)
-    (copydepth : Int64.t) =
-  let sp_curr = Store.get_sp_curr s.sto p in
-  let* passing_vals =
-    List.fold_left
-      (fun acc (i, x) ->
-        match acc with
-        | Error _ -> acc
-        | Ok acc ->
-            let* addr = x in
-            let* v = Store.load_mem s.sto addr 8l in
-            Ok ((i, v) :: acc))
-      (Ok [])
-      (Int64.div copydepth 8L |> Int64.succ |> Int64.to_int
-      |> Fun.flip List.init (fun x ->
-             ( Int64.of_int (x * 8),
-               Value.eval_bop Bop.Bint_add sp_curr
-                 (Num (NumericValue.of_int64 (Int64.of_int (x * 8)) 8l))
-                 8l )))
-  in
-  List.fold_left
-    (fun acc (i, j) -> Result.bind acc (fun acc -> Frame.store_mem acc i j))
-    (Frame.empty (fst bnd) (snd bnd) |> Result.ok)
-    passing_vals
-
-let build_saved_sp (s : State.t) (p : Prog.t) (spdiff : Int64.t) :
-    (Value.t, String.t) Result.t =
-  let sp_curr = Store.get_sp_curr s.sto p in
-  Value.eval_bop Bop.Bint_add sp_curr (Num (NumericValue.of_int64 spdiff 8l)) 8l
-
-let step_call_external (s : State.t) (p : Prog.t) (name : String.t)
-    ({ attr = { sp_diff; _ }; fallthrough = retn; _ } : JCall.resolved_t) :
-    (Store.t, StopEvent.t) Result.t =
-  [%log debug "Calling %s" name];
-  let* fsig, _ =
-    StringMap.find_opt name World.Environment.signature_map
-    |> Option.to_result
-         ~none:
-           (StopEvent.FailStop (Format.asprintf "No external function %s" name))
-  in
-  let* bargs = Store.build_args s.sto fsig |> StopEvent.of_str_res in
-  let values, args = bargs |> List.split in
-  [%log
-    debug "Call values: %a"
-      (Format.pp_print_list ~pp_sep:Format.pp_print_space Value.pp)
-      values];
-  [%log
-    debug "Call args: %a"
-      (Format.pp_print_list ~pp_sep:Format.pp_print_space Interop.pp)
-      args];
-  let* sides, retv =
-    match World.Environment.request_call name args with
-    | EventReturn (sides, retv) -> Ok (sides, retv)
-    | EventTerminate -> Error StopEvent.NormalStop
-  in
-  [%log
-    debug "Side values: %a"
-      (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun fmt (i, v) ->
-           Format.fprintf fmt "%d: %a" i Interop.pp v))
-      sides];
-  let* sp_saved = build_saved_sp s p sp_diff |> StopEvent.of_str_res in
-  let* sto_side =
-    Store.build_sides s.sto values sides |> StopEvent.of_str_res
-  in
-  let* sto =
-    Store.build_ret
-      (Store.add_reg sto_side
-         { id = RegId.Register p.sp_num; offset = 0l; width = 8l }
-         sp_saved)
-      retv
-    |> StopEvent.of_str_res
-  in
-  Ok sto
-
 let step_call_internal (s : State.t) (p : Prog.t)
     ({
        target = { target = calln; attr_opt = attr };
@@ -99,7 +25,9 @@ let step_call_internal (s : State.t) (p : Prog.t)
        else Error "jcall_ind: copydepth not match"
      in
   *)
-  let* sp_saved = build_saved_sp s p sp_diff |> StopEvent.of_str_res in
+  let* sp_saved =
+    Store.build_saved_sp s.sto p sp_diff |> StopEvent.of_str_res
+  in
   let* ndepth, regs, outputs =
     match attr with
     | Some { inputs; outputs } ->
@@ -133,7 +61,7 @@ let step_call_internal (s : State.t) (p : Prog.t)
         (snd f.sp_boundary, regs, f.outputs) |> Result.ok
   in
   let* nlocal =
-    build_local_frame s p f.sp_boundary ndepth |> StopEvent.of_str_res
+    Store.build_local_frame s.sto p f.sp_boundary ndepth |> StopEvent.of_str_res
   in
   let regs =
     RegFile.add_reg regs
@@ -194,7 +122,7 @@ let step_ret (s : State.t) (p : Prog.t) ({ attr } : JRet.t)
           sp_saved;
     }
 
-let step_JC = State.mk_step_JC step_call_internal step_call_external
+let step_JC = State.mk_step_JC step_call_internal
 let step_JR = State.mk_step_JR step_ret
 
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (curr : Cursor.t) :

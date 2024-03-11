@@ -30,3 +30,4 @@ module State =
     (Cont)
     (Cursor)
     (Stack)
+    (World.Environment)
