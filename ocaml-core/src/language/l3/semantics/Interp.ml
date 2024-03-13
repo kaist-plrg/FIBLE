@@ -5,11 +5,33 @@ open Common_language
 open Notation
 open Sem
 
+let build_inputs_from_sig (f : Func.t) : VarNode.t List.t =
+  f.inputs
+  |> List.map (fun v -> VarNode.Register { id = v; offset = 0l; width = 8l })
+
+let reg_build_from_input (sto : Store.t) (inputs : VarNode.t List.t)
+    (f : Func.t) : RegFile.t =
+  List.fold_left
+    (fun r (i, v) ->
+      RegFile.add_reg r
+        { id = i; offset = 0l; width = 8l }
+        (Store.eval_vn sto v |> Result.get_ok))
+    (RegFile.of_seq Seq.empty)
+    (try List.combine f.inputs inputs
+     with Invalid_argument _ ->
+       [%log
+         fatal
+           "Mismatched number of arguments for call inputs,\n\
+           \                      %d for %s and %d for call instruction"
+           (List.length f.inputs)
+           (f.nameo |> Option.value ~default:"noname")
+           (List.length inputs)])
+
 let step_call_internal (s : State.t) (p : Prog.t)
     ({
        target = { target = calln; attr_opt = attr };
        attr = { reserved_stack = copydepth; sp_diff };
-       fallthrough = retn;
+       fallthrough;
      } :
       JCall.resolved_t) : (Store.t * Stack.elem_t, StopEvent.t) Result.t =
   let* currf = State.get_current_function s p |> StopEvent.of_str_res in
@@ -25,40 +47,17 @@ let step_call_internal (s : State.t) (p : Prog.t)
        else Error "jcall_ind: copydepth not match"
      in
   *)
-  let* sp_saved =
+  let* saved_sp =
     Store.build_saved_sp s.sto p sp_diff |> StopEvent.of_str_res
   in
-  let* ndepth, regs, outputs =
+  let ndepth, regs, outputs =
     match attr with
     | Some { inputs; outputs } ->
-        let regs =
-          List.fold_left
-            (fun r (i, v) ->
-              RegFile.add_reg r
-                { id = i; offset = 0l; width = 8l }
-                (Store.eval_vn s.sto v |> Result.get_ok))
-            (RegFile.of_seq Seq.empty)
-            (try List.combine f.inputs inputs
-             with Invalid_argument _ ->
-               [%log
-                 fatal
-                   "Mismatched number of arguments for call inputs,\n\
-                   \                      %d for %s and %d for call instruction"
-                   (List.length f.inputs)
-                   (f.nameo |> Option.value ~default:"noname")
-                   (List.length inputs)])
-        in
-        (copydepth, regs, outputs) |> Result.ok
+        let regs = reg_build_from_input s.sto inputs f in
+        (copydepth, regs, outputs)
     | None ->
-        let regs =
-          List.fold_left
-            (fun r i ->
-              RegFile.add_reg r
-                { id = i; offset = 0l; width = 8l }
-                (Store.get_reg s.sto { id = i; offset = 0l; width = 8l }))
-            (RegFile.of_seq Seq.empty) f.inputs
-        in
-        (snd f.sp_boundary, regs, f.outputs) |> Result.ok
+        let regs = reg_build_from_input s.sto (build_inputs_from_sig f) f in
+        (snd f.sp_boundary, regs, f.outputs)
   in
   let* nlocal =
     Store.build_local_frame s.sto p f.sp_boundary ndepth |> StopEvent.of_str_res
@@ -67,14 +66,14 @@ let step_call_internal (s : State.t) (p : Prog.t)
     RegFile.add_reg regs
       { id = RegId.Register p.sp_num; offset = 0l; width = 8l }
       (Value.sp
-         { func = calln; timestamp = Int64Ext.succ s.timestamp; offset = 0L })
+         { func = calln; timestamp = TimeStamp.succ s.timestamp; offset = 0L })
   in
   let sto =
     {
       s.sto with
       regs;
       local =
-        s.sto.local |> LocalMemory.add (calln, Int64Ext.succ s.timestamp) nlocal;
+        s.sto.local |> LocalMemory.add (calln, TimeStamp.succ s.timestamp) nlocal;
     }
   in
   ( sto,
@@ -82,8 +81,8 @@ let step_call_internal (s : State.t) (p : Prog.t)
       Stack.cursor = s.cursor;
       outputs;
       sregs = s.sto.regs;
-      saved_sp = sp_saved;
-      fallthrough = retn;
+      saved_sp;
+      fallthrough;
     } )
   |> Result.ok
 
