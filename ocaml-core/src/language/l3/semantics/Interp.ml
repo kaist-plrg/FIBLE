@@ -73,7 +73,8 @@ let step_call_internal (s : State.t) (p : Prog.t)
       s.sto with
       regs;
       local =
-        s.sto.local |> LocalMemory.add (calln, TimeStamp.succ s.timestamp) nlocal;
+        s.sto.local
+        |> LocalMemory.add (calln, TimeStamp.succ s.timestamp) nlocal;
     }
   in
   ( sto,
@@ -142,21 +143,16 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t) (s : State.t) :
 
 let step (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   match s.cont with
-  | { remaining = []; jmp } -> step_jmp p jmp.jmp s
+  | { remaining = []; jmp } ->
+      step_jmp p jmp.jmp s |> Fun.flip StopEvent.add_loc jmp.loc
   | { remaining = i :: []; jmp } ->
-      let* sto' =
-        step_ins p i.ins s.sto s.cursor
-        |> Result.map_error (fun e -> Format.asprintf "%a: %s" Loc.pp i.loc e)
-        |> StopEvent.of_str_res
-      in
-      step_jmp p jmp.jmp { s with sto = sto' }
+      (let* sto' = step_ins p i.ins s.sto s.cursor |> StopEvent.of_str_res in
+       step_jmp p jmp.jmp { s with sto = sto' })
+      |> Fun.flip StopEvent.add_loc i.loc
   | { remaining = i :: res; jmp } ->
-      let* sto' =
-        step_ins p i.ins s.sto s.cursor
-        |> Result.map_error (fun e -> Format.asprintf "%a: %s" Loc.pp i.loc e)
-        |> StopEvent.of_str_res
-      in
-      Ok { s with sto = sto'; cont = { remaining = res; jmp } }
+      (let* sto' = step_ins p i.ins s.sto s.cursor |> StopEvent.of_str_res in
+       Ok { s with sto = sto'; cont = { remaining = res; jmp } })
+      |> Fun.flip StopEvent.add_loc i.loc
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   let s' = step p s in
