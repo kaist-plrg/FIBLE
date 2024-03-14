@@ -340,7 +340,7 @@ struct
               let* v = load_mem s addr 8l in
               Ok ((i, v) :: acc))
         (Ok [])
-        (Int64.div copydepth 8L |> Int64.succ |> Int64.to_int
+        (Int64.div (Int64.add copydepth 7L) 8L  |> Int64.to_int
         |> Fun.flip List.init (fun x ->
                ( Int64.of_int (x * 8),
                  Value.eval_bop Bop.Bint_add sp_curr

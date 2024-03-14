@@ -53,7 +53,7 @@ struct
   let store_mem (s : t) (addr : Addr.t) (v : Value.t) : (t, String.t) Result.t =
     if
       s.min_addr <= addr
-      && Int64.add addr (Int64.of_int32 (Value.width v)) <= s.max_addr
+      && Int64.add addr (Int64.pred (Int64.of_int32 (Value.width v))) <= s.max_addr
     then
       match Value.to_either v with
       | Right v ->
