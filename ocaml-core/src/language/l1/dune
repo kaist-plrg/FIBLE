@@ -20,7 +20,8 @@
   Init
   Interp
   AbsVal
-  NonRelStateD
+  ARegFile
+  AStack
   AccessD
   AbsState
   FSAbsD

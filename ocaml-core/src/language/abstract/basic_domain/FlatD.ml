@@ -40,3 +40,28 @@ struct
     | Bot -> Format.fprintf fmt "Bot"
     | Flat x -> Format.fprintf fmt "%a" A.pp x
 end
+
+module MakeValue (A : sig
+  type t
+
+  val pp : Format.formatter -> t -> unit
+  val eval_bop : Common.Bop.t -> t -> t -> Int32.t -> t Option.t
+  val eval_uop : Common.Uop.t -> t -> Int32.t -> t Option.t
+end) =
+struct
+  include Make (A)
+
+  let eval_bop bop (x : t) (y : t) (width : Int32.t) : t =
+    match (x, y) with
+    | Flat x, Flat y -> (
+        match A.eval_bop bop x y width with Some z -> Flat z | None -> Top)
+    | Bot, _ | _, Bot -> Bot
+    | Top, _ | _, Top -> Top
+
+  let eval_uop uop (x : t) (width : Int32.t) : t =
+    match x with
+    | Flat x -> (
+        match A.eval_uop uop x width with Some y -> Flat y | None -> Top)
+    | Bot -> Bot
+    | Top -> Top
+end

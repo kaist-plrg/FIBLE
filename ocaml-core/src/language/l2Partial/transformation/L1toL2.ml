@@ -66,16 +66,16 @@ let translate_inst (i : L1.Inst.t_full) (ga : L1.SPFA.Immutable.t)
     | ILS (Load { space; pointer; output }) -> (
         match pointer with
         | Register r -> (
-            match L1.AbsState.find_opt r.id la with
-            | Some { have_sp = Flat true; offset = Flat c } ->
+            match L1.ARegFile.get la.regs r.id with
+            | Flat (SP c) ->
                 ISLS (Sload { offset = { value = c; width = 8l }; output })
             | _ -> ILS (Load { space; pointer; output }))
         | _ -> ILS (Load { space; pointer; output }))
     | ILS (Store { space; pointer; value }) -> (
         match pointer with
         | Register r -> (
-            match L1.AbsState.find_opt r.id la with
-            | Some { have_sp = Flat true; offset = Flat c } ->
+            match L1.ARegFile.get la.regs r.id with
+            | Flat (SP c) ->
                 ISLS (Sstore { offset = { value = c; width = 8l }; value })
             | _ -> ILS (Store { space; pointer; value }))
         | _ -> ILS (Store { space; pointer; value }))

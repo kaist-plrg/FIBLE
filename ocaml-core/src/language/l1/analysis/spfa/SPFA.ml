@@ -21,11 +21,13 @@ module Immutable = struct
         {
           pre_state =
             FSAbsD.AbsLocMapD.singleton f.entry
-              (NonRelStateD.singleton (Register sp_num)
-                 {
-                   AbsVal.have_sp = FlatBoolD.Flat true;
-                   AbsVal.offset = FlatInt64D.Flat 0L;
-                 });
+              {
+                AbsState.regs =
+                  ARegFile.TopHoleMap
+                    (RegIdMap.singleton (Register sp_num)
+                       (AbsVal.of_sp_offset 0L));
+                stack = AStack.TopHoleMap AddrMap.empty;
+              };
           post_state = FSAbsD.AbsLocMapD.empty;
         };
       accesses = AccessD.Fin (Int64SetD.singleton 0L);

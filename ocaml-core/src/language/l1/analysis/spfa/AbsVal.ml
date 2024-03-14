@@ -1,92 +1,46 @@
 open StdlibExt
+open Common
 open Basic_domain
 
-(*
-   module Inner = struct
-     type t = SP of Int64.t | Const of Int64.t | RVal
+module Inner = struct
+  type t = SP of Int64.t | Const of NumericValue.t | RVal
 
-     let pp fmt x =
-       match x with
-       | SP x -> Format.fprintf fmt "SP %Ld" x
-       | Const x -> Format.fprintf fmt "Const %Ld" x
-       | RVal -> Format.fprintf fmt "RVal"
-   end
+  let pp fmt x =
+    match x with
+    | SP x -> Format.fprintf fmt "SP %Ld" x
+    | Const x -> Format.fprintf fmt "Const %a" NumericValue.pp x
+    | RVal -> Format.fprintf fmt "RVal"
 
-   include FlatD.Make (Inner)
-*)
-type __ = { have_sp : FlatBoolD.t; offset : FlatInt64D.t }
+  let eval_bop (bop : Bop.t) x y width : t Option.t =
+    match (bop, x, y) with
+    | _, Const x, Const y ->
+        NumericBop.eval bop x y width
+        |> Result.to_option
+        |> Option.map (fun x -> Const x)
+    | Bop.Bint_add, SP x, Const y | Bop.Bint_add, Const y, SP x ->
+        Some (SP (Int64.add x (NumericValue.value_64 y)))
+    | Bop.Bint_sub, SP x, Const y ->
+        Some (SP (Int64.sub x (NumericValue.value_64 y)))
+    | Bop.Bint_sub, SP x, SP y ->
+        Some (Const (NumericValue.of_int64 (Int64.sub x y) 8l))
+    | _ -> None
 
-include
-  TupleD.MakeLatticeWithTop_Record (FlatBoolD) (FlatInt64D)
-    (struct
-      type t = __
+  let eval_uop (uop : Uop.t) x width : t Option.t =
+    match (uop, x) with
+    | _, Const x ->
+        NumericUop.eval uop x width
+        |> Result.to_option
+        |> Option.map (fun x -> Const x)
+    | _ -> None
+end
 
-      let get_fst x = x.have_sp
-      let get_snd x = x.offset
-      let make x y = { have_sp = x; offset = y }
-    end)
+include Inner
 
-let bottom = { have_sp = FlatBoolD.Bot; offset = FlatInt64D.Bot }
+type elem_t = t
 
-let pp fmt x =
-  Format.fprintf fmt "{ have_sp = %a; offset = %a }" FlatBoolD.pp x.have_sp
-    FlatInt64D.pp x.offset
+include FlatD.MakeValue (Inner)
 
-let of_const (x : Int64.t) =
-  { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat x }
-
-let bop_const bop x y width =
-  match (x, y) with
-  | ( { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat x },
-      { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat y } ) ->
-      { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat (bop x y) }
-  | _ -> top
-
-let uop_const uop x =
-  match x with
-  | { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat x } ->
-      { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat (uop x) }
-  | _ -> top
-
-let add x y width =
-  match (x, y) with
-  | ( { have_sp = FlatBoolD.Flat true; offset = FlatInt64D.Flat x },
-      { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat y } ) ->
-      {
-        have_sp = FlatBoolD.Flat true;
-        offset = FlatInt64D.Flat (Int64.add x y);
-      }
-  | ( { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat x },
-      { have_sp = FlatBoolD.Flat true; offset = FlatInt64D.Flat y } ) ->
-      {
-        have_sp = FlatBoolD.Flat true;
-        offset = FlatInt64D.Flat (Int64.add x y);
-      }
-  | ( { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat x },
-      { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat y } ) ->
-      {
-        have_sp = FlatBoolD.Flat false;
-        offset = FlatInt64D.Flat (Int64.add x y);
-      }
-  | _ -> top
-
-let sub x y width =
-  match (x, y) with
-  | ( { have_sp = FlatBoolD.Flat true; offset = FlatInt64D.Flat x },
-      { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat y } ) ->
-      {
-        have_sp = FlatBoolD.Flat true;
-        offset = FlatInt64D.Flat (Int64.sub x y);
-      }
-  | ( { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat x },
-      { have_sp = FlatBoolD.Flat false; offset = FlatInt64D.Flat y } ) ->
-      {
-        have_sp = FlatBoolD.Flat false;
-        offset = FlatInt64D.Flat (Int64.sub x y);
-      }
-  | _ -> top
-
-let mul x y width = bop_const Int64.mul x y width
-
-let sext x inwidth outwidth =
-  uop_const (fun x -> Int64Ext.sext x inwidth outwidth) x
+let bottom = bot
+let of_const (x : NumericValue.t) : t = Flat (Const x)
+let of_sp_offset (x : Int64.t) = Flat (SP x)
+let of_rval = Flat RVal
