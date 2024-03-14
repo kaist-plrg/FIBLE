@@ -1,5 +1,4 @@
-open Basic
-open Common_language
+open Common
 open Basic_domain
 
 module A = struct

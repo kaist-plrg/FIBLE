@@ -1,4 +1,4 @@
-open Basic
+open Common
 
 module Vertex = struct
   type t = Loc.t

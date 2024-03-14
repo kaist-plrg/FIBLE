@@ -1,5 +1,4 @@
-open Basic
-open Basic_collection
+open Common
 open Basic_domain
 
 module Make (A : sig

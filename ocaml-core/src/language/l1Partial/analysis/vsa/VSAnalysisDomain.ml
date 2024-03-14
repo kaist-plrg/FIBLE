@@ -1,6 +1,5 @@
 open StdlibExt
-open Basic
-open Basic_collection
+open Common
 open Basic_domain
 open Value_domain
 

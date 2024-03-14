@@ -1,2 +1,2 @@
-open Basic
-include Common_language.JRetF.Make (VarNode)
+open Common
+include Common.JRetF.Make (VarNode)

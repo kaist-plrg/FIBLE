@@ -1,18 +1,18 @@
 open StdlibExt
 open Basic_domain
 
-(* 
-module Inner = struct
-  type t = SP of Int64.t | Const of Int64.t | RVal
+(*
+   module Inner = struct
+     type t = SP of Int64.t | Const of Int64.t | RVal
 
-  let pp fmt x =
-    match x with
-    | SP x -> Format.fprintf fmt "SP %Ld" x
-    | Const x -> Format.fprintf fmt "Const %Ld" x
-    | RVal -> Format.fprintf fmt "RVal"
-end
+     let pp fmt x =
+       match x with
+       | SP x -> Format.fprintf fmt "SP %Ld" x
+       | Const x -> Format.fprintf fmt "Const %Ld" x
+       | RVal -> Format.fprintf fmt "RVal"
+   end
 
-include FlatD.Make (Inner)
+   include FlatD.Make (Inner)
 *)
 type __ = { have_sp : FlatBoolD.t; offset : FlatInt64D.t }
 

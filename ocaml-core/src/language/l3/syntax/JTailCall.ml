@@ -1,4 +1,4 @@
-open Basic
+open Common
 
 module Inner = struct
   type t = {
@@ -15,4 +15,4 @@ module Inner = struct
       p.reserved_stack p.sp_diff (pp_list VarNode.pp) p.returns
 end
 
-include Common_language.JTailCallF.Make (CallTarget) (Inner)
+include Common.JTailCallF.Make (CallTarget) (Inner)

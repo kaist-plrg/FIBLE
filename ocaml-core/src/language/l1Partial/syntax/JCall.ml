@@ -4,4 +4,4 @@ module Inner = struct
   let pp fmt (p : t) = Format.fprintf fmt ""
 end
 
-include Common_language.JCallF.Make (CallTarget) (Inner)
+include Common.JCallF.Make (CallTarget) (Inner)

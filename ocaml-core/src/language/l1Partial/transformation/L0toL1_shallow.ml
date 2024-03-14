@@ -1,6 +1,5 @@
-open Basic
+open Common
 open Basic_domain
-open Basic_collection
 
 let translate_stmt (loc : Loc.t) (i : L0.Inst.t_full) : Inst.t_full =
   match i.ins with

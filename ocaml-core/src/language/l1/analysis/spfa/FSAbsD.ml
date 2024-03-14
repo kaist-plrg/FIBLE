@@ -1,4 +1,4 @@
-open Basic
+open Common
 open Basic_domain
 module AbsLocMapD = BotMapD.Make (Loc) (AbsState)
 

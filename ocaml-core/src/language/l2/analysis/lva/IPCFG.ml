@@ -1,4 +1,4 @@
-open Basic_collection
+open Common
 
 type time_t = Pre | Post
 type vertex_t = { block : Block.t; time : time_t }

@@ -1,4 +1,4 @@
-open Basic
+open Common
 
 module Inner = struct
   type t = VarNode.t List.t
@@ -9,4 +9,4 @@ module Inner = struct
   let pp fmt (p : t) = Format.fprintf fmt "%a" (pp_list VarNode.pp) p
 end
 
-include Common_language.JRetF.Make (Inner)
+include Common.JRetF.Make (Inner)

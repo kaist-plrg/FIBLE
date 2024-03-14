@@ -1,4 +1,4 @@
-open Basic
+open Common
 open Basic_domain
 open Value_domain
 include RegIdTopMapD.MakeLatticeWithTop (AbsVal)
@@ -6,7 +6,10 @@ include RegIdTopMapD.MakeLatticeWithTop (AbsVal)
 let eval_varnode (a : t) (vn : VarNode.t) =
   match vn with
   | Const { value = c; _ } ->
-      { AbsVal.have_sp = FlatBoolD.Flat false; AbsVal.offset = FlatInt64D.Flat c }
+      {
+        AbsVal.have_sp = FlatBoolD.Flat false;
+        AbsVal.offset = FlatInt64D.Flat c;
+      }
   | Register r -> Option.value (find_opt r.id a) ~default:AbsVal.bottom
   | Ram v -> AbsVal.top
 

@@ -1,8 +1,8 @@
-module Value = Common_language.NumericValue
-module Store = Common_language.LowStore
+module Value = Common.NumericValue
+module Store = Common.LowStore
 
 module State = struct
-  open Basic
+  open Common
 
   module Inner = struct
     type t = { sto : Store.t; pc : Loc.t }
@@ -15,5 +15,5 @@ module State = struct
   end
 
   include Inner
-  include Common_language.StateStoreF.Make (Value) (Store) (Inner)
+  include StateStoreF.Make (Value) (Store) (Inner)
 end

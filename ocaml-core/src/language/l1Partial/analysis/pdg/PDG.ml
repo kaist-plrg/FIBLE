@@ -1,5 +1,4 @@
-open Basic
-open Basic_collection
+open Common
 open Basic_domain
 
 module ALoc = struct
@@ -89,16 +88,16 @@ let compute_ud_assignment (a : Assignable.t) : RegIdSet.t =
 
 let compute_ud_inst (astate : abstr) (i : Inst.t_full) : abstr * ALocSet.t =
   match i.ins with
-  | ILS (Load { pointer = Basic.VarNode.Register rm; output; _ }) ->
+  | ILS (Load { pointer = Common.VarNode.Register rm; output; _ }) ->
       ( update_reg_def_loc astate output.id i.loc,
         ALocSet.union (get_reg_def_locs astate rm.id) astate.store_locs )
-  | ILS (Load { pointer = Basic.VarNode.Const _; output; _ }) ->
+  | ILS (Load { pointer = Common.VarNode.Const _; output; _ }) ->
       (update_reg_def_loc astate output.id i.loc, astate.store_locs)
   | ILS
       (Store
         {
-          pointer = Basic.VarNode.Register rm;
-          value = Basic.VarNode.Register rs;
+          pointer = Common.VarNode.Register rm;
+          value = Common.VarNode.Register rs;
           _;
         }) ->
       ( update_store_loc astate i.loc,
@@ -108,8 +107,8 @@ let compute_ud_inst (astate : abstr) (i : Inst.t_full) : abstr * ALocSet.t =
   | ILS
       (Store
         {
-          pointer = Basic.VarNode.Const _;
-          value = Basic.VarNode.Register rs;
+          pointer = Common.VarNode.Const _;
+          value = Common.VarNode.Register rs;
           _;
         }) ->
       (update_store_loc astate i.loc, get_reg_def_locs astate rs.id)

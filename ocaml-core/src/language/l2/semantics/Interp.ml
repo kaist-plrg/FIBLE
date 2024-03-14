@@ -1,8 +1,6 @@
 open StdlibExt
 open Notation
-open Basic
-open Basic_collection
-open Common_language
+open Common
 open Sem
 
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (curr : Cursor.t) :

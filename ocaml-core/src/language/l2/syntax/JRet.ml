@@ -4,4 +4,4 @@ module Inner = struct
   let pp fmt (p : t) = Format.fprintf fmt ""
 end
 
-include Common_language.JRetF.Make (Inner)
+include Common.JRetF.Make (Inner)

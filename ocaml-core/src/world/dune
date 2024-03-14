@@ -2,14 +2,6 @@
  (name world)
  (preprocess
   (pps ppx_log ppx_cwd))
- (libraries
-  unix
-  stdlibExt
-  ppx_log
-  ctypes
-  ctypes-foreign
-  basic
-  basic_collection
-  common_language)
+ (libraries unix stdlibExt ppx_log ctypes ctypes-foreign common)
  (flags -w -20-33-3)
  (modules Interaction Ghidra Environment Util Global))

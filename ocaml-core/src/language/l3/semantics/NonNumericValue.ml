@@ -1,6 +1,5 @@
 open StdlibExt
-open Basic
-open Common_language
+open Common
 
 type t = SP of SPVal.t | Undef of Int32.t
 

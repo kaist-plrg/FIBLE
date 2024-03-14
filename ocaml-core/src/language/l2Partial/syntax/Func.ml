@@ -1,6 +1,4 @@
-open Basic
-open Basic_collection
-open Common_language
+open Common
 
 module Inner = struct
   type t = {

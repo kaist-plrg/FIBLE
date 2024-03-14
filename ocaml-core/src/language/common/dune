@@ -1,0 +1,84 @@
+(include_subdirs unqualified)
+
+(library
+ (name common)
+ (flags -w -20-33-3)
+ (preprocess
+  (pps ppx_log))
+ (libraries ocamlgraph ctypes ctypes-foreign ppx_log stdlibExt)
+ (modules
+  ;; syntax-core
+  Const
+  Mnemonic
+  RegId
+  VarNode
+  ;; syntax-addr
+  Addr
+  AddrMap
+  ;; syntax-loc
+  Loc
+  LocMap
+  LocSet
+  LocHashtbl
+  ;; syntax-inst
+  Uop
+  Bop
+  Assignable
+  RawInst
+  IAssignment
+  ILoadStore
+  ISLoadStore
+  INop
+  InstFullF
+  ;; syntax-jmp
+  CallTargetF
+  JIntra
+  JCallF
+  JRetF
+  JTailCallF
+  JmpFullF
+  ;; syntax-block
+  BlockF
+  ;; syntax-func
+  FuncHelperF
+  ;; semantics-timestamp
+  Int64TimeStamp
+  UnitTimeStamp
+  ;; semantics-cursor
+  CursorF
+  ;; semantics-event
+  StopEvent
+  ;; semantics-cont
+  ContF
+  ;; semantics-value
+  NumericValue
+  NumericBop
+  NumericUop
+  SPVal
+  ValueF
+  Interop
+  ;; semantics-regs
+  RegIdMap
+  RegIdSet
+  RegFileF
+  ;; semantics-mem
+  MemoryBlock
+  DMem
+  NumericMemory
+  DMemCombinedMemory
+  FailableMemory
+  DMemCombinedFailableMemory
+  FrameF
+  LocalMemoryF
+  MemoryF
+  ;; semantics-sto
+  LowStore
+  HighStoreF
+  ;; semantics-state
+  HighStateF
+  StateStoreF
+  ;; analysis
+  CGF
+  ICFGF
+  ;; etc
+  PrettySpec))

@@ -1,5 +1,4 @@
-open Basic
-open Common_language
+open Common
 
 module Inner = struct
   type t = ILS of ILoadStore.t | IA of IAssignment.t | IN of INop.t

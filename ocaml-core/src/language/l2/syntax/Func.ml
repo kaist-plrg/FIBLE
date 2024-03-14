@@ -1,5 +1,4 @@
-open Basic
-open Basic_collection
+open Common
 
 module Inner = struct
   type t = {
@@ -33,4 +32,4 @@ module Inner = struct
 end
 
 include Inner
-include Common_language.FuncHelperF.Make (Jmp) (Block) (Inner)
+include Common.FuncHelperF.Make (Jmp) (Block) (Inner)

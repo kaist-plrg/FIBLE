@@ -1,4 +1,4 @@
-open Basic
+open Common
 
 module Inner = struct
   type t = { outputs : RegId.t List.t; inputs : VarNode.t List.t }
@@ -11,4 +11,4 @@ module Inner = struct
       p.outputs (pp_list VarNode.pp) p.inputs
 end
 
-include Common_language.CallTargetF.Make (Inner)
+include Common.CallTargetF.Make (Inner)

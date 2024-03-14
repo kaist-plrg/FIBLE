@@ -1,5 +1,4 @@
-open Basic
-open Basic_collection
+open Common
 
 let default_input =
   L2.REA.default.dependent_regs

@@ -1,7 +1,6 @@
 open StdlibExt
-open Basic
+open Common
 open Basic_domain
-open Common_language
 open Value_domain
 module Map = KeyMap.Make (AbsNumeric)
 

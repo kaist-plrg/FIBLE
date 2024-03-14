@@ -1,5 +1,4 @@
-open Basic
-open Basic_collection
+open Common
 
 type t = KReg of RegId.t | KMemLoc of AExprSet.t | KZero
 

@@ -1,6 +1,6 @@
 open StdlibExt
 open Notation
-open Basic
+open Common
 
 let check_pc (s0 : Loc.t) (s1 : L1.Sem.Cont.t) (s2 : L2Partial.Sem.Cont.t) :
     (Unit.t, String.t) Result.t =

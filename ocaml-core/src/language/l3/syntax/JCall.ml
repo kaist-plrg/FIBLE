@@ -1,4 +1,4 @@
-open Basic
+open Common
 
 module Inner = struct
   type t = { reserved_stack : Int64.t; sp_diff : Int64.t }
@@ -8,4 +8,4 @@ module Inner = struct
       p.sp_diff
 end
 
-include Common_language.JCallF.Make (CallTarget) (Inner)
+include Common.JCallF.Make (CallTarget) (Inner)

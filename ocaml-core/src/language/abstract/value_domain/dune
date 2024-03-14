@@ -1,5 +1,5 @@
 (library
  (name value_domain)
  (flags -w -20-33-3)
- (libraries basic basic_domain)
+ (libraries common)
  (modules LimSetD Mod8D IntervalD AbsNumeric))

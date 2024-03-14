@@ -1,5 +1,4 @@
-open Basic
-open Basic_collection
+open Common
 
 type t = { regs : ARegFile.t; stack : AStack.t }
 

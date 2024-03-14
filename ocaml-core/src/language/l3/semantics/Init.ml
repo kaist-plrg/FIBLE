@@ -1,7 +1,5 @@
 open StdlibExt
-open Basic
-open Basic_collection
-open Common_language
+open Common
 open Sem
 
 let from_signature (p : Prog.t) (a : Addr.t) : State.t =

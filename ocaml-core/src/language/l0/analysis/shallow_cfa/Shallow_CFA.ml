@@ -1,7 +1,6 @@
 open StdlibExt
-open Basic
+open Common
 open Basic_domain
-open Basic_collection
 open Value_domain
 
 type heuristic_result = HrStop | HrSound of LocSetD.t | HrExit | HrFallthrough

@@ -1,6 +1,5 @@
 open StdlibExt
-open Basic
-open Basic_collection
+open Common
 module PC = Graph.Path.Check (ICFG.G)
 
 let gen_dep_locs (pdg : PDG.ALocSet.t LocMap.t) (init_locs : Loc.t List.t) :

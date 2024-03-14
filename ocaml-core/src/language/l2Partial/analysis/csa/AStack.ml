@@ -1,5 +1,5 @@
 open StdlibExt
-open Basic_collection
+open Common
 
 type t = Top | InitHoleMap of ASymb.t AddrMap.t | Bottom
 

@@ -1,12 +1,12 @@
-module Cont = Common_language.ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)
-module Value = Common_language.NumericValue
-module TimeStamp = Common_language.UnitTimeStamp
-module Cursor = Common_language.CursorF.Make (TimeStamp)
-module RegFile = Common_language.RegFileF.Make (Value)
-module Store = Common_language.LowStore
+module Cont = Common.ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)
+module Value = Common.NumericValue
+module TimeStamp = Common.UnitTimeStamp
+module Cursor = Common.CursorF.Make (TimeStamp)
+module RegFile = Common.RegFileF.Make (Value)
+module Store = Common.LowStore
 
 module Stack = struct
-  open Basic
+  open Common
 
   type elem_t = Cursor.t * Loc.t
   type t = elem_t List.t
@@ -23,8 +23,7 @@ module Stack = struct
 end
 
 module State =
-  Common_language.HighStateF.Make (Func) (Prog) (CallTarget) (JCall) (JRet)
-    (TimeStamp)
+  Common.HighStateF.Make (Func) (Prog) (CallTarget) (JCall) (JRet) (TimeStamp)
     (Value)
     (Store)
     (Cont)

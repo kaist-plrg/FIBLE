@@ -1,6 +1,6 @@
 (library
  (name basic_domain)
- (libraries basic basic_collection)
+ (libraries common)
  (modules
   DomainSpec
   BotMapD
@@ -18,5 +18,4 @@
   LocSetD_Mut
   LocSetOptionD
   LocSetOptionD_Mut
-  MemRefTopMapD
   RegIdTopMapD))

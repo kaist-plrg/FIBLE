@@ -1,5 +1,5 @@
 open StdlibExt
-open Basic
+open Common
 
 let _ = Random.self_init ()
 
@@ -147,13 +147,11 @@ module ExternalFunction = struct
     in
     loop StringMap.empty (Int32.to_int num)
 
-  let to_addrMap (ext : t) : String.t Basic_collection.AddrMap.t =
+  let to_addrMap (ext : t) : String.t AddrMap.t =
     StringMap.fold
       (fun name args acc ->
-        List.fold_right
-          (fun addr acc -> Basic_collection.AddrMap.add addr name acc)
-          args acc)
-      ext Basic_collection.AddrMap.empty
+        List.fold_right (fun addr acc -> AddrMap.add addr name acc) args acc)
+      ext AddrMap.empty
 end
 
 module DMemWrapper = struct

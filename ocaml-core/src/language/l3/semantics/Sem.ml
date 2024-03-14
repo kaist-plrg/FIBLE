@@ -1,21 +1,20 @@
 module NonNumericValue = NonNumericValue
-module Cont = Common_language.ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)
-module Value = Common_language.ValueF.Make (NonNumericValue)
-module TimeStamp = Common_language.Int64TimeStamp
-module Cursor = Common_language.CursorF.Make (TimeStamp)
-module RegFile = Common_language.RegFileF.Make (Value)
-module Frame = Common_language.FrameF.Make (Value)
-module LocalMemory = Common_language.LocalMemoryF.Make (Value) (Frame)
-module Memory = Common_language.MemoryF.Make (Value)
+module Cont = Common.ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)
+module Value = Common.ValueF.Make (NonNumericValue)
+module TimeStamp = Common.Int64TimeStamp
+module Cursor = Common.CursorF.Make (TimeStamp)
+module RegFile = Common.RegFileF.Make (Value)
+module Frame = Common.FrameF.Make (Value)
+module LocalMemory = Common.LocalMemoryF.Make (Value) (Frame)
+module Memory = Common.MemoryF.Make (Value)
 
 module Store =
-  Common_language.HighStoreF.Make (Prog) (Value) (Cursor) (RegFile) (Memory)
-    (Frame)
+  Common.HighStoreF.Make (Prog) (Value) (Cursor) (RegFile) (Memory) (Frame)
     (LocalMemory)
 
 module Stack = struct
-  open Basic
-  open Basic_collection
+  open Common
+  open Common
 
   type elem_t = {
     cursor : Cursor.t;
@@ -42,8 +41,7 @@ module Stack = struct
 end
 
 module State =
-  Common_language.HighStateF.Make (Func) (Prog) (CallTarget) (JCall) (JRet)
-    (TimeStamp)
+  Common.HighStateF.Make (Func) (Prog) (CallTarget) (JCall) (JRet) (TimeStamp)
     (Value)
     (Store)
     (Cont)

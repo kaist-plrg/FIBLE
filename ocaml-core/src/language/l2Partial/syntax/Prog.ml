@@ -1,6 +1,5 @@
 open StdlibExt
-open Basic
-open Basic_collection
+open Common
 
 type t = {
   sp_num : Int32.t;
@@ -14,8 +13,7 @@ let get_externs (p : t) : String.t AddrMap.t = p.externs
 let get_sp_num (p : t) : Int32.t = p.sp_num
 let get_rom_byte (p : t) (addr : Addr.t) : Char.t = DMem.get_byte p.rom addr
 
-let get_rom (p : t) (addr : Addr.t) (width : Int32.t) :
-    Common_language.NumericValue.t =
+let get_rom (p : t) (addr : Addr.t) (width : Int32.t) : Common.NumericValue.t =
   let rec aux (addr : Addr.t) (width : Int32.t) (acc : Char.t list) :
       Char.t list =
     if width = 0l then acc
@@ -24,7 +22,7 @@ let get_rom (p : t) (addr : Addr.t) (width : Int32.t) :
       aux (Addr.succ addr) (Int32.pred width) (c :: acc)
   in
   let chars = aux addr width [] |> List.rev in
-  Common_language.NumericValue.of_chars chars
+  Common.NumericValue.of_chars chars
 
 let pp fmt p =
   Format.fprintf fmt "@[<v>";

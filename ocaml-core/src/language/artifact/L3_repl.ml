@@ -1,4 +1,4 @@
-open Basic
+open Common
 open L3
 open L3.Sem
 open State
@@ -50,7 +50,7 @@ let parse_loc : Loc.t Angstrom.t =
   Angstrom.char ':' *> parse_num >>| fun l -> (n, l)
 
 let parse_val : Value.t Angstrom.t =
-  parse_hex >>| fun n -> Value.Num (Common_language.NumericValue.of_int64 n 8l)
+  parse_hex >>| fun n -> Value.Num (Common.NumericValue.of_int64 n 8l)
 
 let parse_step =
   lex

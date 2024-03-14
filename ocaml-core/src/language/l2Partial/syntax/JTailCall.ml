@@ -5,4 +5,4 @@ module Inner = struct
     Format.fprintf fmt "Stack: %Lx; SP diff: %Lx" p.reserved_stack p.sp_diff
 end
 
-include Common_language.JTailCallF.Make (CallTarget) (Inner)
+include Common.JTailCallF.Make (CallTarget) (Inner)

@@ -5,35 +5,5 @@
  (flags -w -20-33-3)
  (preprocess
   (pps ppx_log))
- (libraries
-  stdlibExt
-  ppx_log
-  basic
-  basic_collection
-  common_language
-  basic_domain
-  value_domain
-  world)
- (modules
-  Inst
-  Prog
-  Sem
-  Init
-  Interp
-  NonRelStateD
-  OctagonD
-  BoolPowerD
-  AbsState
-  UJumpD
-  JumpD
-  JumpG
-  BoundaryPointD
-  ContourD
-  FSAbsD
-  UJumpD_Mut
-  JumpD_Mut
-  BoundaryPointD_Mut
-  ContourD_Mut
-  FSAbsD_Mut
-  Shallow_CFA
-  CFA))
+ (libraries stdlibExt ppx_log common basic_domain value_domain world)
+ (modules Inst Prog Sem Init Interp JumpG BoundaryPointD Shallow_CFA))

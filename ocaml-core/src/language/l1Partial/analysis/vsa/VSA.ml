@@ -1,5 +1,4 @@
-open Basic
-open Basic_collection
+open Common
 open Basic_domain
 module VSAnalysis = Graph.ChaoticIteration.Make (ICFG.G) (VSAnalysisDomain)
 module WTPO = Graph.WeakTopological.Make (ICFG.G)

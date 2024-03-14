@@ -1,5 +1,4 @@
-open Basic
-open Basic_collection
+open Common
 include Set.Make (AExpr)
 
 let find_filter_opt (f : elt -> bool) (s : t) : elt option =

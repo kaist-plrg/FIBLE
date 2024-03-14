@@ -1,5 +1,4 @@
-open Basic
-open Basic_collection
+open Common
 open Basic_domain
 
 type astate = {
@@ -49,7 +48,7 @@ let compute_dr_assignment (a : Assignable.t) : RegIdSet.t =
 
 let compute_dd_inst (i : Inst.t) : astate =
   match i with
-  | ILS (Load { pointer = Basic.VarNode.Register rm; output; _ }) ->
+  | ILS (Load { pointer = Common.VarNode.Register rm; output; _ }) ->
       {
         must_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         may_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
@@ -58,8 +57,8 @@ let compute_dd_inst (i : Inst.t) : astate =
   | ILS
       (Store
         {
-          pointer = Basic.VarNode.Register rm;
-          value = Basic.VarNode.Register rs;
+          pointer = Common.VarNode.Register rm;
+          value = Common.VarNode.Register rs;
           _;
         }) ->
       {
@@ -69,14 +68,14 @@ let compute_dd_inst (i : Inst.t) : astate =
       }
   | ILS
       (Store
-        { pointer = Basic.VarNode.Const _; value = Basic.VarNode.Register rs })
-  | ISLS (Sstore { value = Basic.VarNode.Register rs; _ }) ->
+        { pointer = Common.VarNode.Const _; value = Common.VarNode.Register rs })
+  | ISLS (Sstore { value = Common.VarNode.Register rs; _ }) ->
       {
         must_def_regs = RegIdSetD.bot;
         may_def_regs = RegIdSetD.bot;
         dependent_regs = RegIdSetD.Set (RegIdSet.singleton rs.id);
       }
-  | ILS (Load { pointer = Basic.VarNode.Const _; output })
+  | ILS (Load { pointer = Common.VarNode.Const _; output })
   | ISLS (Sload { output; _ }) ->
       {
         must_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
@@ -145,8 +144,8 @@ let compute_dd_block (b : Block.t) : astate =
     b.body
   |> Fun.flip accumulate_astate (compute_dd_jmp b.jmp.jmp)
 
-module ICFG = Common_language.ICFG.Make (Block)
-module CG = Common_language.CG.Make (Func)
+module ICFG = Common.ICFGF.Make (Block)
+module CG = Common.CGF.Make (Func)
 
 module RegAnalysisDomain = struct
   type t = astate

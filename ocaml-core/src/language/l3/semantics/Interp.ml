@@ -1,7 +1,5 @@
 open StdlibExt
-open Basic
-open Basic_collection
-open Common_language
+open Common
 open Notation
 open Sem
 

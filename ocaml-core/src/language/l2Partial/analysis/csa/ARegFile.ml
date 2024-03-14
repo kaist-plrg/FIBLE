@@ -1,6 +1,5 @@
 open StdlibExt
-open Basic
-open Basic_collection
+open Common
 
 type t =
   | TopHoleMap of ASymb.t RegIdMap.t
