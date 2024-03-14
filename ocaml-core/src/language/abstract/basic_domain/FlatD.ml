@@ -40,3 +40,4 @@ struct
     | Bot -> Format.fprintf fmt "Bot"
     | Flat x -> Format.fprintf fmt "%a" A.pp x
 end
+

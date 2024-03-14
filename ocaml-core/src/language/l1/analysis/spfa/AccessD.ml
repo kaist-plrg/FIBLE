@@ -34,6 +34,6 @@ let le a b =
 
 let log_access width spv =
   match spv with
-  | { SPVal.have_sp = FlatBoolD.Flat true; offset = FlatInt64D.Flat x } ->
+  | { AbsVal.have_sp = FlatBoolD.Flat true; offset = FlatInt64D.Flat x } ->
       Fin (FinSet.of_list [ x; Int64.add x (Int64.of_int32 width) ])
   | _ -> bottom

@@ -9,21 +9,21 @@ let post_single_instr (i : Inst.t) (c : t) : AccessD.t * t =
   | IN _ -> (AccessD.bottom, c)
   | IA { expr; output } -> (AccessD.bottom, process_assignment c expr output)
   | ILS (Load { pointer; output; _ }) ->
-      [%log debug "load: %a" SPVal.pp (eval_varnode c pointer)];
+      [%log debug "load: %a" AbsVal.pp (eval_varnode c pointer)];
       (AccessD.log_access output.width (eval_varnode c pointer), c)
   | ILS (Store { pointer; value }) ->
-      [%log debug "store: %a" SPVal.pp (eval_varnode c pointer)];
+      [%log debug "store: %a" AbsVal.pp (eval_varnode c pointer)];
       (AccessD.log_access (VarNode.width value) (eval_varnode c pointer), c)
 
 let post_single_jmp (i : Jmp.t) (c : t) (sp_num : Int32.t) : t =
   match i with
   | JC _ ->
       add (RegId.Register sp_num)
-        (SPVal.add
+        (AbsVal.add
            (eval_varnode c
               (VarNode.Register
                  { id = RegId.Register sp_num; offset = 0l; width = 8l }))
-           (SPVal.of_const 8L) 8L)
+           (AbsVal.of_const 8L) 8L)
         c
   | _ -> c
 

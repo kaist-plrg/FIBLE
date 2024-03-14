@@ -23,8 +23,8 @@ module Immutable = struct
             FSAbsD.AbsLocMapD.singleton f.entry
               (NonRelStateD.singleton (Register sp_num)
                  {
-                   SPVal.have_sp = FlatBoolD.Flat true;
-                   SPVal.offset = FlatInt64D.Flat 0L;
+                   AbsVal.have_sp = FlatBoolD.Flat true;
+                   AbsVal.offset = FlatInt64D.Flat 0L;
                  });
           post_state = FSAbsD.AbsLocMapD.empty;
         };
