@@ -16,7 +16,6 @@
   world
   l1Partial
   l1
-  l2Partial
   l2
   l3
   artifact)
@@ -40,7 +39,6 @@
   world
   l1Partial
   l1
-  l2Partial
   l2
   l3
   artifact)
@@ -64,7 +62,6 @@
   world
   l1Partial
   l1
-  l2Partial
   l2
   l3
   artifact)
@@ -88,7 +85,6 @@
   world
   l1Partial
   l1
-  l2Partial
   l2
   l3
   simulation)

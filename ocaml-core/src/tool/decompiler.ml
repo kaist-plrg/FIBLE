@@ -205,30 +205,19 @@ let main () =
         in
         let c6 = Sys.time () in
         [%log info "SPFA time: %f" (c6 -. c5)];
-        let l2_partial : L2Partial.Prog.t =
-          L2Partial.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
+        let l2 : L2.Prog.t =
+          L2.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
         in
         let c7 = Sys.time () in
         [%log info "L2 translation time: %f" (c7 -. c6)];
-        let csa_res : (L2Partial.Func.t * L2Partial.CSA.Immutable.t) list =
-          l2_partial.funcs
-          |> List.map (fun x -> (x, L2Partial.CSA.Immutable.analyze x))
-        in
-        let c8 = Sys.time () in
-        [%log info "CSA time: %f" (c8 -. c7)];
-        let l2 : L2.Prog.t =
-          L2.Refine.translate_prog_from_csa l2_partial csa_res
-        in
-        let c9 = Sys.time () in
-        [%log info "L2 translation time: %f" (c9 -. c8)];
         let lva_res : (L2.Func.t * L2.REA.astate) List.t =
           L2.REA.compute_all l2
         in
-        let c10 = Sys.time () in
-        [%log info "REA time: %f" (c10 -. c9)];
+        let c8 = Sys.time () in
+        [%log info "REA time: %f" (c8 -. c7)];
         let l3 : L3.Prog.t = L3.L2toL3.translate_prog_from_rea l2 lva_res in
-        let c11 = Sys.time () in
-        [%log info "L3 translation time: %f" (c11 -. c10)];
+        let c9 = Sys.time () in
+        [%log info "L3 translation time: %f" (c9 -. c8)];
         if
           (!(dump_flag.cfa) || !(dump_flag.l1) || !(dump_flag.spfa)
          || !(dump_flag.l2))

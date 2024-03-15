@@ -4,7 +4,7 @@ let translate_jmp (j : L1.Jmp.t_full)
   let njmp : Jmp.t =
     match j.jmp with
     | JI v -> JI v
-    | JR v -> JR v
+    | JR v -> JR { attr = () }
     | JC { target = Cdirect { target; attr }; fallthrough } ->
         let x =
           List.find_opt (fun ((f, _) : L1.Func.t * _) -> f.entry = target) alist
