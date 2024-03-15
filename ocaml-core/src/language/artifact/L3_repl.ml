@@ -4,7 +4,8 @@ open L3.Sem
 open State
 
 type show_type =
-  | ShowState
+  | ShowReg
+  | ShowStack
   | ShowCurInst
   | ShowCont
   | ShowBlock of Loc.t
@@ -49,8 +50,21 @@ let parse_loc : Loc.t Angstrom.t =
   parse_hex >>= fun n ->
   Angstrom.char ':' *> parse_num >>| fun l -> (n, l)
 
+let parse_numval : NumericValue.t Angstrom.t =
+  parse_hex >>| fun n -> Common.NumericValue.of_int64 n 8l
+
+let parse_stack : SPVal.t Angstrom.t =
+  Angstrom.char '[' *> parse_loc <* Angstrom.char '@' >>= fun lc ->
+  parse_num >>= fun n ->
+  Angstrom.char ']' *> Angstrom.option 0 (Angstrom.char '+' *> parse_num)
+  >>| fun off ->
+  { SPVal.func = lc; timestamp = Int64.of_int n; offset = Int64.of_int off }
+(* [%a@%Ld]+%Ld *)
+
 let parse_val : Value.t Angstrom.t =
-  parse_hex >>| fun n -> Value.Num (Common.NumericValue.of_int64 n 8l)
+  parse_numval
+  >>| (fun n -> Value.of_num n)
+  <|> (parse_stack >>| fun sp -> Value.sp sp)
 
 let parse_step =
   lex
@@ -68,15 +82,19 @@ let parse_quit =
     <|> Angstrom.string "quit" *> Angstrom.return Quit)
 
 let parse_show =
-  lex (Angstrom.string "show")
-  *> (lex (Angstrom.string "st") *> Angstrom.return (Show ShowState)
-     <|> lex (Angstrom.string "curi") *> Angstrom.return (Show ShowCurInst)
-     <|> lex
-           (Angstrom.string "curc" *> Angstrom.return (Show ShowCont)
-           <|> ( lex (Angstrom.string "b") *> parse_loc >>| fun l ->
-                 Show (ShowBlock l) ))
-     <|> ( lex (Angstrom.string "mem") *> parse_val >>= fun l ->
-           Angstrom.char ',' *> parse_num >>| fun n -> Show (ShowMem (n, l)) ))
+  lex (Angstrom.string "i r") *> Angstrom.return (Show ShowReg)
+  <|> Angstrom.string "bt" *> Angstrom.return (Show ShowStack)
+  <|> ( lex
+          (Angstrom.string "x/" *> Angstrom.option 8 parse_num
+          <* Angstrom.string "x ")
+      >>= fun n ->
+        parse_val >>| fun v -> Show (ShowMem (8, v)) )
+  <|> ( lex (Angstrom.string "x/s ") *> parse_val >>| fun v ->
+        Show (ShowString v) )
+  <|> ( lex (Angstrom.string "x/i")
+      *> Angstrom.option None (parse_loc >>| Option.some)
+      >>| fun lo ->
+        match lo with None -> Show ShowCont | Some l -> Show (ShowBlock l) )
 
 let parse_blist =
   lex
@@ -120,8 +138,11 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
           | Error (FailStop e) ->
               Format.fprintf out_formatter "Error: %s\n%!" e;
               aux s bs continue)
-    | Show ShowState ->
-        Format.fprintf out_formatter "State:\n%a\n%!" State.pp s;
+    | Show ShowReg ->
+        Format.fprintf out_formatter "Reg:\n%a\n%!" RegFile.pp s.sto.regs;
+        aux s bs continue
+    | Show ShowStack ->
+        Format.fprintf out_formatter "Stack:\n%a\n%!" Stack.pp s.stack;
         aux s bs continue
     | Show ShowCurInst ->
         (match s.cont.remaining with
@@ -159,7 +180,7 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
     | Show (ShowMem (n, v)) ->
         (match Store.load_bytes s.sto v (Int32.of_int n) with
         | Ok s ->
-            Format.fprintf out_formatter "Memory at %a: %a\n%!" Value.pp v
+            Format.fprintf out_formatter "Memory at %a:\n@[%a@]@,%!" Value.pp v
               (Format.pp_print_list
                  (fun fmt (b : Char.t) ->
                    Format.fprintf fmt "%02x" (Char.code b))

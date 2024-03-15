@@ -153,5 +153,11 @@ let step (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
       |> Fun.flip StopEvent.add_loc i.loc
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
+  if Loc.compare (Cont.get_loc s.cont) (0x404119L, 0) = 0 then (
+    [%log info "interp: @,%a" State.pp s];
+    let rdi =
+      Store.get_reg s.sto { id = RegId.Register 56l; offset = 0l; width = 8l }
+    in
+    Store.load_string s.sto rdi |> Result.get_ok |> [%log info "rdi: %s"]);
   let s' = step p s in
   match s' with Error _ -> s' | Ok s' -> interp p s'

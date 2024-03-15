@@ -32,9 +32,13 @@ module Stack = struct
   let pp fmt (v : t) =
     let pp_elem fmt { cursor; outputs; sregs; saved_sp; fallthrough } =
       Format.fprintf fmt
-        "{cursor=%a; outputs=%a; sregs=%a; saved_sp=%a; fallthrough=%a}"
+        "@[<1>{cursor=%a;@,\
+         outputs=%a;@,\
+         sregs=%a;@,\
+         saved_sp=%a;@,\
+         fallthrough=%a}@]"
         Cursor.pp cursor
-        (Format.pp_print_list RegId.pp)
+        (Format.pp_print_list RegId.pp ~pp_sep:Format.pp_print_space)
         outputs RegFile.pp sregs Value.pp saved_sp Loc.pp fallthrough
     in
     Format.fprintf fmt "[%a]" (Format.pp_print_list pp_elem) v

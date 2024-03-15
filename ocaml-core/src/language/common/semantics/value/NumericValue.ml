@@ -20,7 +20,7 @@ let to_loc (x : t) : Loc.t = (to_addr x, 0)
 let try_loc (x : t) : (Loc.t, String.t) Result.t = to_loc x |> Result.ok
 
 let pp fmt (x : t) =
-  Format.fprintf fmt "%a:%d"
+  Format.fprintf fmt "@[%a:%d@]"
     (Format.pp_print_list (fun fmt c -> Format.fprintf fmt "%02x" (Char.code c)))
     (String.to_seq x |> List.of_seq |> List.rev)
     (String.length x)

@@ -28,6 +28,7 @@ end) (HighCursor : sig
 end) (RegFile : sig
   type t
 
+  val pp : Format.formatter -> t -> unit
   val add_reg : t -> RegId.t_full -> Value.t -> t
   val get_reg : t -> RegId.t_full -> Value.t
 end) (Memory : sig
@@ -54,6 +55,8 @@ end) (LocalMemory : sig
 end) =
 struct
   type t = { regs : RegFile.t; mem : Memory.t; local : LocalMemory.t }
+
+  let pp fmt v = Format.fprintf fmt "@[<1>regs: %a@]" RegFile.pp v.regs
 
   let add_reg (s : t) (r : RegId.t_full) (v : Value.t) : t =
     { s with regs = RegFile.add_reg s.regs r v }

@@ -49,6 +49,7 @@ end) (Value : sig
 end) (Store : sig
   type t
 
+  val pp : Format.formatter -> t -> unit
   val add_reg : t -> RegId.t_full -> Value.t -> t
   val get_reg : t -> RegId.t_full -> Value.t
   val load_mem : t -> Value.t -> Int32.t -> (Value.t, String.t) Result.t
@@ -113,8 +114,9 @@ struct
   let get_func_loc (s : t) : Loc.t = Cursor.get_func_loc s.cursor
 
   let pp fmt (s : t) : unit =
-    Format.fprintf fmt "cursor: %a\n cont: %a\nstack: %a\ntimestamp: %a\n"
-      Cursor.pp s.cursor Cont.pp s.cont Stack.pp s.stack TimeStamp.pp
+    Format.fprintf fmt
+      "@[<1>sto: %a@,cursor: %a@,cont: %a@,stack: %a@,timestamp: %a@]" Store.pp
+      s.sto Cursor.pp s.cursor Cont.pp s.cont Stack.pp s.stack TimeStamp.pp
       s.timestamp
 
   let step_JI (s : t) (p : Prog.t) (j : JIntra.t) : (t, String.t) Result.t =

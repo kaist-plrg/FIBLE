@@ -6,6 +6,8 @@ module Memory = DMemCombinedMemory
 
 type t = { regs : RegFile.t; mem : Memory.t }
 
+let pp fmt v = Format.fprintf fmt "@[<1>regs: %a@]" RegFile.pp v.regs
+
 let add_reg (s : t) (r : RegId.t_full) (v : Value.t) : t =
   { s with regs = RegFile.add_reg s.regs r v }
 
