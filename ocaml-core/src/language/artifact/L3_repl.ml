@@ -20,6 +20,7 @@ type repl_cmd =
   | Ignore
   | BList
   | BAdd of Loc.t
+  | BAdds of String.t
   | BRemove of Int.t
 
 let ( <|> ) = Angstrom.( <|> )
@@ -45,6 +46,11 @@ let parse_hex =
 let parse_num =
   Angstrom.take_while1 (function '0' .. '9' -> true | _ -> false)
   >>| int_of_string
+
+let parse_identifier : String.t Angstrom.t =
+  Angstrom.take_while1 (function
+    | '0' .. '9' | 'a' .. 'z' | 'A' .. 'Z' | '_' | '=' -> true
+    | _ -> false)
 
 let parse_loc : Loc.t Angstrom.t =
   parse_hex >>= fun n ->
@@ -98,13 +104,17 @@ let parse_show =
 
 let parse_blist =
   lex
-    (Angstrom.string "blist" *> Angstrom.return BList
-    <|> Angstrom.string "breakpoints" *> Angstrom.return BList)
+    (Angstrom.string "i b" *> Angstrom.return BList
+    <|> Angstrom.string "info break" *> Angstrom.return BList)
 
-let parse_badd = lex (Angstrom.string "badd") *> parse_loc >>| fun l -> BAdd l
+let parse_badd =
+  lex (Angstrom.string "b " <|> Angstrom.string "break ")
+  *> (Angstrom.char '*' *> parse_loc
+     >>| (fun l -> BAdd l)
+     <|> (parse_identifier >>| fun l -> BAdds l))
 
 let parse_bremove =
-  lex (Angstrom.string "bremove") *> parse_num >>| fun n -> BRemove n
+  lex (Angstrom.string "d " <|> Angstrom.string "delete ") *> parse_num >>| fun n -> BRemove n
 
 let parse_cmd : repl_cmd Angstrom.t =
   parse_show <|> parse_step <|> parse_continue <|> parse_quit <|> parse_blist
@@ -202,6 +212,21 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
     | BAdd l ->
         Format.fprintf out_formatter "Breakpoint added: %a\n%!" Loc.pp l;
         aux s (l :: bs) continue
+    | BAdds sn -> (
+        let fo =
+          List.find_opt
+            (fun (f : Func.t) ->
+              match f.nameo with Some x -> String.equal x sn | None -> false)
+            p.funcs
+        in
+        match fo with
+        | Some f ->
+            Format.fprintf out_formatter "Breakpoint added: %a\n%!" Loc.pp
+              f.entry;
+            aux s (f.entry :: bs) continue
+        | None ->
+            Format.fprintf out_formatter "%s not found\n%!" sn;
+            aux s bs continue)
     | BRemove n ->
         Format.fprintf out_formatter "Breakpoint removed: %a\n%!"
           (Format.pp_print_option Loc.pp)
