@@ -4,7 +4,8 @@ open Common
 let _ = Random.self_init ()
 
 let create_server_socket ?(default_port = 0) () =
-  let fd = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+  let fd = Unix.socket ~cloexec:true Unix.PF_INET Unix.SOCK_STREAM 0 in
+  Unix.setsockopt fd SO_REUSEADDR true;
   let port = default_port in
   let _ = Unix.bind fd (Unix.ADDR_INET (Unix.inet_addr_loopback, port)) in
   let _ = Unix.listen fd 1 in
@@ -14,6 +15,38 @@ let create_server_socket ?(default_port = 0) () =
     | _ -> [%log fatal "impossible"]
   in
   (fd, port)
+
+let rec accept_non_intr s =
+  try Unix.accept ~cloexec:true s
+  with Unix.Unix_error (EINTR, _, _) -> accept_non_intr s
+
+let rec waitpid_non_intr pid =
+  try Unix.waitpid [] pid
+  with Unix.Unix_error (EINTR, _, _) -> waitpid_non_intr pid
+
+let establish_server server_fun sock =
+  Unix.listen sock 5;
+  while true do
+    let s, _caller = accept_non_intr sock in
+    (* The "double fork" trick, the process which calls server_fun will not
+       leave a zombie process *)
+    match Unix.fork () with
+    | 0 ->
+        if Unix.fork () <> 0 then Unix._exit 0;
+        (* The child exits, the grandchild works *)
+        Unix.close sock;
+        let inchan = Unix.in_channel_of_descr s in
+        let outchan = Unix.out_channel_of_descr s in
+        server_fun inchan outchan;
+        (* Do not close inchan nor outchan, as the server_fun could
+           have done it already, and we are about to exit anyway
+           (PR#3794) *)
+        exit 0
+    | id ->
+        Unix.close s;
+        ignore (waitpid_non_intr id)
+    (* Reclaim the child *)
+  done
 
 module SpaceInfo = struct
   type t = { unique : int32; register : int32; const : int32; ram : int32 }

@@ -43,9 +43,16 @@ let parse_hex =
        | _ -> false)
   >>| fun s -> Int64.of_string ("0x" ^ s)
 
+type sign_t = Plus | Minus
+
+let do_sign (v : sign_t) (n : Int.t) : Int.t =
+  match v with Plus -> n | Minus -> -n
+
 let parse_num =
-  Angstrom.take_while1 (function '0' .. '9' -> true | _ -> false)
-  >>| int_of_string
+  Angstrom.option Plus (Angstrom.char '-' *> Angstrom.return Minus)
+  >>= fun sg ->
+  Angstrom.take_while1 (function '0' .. '9' -> true | _ -> false) >>| fun s ->
+  do_sign sg (int_of_string s)
 
 let parse_identifier : String.t Angstrom.t =
   Angstrom.take_while1 (function
@@ -64,7 +71,12 @@ let parse_stack : SPVal.t Angstrom.t =
   parse_num >>= fun n ->
   Angstrom.char ']' *> Angstrom.option 0 (Angstrom.char '+' *> parse_num)
   >>| fun off ->
-  { SPVal.func = lc; timestamp = Int64.of_int n; offset = Int64.of_int off }
+  {
+    SPVal.func = lc;
+    timestamp = Int64.of_int n;
+    multiplier = 1L;
+    offset = Int64.of_int off;
+  }
 (* [%a@%Ld]+%Ld *)
 
 let parse_val : Value.t Angstrom.t =
@@ -114,7 +126,8 @@ let parse_badd =
      <|> (parse_identifier >>| fun l -> BAdds l))
 
 let parse_bremove =
-  lex (Angstrom.string "d " <|> Angstrom.string "delete ") *> parse_num >>| fun n -> BRemove n
+  lex (Angstrom.string "d " <|> Angstrom.string "delete ") *> parse_num
+  >>| fun n -> BRemove n
 
 let parse_cmd : repl_cmd Angstrom.t =
   parse_show <|> parse_step <|> parse_continue <|> parse_quit <|> parse_blist
@@ -134,7 +147,14 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
     in
     match cmd with
     | Quit -> ()
-    | Continue -> aux s bs true
+    | Continue -> (
+        match L3.Interp.step p s with
+        | Ok s -> aux s bs true
+        | Error NormalStop ->
+            Format.fprintf out_formatter "Program terminated\n%!"
+        | Error (FailStop e) ->
+            Format.fprintf out_formatter "Error: %s\n%!" e;
+            aux s bs false)
     | Step -> (
         if continue && List.mem (Cont.get_loc s.cont) bs then (
           Format.fprintf out_formatter "Breakpoint %a\n%!" Loc.pp
@@ -147,7 +167,7 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
               Format.fprintf out_formatter "Program terminated\n%!"
           | Error (FailStop e) ->
               Format.fprintf out_formatter "Error: %s\n%!" e;
-              aux s bs continue)
+              aux s bs false)
     | Show ShowReg ->
         Format.fprintf out_formatter "Reg:\n%a\n%!" RegFile.pp s.sto.regs;
         aux s bs continue

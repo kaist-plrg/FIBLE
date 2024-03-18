@@ -64,7 +64,12 @@ let step_call_internal (s : State.t) (p : Prog.t)
     RegFile.add_reg regs
       { id = RegId.Register p.sp_num; offset = 0l; width = 8l }
       (Value.sp
-         { func = calln; timestamp = TimeStamp.succ s.timestamp; offset = 0L })
+         {
+           func = calln;
+           timestamp = TimeStamp.succ s.timestamp;
+           multiplier = 1L;
+           offset = 0L;
+         })
   in
   let sto =
     {

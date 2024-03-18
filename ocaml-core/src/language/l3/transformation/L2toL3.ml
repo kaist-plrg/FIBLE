@@ -155,6 +155,7 @@ let translate_prog_from_rea (p1 : L2.Prog.t)
   let funcs = List.map (fun (f, a) -> translate_func f a fMap) signature_list in
   {
     sp_num = p1.sp_num;
+    fp_num = p1.fp_num;
     funcs;
     rom = p1.rom;
     rspec = p1.rspec;

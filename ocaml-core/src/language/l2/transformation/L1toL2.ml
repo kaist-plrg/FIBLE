@@ -42,7 +42,12 @@ let translate_jmp (j : L1.Jmp.t_full)
               {
                 reserved_stack =
                   (match x with
-                  | Some (Fin s) -> L1.AccessD.FinSet.max_elt s
+                  | Some (Fin s) ->
+                      (Int64.mul
+                         (Int64.div
+                            (Int64.add (L1.AccessD.FinSet.max_elt s) 7L)
+                            8L))
+                        8L
                   | _ -> 0L);
                 sp_diff = 8L;
               };
@@ -115,11 +120,12 @@ let translate_func (f : L1.Func.t)
     boundaries = f.boundaries;
     sp_diff = 8L;
     sp_boundary =
-      (* MUST FIX: TODO *)
       (match a.accesses with
       | Fin s ->
           ( L1.AccessD.FinSet.min_elt s,
-            Int64.add (L1.AccessD.FinSet.max_elt s) 512L )
+            (Int64.mul
+               (Int64.div (Int64.add (L1.AccessD.FinSet.max_elt s) 7L) 8L))
+              8L )
       | _ ->
           [%log
             raise
@@ -127,15 +133,30 @@ let translate_func (f : L1.Func.t)
                  "SPFA.Immutable.analyze returned non-constant sp boundary")]);
   }
 
-let translate_prog (p1 : L1.Prog.t) (sp_num : Int32.t) : Prog.t =
+let translate_prog (p1 : L1.Prog.t) (sp_num : Int32.t) (fp_num : Int32.t) :
+    Prog.t =
   let ares =
-    List.map (fun f -> (f, L1.SPFA.Immutable.analyze f sp_num)) p1.funcs
+    List.map (fun f -> (f, L1.SPFA.Immutable.analyze f sp_num fp_num)) p1.funcs
   in
   let funcs = List.map (fun (f, r) -> translate_func f ares r) ares in
-  { sp_num; funcs; rom = p1.rom; rspec = p1.rspec; externs = p1.externs }
+  {
+    sp_num;
+    fp_num;
+    funcs;
+    rom = p1.rom;
+    rspec = p1.rspec;
+    externs = p1.externs;
+  }
 
 let translate_prog_from_spfa (p1 : L1.Prog.t)
-    (spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list) (sp_num : Int32.t) :
-    Prog.t =
+    (spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list) (sp_num : Int32.t)
+    (fp_num : Int32.t) : Prog.t =
   let funcs = List.map (fun (f, a) -> translate_func f spfa_res a) spfa_res in
-  { sp_num; funcs; rom = p1.rom; rspec = p1.rspec; externs = p1.externs }
+  {
+    sp_num;
+    fp_num;
+    funcs;
+    rom = p1.rom;
+    rspec = p1.rspec;
+    externs = p1.externs;
+  }

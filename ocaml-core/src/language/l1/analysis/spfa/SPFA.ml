@@ -15,7 +15,7 @@ module Immutable = struct
         let make x y = { accesses = x; states = y }
       end)
 
-  let init (f : Func.t) (sp_num : Int32.t) : t =
+  let init (f : Func.t) (sp_num : Int32.t) (fp_num : Int32.t) : t =
     {
       states =
         {
@@ -34,7 +34,7 @@ module Immutable = struct
     }
 
   let post_single_block (f : Func.t) (bb : Block.t) (ca : t) (sp_num : Int32.t)
-      : t * bool =
+      (fp_num : Int32.t) : t * bool =
     let preds = Func.get_preds f bb in
     let na =
       List.filter_map
@@ -65,7 +65,7 @@ module Immutable = struct
         post_state = ca.states.post_state;
       }
     in
-    let naccess, np = AbsState.post_single_block bb na_pre sp_num in
+    let naccess, np = AbsState.post_single_block bb na_pre sp_num fp_num in
     match FSAbsD.AbsLocMapD.find_opt bb.loc ca.states.post_state with
     | Some a ->
         if AbsState.le a np then
@@ -83,29 +83,29 @@ module Immutable = struct
           },
           true )
 
-  let post_worklist (f : Func.t) (c : t) (l : Loc.t) (sp_num : Int32.t) :
-      t * Loc.t List.t =
+  let post_worklist (f : Func.t) (c : t) (l : Loc.t) (sp_num : Int32.t)
+      (fp_num : Int32.t) : t * Loc.t List.t =
     let bb =
       (Func.get_bb f l |> Option.map Fun.const
       |> Option.value ~default:(fun () ->
              [%log raise (Invalid_argument "option is None")]))
         ()
     in
-    let na, propagated = post_single_block f bb c sp_num in
+    let na, propagated = post_single_block f bb c sp_num fp_num in
     if propagated then (na, Block.succ bb) else (na, [])
 
   let rec a_fixpoint_worklist (f : Func.t) (c : t) (ls : Loc.t List.t)
-      (sp_num : Int32.t) : t =
+      (sp_num : Int32.t) (fp_num : Int32.t) : t =
     match ls with
     | [] -> c
     | l :: ls ->
-        let nc, newLs = post_worklist f c l sp_num in
+        let nc, newLs = post_worklist f c l sp_num fp_num in
         a_fixpoint_worklist f nc
           (ls @ List.filter (fun l -> not (List.mem l ls)) newLs)
-          sp_num
+          sp_num fp_num
 
-  let analyze (f : Func.t) (sp_num : Int32.t) : t =
-    a_fixpoint_worklist f (init f sp_num) (f.entry :: []) sp_num
+  let analyze (f : Func.t) (sp_num : Int32.t) (fp_num : Int32.t) : t =
+    a_fixpoint_worklist f (init f sp_num fp_num) (f.entry :: []) sp_num fp_num
   (*
   let rec a_fixpoint_worklist_prog (p : Prog.t) (c : t) (ls : Loc.t List.t)
     (sp_num : int64) : t =

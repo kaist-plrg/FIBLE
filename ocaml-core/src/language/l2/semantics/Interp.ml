@@ -58,6 +58,7 @@ let step_call (p : Prog.t) (copydepth : Int64.t) (spdiff : Int64.t)
                          {
                            SPVal.func = calln;
                            timestamp = Int64Ext.succ s.timestamp;
+                           multiplier = 1L;
                            offset = 0L;
                          }));
                local =

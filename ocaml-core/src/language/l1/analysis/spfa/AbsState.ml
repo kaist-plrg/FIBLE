@@ -56,27 +56,36 @@ let post_single_instr (i : Inst.t) (c : t) : AccessD.t * t =
       ( AccessD.log_access (VarNode.width value) pointer,
         process_store c pointer value' )
 
-let post_single_jmp (i : Jmp.t) (c : t) (sp_num : Int32.t) : t =
+let post_single_jmp (i : Jmp.t) (c : t) (sp_num : Int32.t) (fp_num : Int32.t) :
+    AccessD.t * t =
   match i with
   | JC _ ->
-      {
-        c with
-        regs =
-          ARegFile.add c.regs (RegId.Register sp_num)
-            (AbsVal.eval_bop Bint_add
-               (ARegFile.get c.regs (RegId.Register sp_num))
-               (AbsVal.of_const (NumericValue.of_int64 8L 8l))
-               8l);
-      }
-  | _ -> c
+      ( AccessD.bottom,
+        {
+          c with
+          regs =
+            ( ARegFile.TopHoleMap RegIdMap.empty |> fun r ->
+              ARegFile.add r (RegId.Register sp_num)
+                (AbsVal.eval_bop Bint_add
+                   (ARegFile.get c.regs (RegId.Register sp_num))
+                   (AbsVal.of_const (NumericValue.of_int64 8L 8l))
+                   8l)
+              |> fun r ->
+              ARegFile.add r (RegId.Register fp_num)
+                (ARegFile.get c.regs (RegId.Register fp_num)) );
+        } )
+  | _ -> (AccessD.bottom, c)
 
-let post_single_block (b : Block.t) (c : t) (sp_num : Int32.t) : AccessD.t * t =
+let post_single_block (b : Block.t) (c : t) (sp_num : Int32.t)
+    (fp_num : Int32.t) : AccessD.t * t =
   Block.fold_left
     (fun (acc, c) i ->
       let nacc, c = post_single_instr i.ins c in
       (AccessD.join acc nacc, c))
     (AccessD.bottom, c) b
-  |> fun (ac, c) -> (ac, post_single_jmp b.jmp.jmp c sp_num)
+  |> fun (ac, c) ->
+  let nacc, c = post_single_jmp b.jmp.jmp c sp_num fp_num in
+  (AccessD.join ac nacc, c)
 
 let widen = join
 let le (a : t) (b : t) = AStack.le a.stack b.stack && ARegFile.le a.regs b.regs

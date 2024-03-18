@@ -181,6 +181,7 @@ struct
             {
               func = HighCursor.get_func_loc curr;
               timestamp = HighCursor.get_timestamp curr;
+              multiplier = 1L;
               offset = offset.value;
             }
         in
@@ -193,6 +194,7 @@ struct
             {
               func = HighCursor.get_func_loc curr;
               timestamp = HighCursor.get_timestamp curr;
+              multiplier = 1L;
               offset = offset.value;
             }
         in

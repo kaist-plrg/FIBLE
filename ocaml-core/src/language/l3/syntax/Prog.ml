@@ -3,6 +3,7 @@ open Common
 
 type t = {
   sp_num : Int32.t;
+  fp_num : Int32.t;
   funcs : Func.t list;
   rom : DMem.t;
   rspec : Int32.t Int32Map.t;

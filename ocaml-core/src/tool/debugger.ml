@@ -26,28 +26,21 @@ let main () =
     usage_msg;
   if !ifile = "" then raise (Arg.Bad "No input file")
   else
-    let sfd, port = Util.create_server_socket ~default_port:!port () in
-    Format.printf "Listening on port %d\n%!" port;
-
-    let x, _, _ = Unix.select [ sfd ] [] [] 60.0 in
-    if x = [] then [%log fatal "No connection"] else ();
-    let fd, _ = Unix.accept sfd in
-    Format.printf "Accepted connection\n%!";
-
-    let in_chan, out_chan =
-      (Unix.in_channel_of_descr fd, Unix.out_channel_of_descr fd)
-    in
     let data = Artifact.Loader.load !ifile in
-    let res =
-      match data with
-      | Artifact.Data.L1 l1 -> debug_l1 (in_chan, out_chan) l1
-      | Artifact.Data.L2 l2 -> debug_l2 (in_chan, out_chan) l2
-      | Artifact.Data.L3 l3 -> debug_l3 (in_chan, out_chan) l3
+    let sfd, port = Util.create_server_socket ~default_port:!port () in
+    Format.printf "Server on port %d\n%!" port;
+
+    let server_fun in_chan out_chan =
+      let res =
+        match data with
+        | Artifact.Data.L1 l1 -> debug_l1 (in_chan, out_chan) l1
+        | Artifact.Data.L2 l2 -> debug_l2 (in_chan, out_chan) l2
+        | Artifact.Data.L3 l3 -> debug_l3 (in_chan, out_chan) l3
+      in
+      match res with
+      | Ok _ -> [%log info "Success"]
+      | Error e -> [%log error "Error: %s\n" e]
     in
-    (match res with
-    | Ok _ -> [%log info "Success"]
-    | Error e -> [%log error "Error: %s\n" e]);
-    Unix.close fd;
-    ()
+    Util.establish_server server_fun sfd
 
 let () = Global.run_main main

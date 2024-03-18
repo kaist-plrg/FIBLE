@@ -201,12 +201,13 @@ let main () =
         in
         [%log info "Total number of instructions: %d" cnt];
         let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
-          l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l))
+          l1.funcs
+          |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l 40l))
         in
         let c6 = Sys.time () in
         [%log info "SPFA time: %f" (c6 -. c5)];
         let l2 : L2.Prog.t =
-          L2.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
+          L2.L1toL2.translate_prog_from_spfa l1 spfa_res 32l 40l
         in
         let c7 = Sys.time () in
         [%log info "L2 translation time: %f" (c7 -. c6)];

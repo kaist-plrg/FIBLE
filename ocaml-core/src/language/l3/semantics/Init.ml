@@ -3,7 +3,9 @@ open Common
 open Sem
 
 let from_signature (p : Prog.t) (a : Addr.t) : State.t =
-  let init_sp = { SPVal.func = (a, 0); timestamp = 0L; offset = 0L } in
+  let init_sp =
+    { SPVal.func = (a, 0); timestamp = 0L; multiplier = 1L; offset = 0L }
+  in
   let f = Prog.get_func_opt p (a, 0) |> Option.get in
   let local =
     LocalMemory.add
