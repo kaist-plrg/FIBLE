@@ -89,8 +89,9 @@ let translate_block (p0 : ILIR.Prog.t) (fentry : Loc.t) (entry : Loc.t)
                 loc = entry;
                 body = List.rev (translate_stmt loc i :: acc);
                 jmp =
-                  translate_jmp p0 loc i (ILIR.Prog.fallthru p0 loc) jmps
-                    known_addrs;
+                  translate_jmp p0 loc i
+                    (ILIR.Prog.fallthru p0 loc)
+                    jmps known_addrs;
               }
         else
           {
@@ -128,7 +129,9 @@ let translate_prog (p0 : ILIR.Prog.t) (entries : Addr.t list) : Prog.t =
   let funcs =
     List.map
       (fun e ->
-        translate_func p0 None e (ILIR.Shallow_CFA.follow_flow p0 e) LocMap.empty)
+        translate_func p0 None e
+          (ILIR.Shallow_CFA.follow_flow p0 e)
+          LocMap.empty)
       entries
   in
   { funcs; rom = p0.rom; rspec = p0.rspec; externs = p0.externs }

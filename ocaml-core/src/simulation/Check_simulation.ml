@@ -2,42 +2,104 @@ open StdlibExt
 open Notation
 open Common
 
-let check_pc (s0 : Loc.t) (s1 : FGIR.Sem.Cont.t) (s2 : ASIR.Sem.Cont.t) :
-    (Unit.t, String.t) Result.t =
-  let s1_pc = match s1.remaining with [] -> s1.jmp.loc | s :: _ -> s.loc in
-  let s2_pc = match s2.remaining with [] -> s2.jmp.loc | s :: _ -> s.loc in
-  if Loc.compare s0 s1_pc = 0 && Loc.compare s1_pc s2_pc = 0 then Ok ()
-  else Error "PCs are not equal"
+let check_error (a1 : ('a, StopEvent.t) Result.t)
+    (a2 : ('b, StopEvent.t) Result.t) (a3 : ('c, StopEvent.t) Result.t) :
+    ('a * 'b * 'c, StopEvent.t) Result.t =
+  match (a1, a2, a3) with
+  | Ok a1, Ok a2, Ok a3 -> Ok (a1, a2, a3)
+  | Error _, Ok _, _ -> Error (FailStop "No backward sim (ASIR)")
+  | _, Error _, Ok _ -> Error (FailStop "No backward sim (IOIR)")
+  | _, _, Error _ -> Error NormalStop
 
-let check_simu_state (s0 : ILIR.Sem.State.t) (s1 : FGIR.Sem.State.t)
-    (s2 : ASIR.Sem.State.t) : (Unit.t, String.t) Result.t =
-  let* _ = check_pc s0.pc s1.cont s2.cont in
-  Ok ()
+let check_reg (r1 : RegId.t_full) (r2 : RegId.t_full) (r3 : RegId.t_full) :
+    (Unit.t, StopEvent.t) Result.t =
+  if RegId.compare r1.id r2.id = 0 && RegId.compare r2.id r3.id = 0 then
+    if
+      r1.width = r2.width && r2.width = r3.width && r1.offset = r2.offset
+      && r2.offset = r3.offset
+    then Ok ()
+    else Error (FailStop "Not same reg")
+  else Error (FailStop "Not same reg")
 
-let collect_errors (nl0 : (ILIR.Sem.State.t, StopEvent.t) Result.t)
-    (nl1 : (FGIR.Sem.State.t, StopEvent.t) Result.t)
-    (nl2 : (ASIR.Sem.State.t, StopEvent.t) Result.t) : String.t =
-  let l0_err = match nl0 with Ok _ -> "" | Error e -> "" in
-  let l1_err = match nl1 with Ok _ -> "" | Error e -> "" in
-  let l2_err = match nl2 with Ok _ -> "" | Error e -> "" in
-  String.concat "\n" [ "L0: " ^ l0_err; "L1: " ^ l1_err; "L2: " ^ l2_err ]
+let check_val (v1 : FGIR.Sem.Value.t) (v2 : ASIR.Sem.Value.t)
+    (v3 : IOIR.Sem.Value.t) : (Unit.t, StopEvent.t) Result.t =
+  match (v1, v2, v3) with
+  | v, Num v', Num v'' ->
+      if v = v' && v' = v'' then Ok ()
+      else
+        Error
+          (FailStop
+             (Format.asprintf "Not same val: %a %a %a" NumericValue.pp v
+                NumericValue.pp v' NumericValue.pp v''))
+  | _ -> Ok () (* TODO: check abstract values *)
 
-let run (rspec : Int32.t Int32Map.t) (l0 : ILIR.Prog.t) (l1 : FGIR.Prog.t)
-    (l2 : ASIR.Prog.t) (addr : Addr.t) : (Unit.t, String.t) Result.t =
-  failwith "todo"
-(*
-  let l0_state = ILIR.Init.from_signature l0 addr in
+let check_action (a1 : FGIR.Sem.Action.t) (a2 : ASIR.Sem.Action.t)
+    (a3 : IOIR.Sem.Action.t) : (Unit.t, StopEvent.t) Result.t =
+  match (a1, a2, a3) with
+  | ( ExternCall (name, values, args, ft),
+      ExternCall (name', values', args', ft'),
+      ExternCall (name'', values'', args'', ft'') ) ->
+      Ok ()
+  | ( StoreAction (Load (r, p, v), lo),
+      StoreAction (Load (r', p', v'), lo'),
+      StoreAction (Load (r'', p'', v''), lo'') ) ->
+      let* _ = check_reg r r' r'' in
+      let* _ = check_val p p' p'' in
+      let* _ = check_val v v' v'' in
+      Ok ()
+  | ( StoreAction (Store (p, v), lo),
+      StoreAction (Store (p', v'), lo'),
+      StoreAction (Store (p'', v''), lo'') ) ->
+      let* _ = check_val p p' p'' in
+      let* _ = check_val v v' v'' in
+      Ok ()
+  | ( StoreAction (Assign (r, v), lo),
+      StoreAction (Assign (r', v'), lo'),
+      StoreAction (Assign (r'', v''), lo'') ) ->
+      let* _ = check_reg r r' r'' in
+      let* _ = check_val v v' v'' in
+      Ok ()
+  | StoreAction (Nop, lo), StoreAction (Nop, lo'), StoreAction (Nop, lo'') ->
+      Ok ()
+  | Jmp l, Jmp l', Jmp l'' -> Ok ()
+  | Call sc, Call sc', Call sc'' -> Ok ()
+  | Ret sr, Ret sr', Ret sr'' -> Ok ()
+  | TailCall st, TailCall st', TailCall st'' -> Ok ()
+  | _ -> Error (FailStop "Not same action")
+
+let action_all a1 l1 l1_state a2 l2 l2_state a3 l3 l3_state =
+  match (a1, a2, a3) with
+  | FGIR.Sem.Action.ExternCall (name, _, args, _), _, _ -> (
+      match World.Environment.request_call_opt name args with
+      | Some (sides, retv) ->
+          ( FGIR.Interp.action_with_computed_extern l1 l1_state a1 sides retv,
+            ASIR.Interp.action_with_computed_extern l2 l2_state a2 sides retv,
+            IOIR.Interp.action_with_computed_extern l3 l3_state a3 sides retv )
+      | None ->
+          ( StopEvent.NormalStop |> Result.error,
+            StopEvent.NormalStop |> Result.error,
+            StopEvent.NormalStop |> Result.error ))
+  | _ ->
+      ( FGIR.Interp.action l1 l1_state a1,
+        ASIR.Interp.action l2 l2_state a2,
+        IOIR.Interp.action l3 l3_state a3 )
+
+let run (l1 : FGIR.Prog.t) (l2 : ASIR.Prog.t) (l3 : IOIR.Prog.t) (addr : Addr.t)
+    : (Unit.t, StopEvent.t) Result.t =
   let l1_state = FGIR.Init.from_signature l1 addr in
   let l2_state = ASIR.Init.from_signature l2 addr in
-  let rec aux (l0_state : ILIR.Sem.State.t) (l1_state : FGIR.Sem.State.t)
-      (l2_state : ASIR.Sem.State.t) : (Unit.t, String.t) Result.t =
-    let nl0 = ILIR.Interp.step l0 l0_state in
-    let nl1 = FGIR.Interp.step l1 l1_state in
-    let nl2 = ASIR.Interp.step l2 l2_state in
-    let* _ = check_simu_state l0_state l1_state l2_state in
-
-    match (nl0, nl1, nl2) with
-    | Ok l0_state, Ok l1_state, Ok l2_state -> aux l0_state l1_state l2_state
-    | _ -> Error (collect_errors nl0 nl1 nl2)
+  let l3_state = IOIR.Init.from_signature l3 addr in
+  let rec aux (l1_state : FGIR.Sem.State.t) (l2_state : ASIR.Sem.State.t)
+      (l3_state : IOIR.Sem.State.t) : (Unit.t, StopEvent.t) Result.t =
+    let a1 = FGIR.Interp.step l1 l1_state in
+    let a2 = ASIR.Interp.step l2 l2_state in
+    let a3 = IOIR.Interp.step l3 l3_state in
+    let* a1, a2, a3 = check_error a1 a2 a3 in
+    let* _ = check_action a1 a2 a3 in
+    let nl1, nl2, nl3 =
+      action_all a1 l1 l1_state a2 l2 l2_state a3 l3 l3_state
+    in
+    let* nl1, nl2, nl3 = check_error nl1 nl2 nl3 in
+    aux nl1 nl2 nl3
   in
-  aux l0_state l1_state l2_state*)
+  aux l1_state l2_state l3_state

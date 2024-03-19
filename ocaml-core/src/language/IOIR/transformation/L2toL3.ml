@@ -135,7 +135,8 @@ let translate_func (f : ASIR.Func.t) (a : RegId.t List.t * RegId.t List.t)
 
 let translate_prog_from_rea (p1 : ASIR.Prog.t)
     (rea_res : (ASIR.Func.t * ASIR.REA.astate) List.t) : Prog.t =
-  let signature_list : (ASIR.Func.t * (RegId.t List.t * RegId.t List.t)) List.t =
+  let signature_list : (ASIR.Func.t * (RegId.t List.t * RegId.t List.t)) List.t
+      =
     List.map
       (fun ((f, s) : ASIR.Func.t * ASIR.REA.astate) ->
         ( f,

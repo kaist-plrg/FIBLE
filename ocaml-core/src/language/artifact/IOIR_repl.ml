@@ -164,7 +164,8 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
           aux s bs false)
         else
           match
-            Result.bind (IOIR.Interp.step p s) (fun a -> IOIR.Interp.action p s a)
+            Result.bind (IOIR.Interp.step p s) (fun a ->
+                IOIR.Interp.action p s a)
           with
           | Ok s -> aux s bs continue
           | Error NormalStop ->

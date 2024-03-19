@@ -7,7 +7,9 @@ let translate_jmp (j : FGIR.Jmp.t_full)
     | JR v -> JR { attr = () }
     | JC { target = Cdirect { target; attr }; fallthrough } ->
         let x =
-          List.find_opt (fun ((f, _) : FGIR.Func.t * _) -> f.entry = target) alist
+          List.find_opt
+            (fun ((f, _) : FGIR.Func.t * _) -> f.entry = target)
+            alist
           |> Option.map (fun ((_, a) : _ * FGIR.SPFA.Immutable.t) -> a.accesses)
         in
         JC
@@ -32,7 +34,9 @@ let translate_jmp (j : FGIR.Jmp.t_full)
           }
     | JT { target = Cdirect { target; attr } } ->
         let x =
-          List.find_opt (fun ((f, _) : FGIR.Func.t * _) -> f.entry = target) alist
+          List.find_opt
+            (fun ((f, _) : FGIR.Func.t * _) -> f.entry = target)
+            alist
           |> Option.map (fun ((_, a) : _ * FGIR.SPFA.Immutable.t) -> a.accesses)
         in
         JT
@@ -111,8 +115,8 @@ let translate_block (b : FGIR.Block.t)
   }
 
 let translate_func (f : FGIR.Func.t)
-    (alist : (FGIR.Func.t * FGIR.SPFA.Immutable.t) List.t) (a : FGIR.SPFA.Immutable.t)
-    : Func.t =
+    (alist : (FGIR.Func.t * FGIR.SPFA.Immutable.t) List.t)
+    (a : FGIR.SPFA.Immutable.t) : Func.t =
   {
     nameo = f.nameo;
     entry = f.entry;
@@ -136,7 +140,9 @@ let translate_func (f : FGIR.Func.t)
 let translate_prog (p1 : FGIR.Prog.t) (sp_num : Int32.t) (fp_num : Int32.t) :
     Prog.t =
   let ares =
-    List.map (fun f -> (f, FGIR.SPFA.Immutable.analyze f sp_num fp_num)) p1.funcs
+    List.map
+      (fun f -> (f, FGIR.SPFA.Immutable.analyze f sp_num fp_num))
+      p1.funcs
   in
   let funcs = List.map (fun (f, r) -> translate_func f ares r) ares in
   {

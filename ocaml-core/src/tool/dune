@@ -87,5 +87,6 @@
   FGIR
   ASIR
   IOIR
+  artifact
   simulation)
  (modules sim_checker))

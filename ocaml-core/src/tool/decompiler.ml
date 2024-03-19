@@ -234,7 +234,8 @@ let main () =
           Artifact.Dumper.dump (Artifact.Data.L1 l1)
             (!dump_path ^ "/" ^ ifile_base ^ ".fgir_dump"))
         else ();
-        if !(dump_flag.basic_block) then FGIR.Prog.write_basic_block l1 !dump_path
+        if !(dump_flag.basic_block) then
+          FGIR.Prog.write_basic_block l1 !dump_path
         else ();
         if !(dump_flag.spfa) then dump_spfa spfa_res !dump_path else ();
         if !(dump_flag.l2) then (
