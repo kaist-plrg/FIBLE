@@ -20,6 +20,21 @@ end) (Value : sig
   val sp : SPVal.t -> t
   val pp : Format.formatter -> t -> unit
   val to_either : t -> (NumericValue.t, NonNumericValue.t) Either.t
+end) (Action : sig
+  type t
+
+  val of_assign : RegId.t_full -> Value.t -> t
+  val of_load : RegId.t_full -> Value.t -> Value.t -> t
+  val of_store : Value.t -> Value.t -> t
+  val nop : t
+
+  val to_either4 :
+    t ->
+    ( RegId.t_full * Value.t,
+      RegId.t_full * Value.t * Value.t,
+      Value.t * Value.t,
+      Unit.t )
+    Either4.t
 end) (HighCursor : sig
   type t
 
@@ -155,25 +170,25 @@ struct
         Value.eval_bop b lv rv outwidth
 
   let step_IA (s : t) ({ expr; output } : IAssignment.t) :
-      (t, String.t) Result.t =
+      (Action.t, String.t) Result.t =
     let* v = eval_assignment s expr output.width in
-    add_reg s output v |> Result.ok
+    Action.of_assign output v |> Result.ok
 
-  let step_ILS (s : t) (v : ILoadStore.t) : (t, String.t) Result.t =
+  let step_ILS (s : t) (v : ILoadStore.t) : (Action.t, String.t) Result.t =
     match v with
     | Load { pointer; output; _ } ->
         let* addrv = eval_vn s pointer in
         let* lv = load_mem s addrv output.width in
         [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-        add_reg s output lv |> Result.ok
+        Action.of_load output addrv lv |> Result.ok
     | Store { pointer; value; _ } ->
         let* addrv = eval_vn s pointer in
         let* sv = eval_vn s value in
         [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
-        store_mem s addrv sv
+        Action.of_store addrv sv |> Result.ok
 
   let step_ISLS (s : t) (v : ISLoadStore.t) (curr : HighCursor.t) :
-      (t, String.t) Result.t =
+      (Action.t, String.t) Result.t =
     match v with
     | Sload { offset; output } ->
         let addrv =
@@ -187,7 +202,7 @@ struct
         in
         let* lv = load_mem s addrv output.width in
         [%log debug "Loading %a from %a" Value.pp lv Value.pp addrv];
-        add_reg s output lv |> Result.ok
+        Action.of_load output addrv lv |> Result.ok
     | Sstore { offset; value } ->
         let addrv =
           Value.sp
@@ -200,9 +215,31 @@ struct
         in
         let* sv = eval_vn s value in
         [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
-        store_mem s addrv sv
+        Action.of_store addrv sv |> Result.ok
 
-  let step_IN (s : t) (_ : INop.t) : (t, String.t) Result.t = Ok s
+  let step_IN (s : t) (_ : INop.t) : (Action.t, String.t) Result.t =
+    Ok Action.nop
+
+  let action_assign (s : t) (r : RegId.t_full) (v : Value.t) :
+      (t, String.t) Result.t =
+    add_reg s r v |> Result.ok
+
+  let action_load (s : t) (r : RegId.t_full) (p : Value.t) (v : Value.t) :
+      (t, String.t) Result.t =
+    add_reg s r v |> Result.ok
+
+  let action_store (s : t) (p : Value.t) (v : Value.t) : (t, String.t) Result.t
+      =
+    store_mem s p v
+
+  let action_nop (s : t) : (t, String.t) Result.t = Ok s
+
+  let action (s : t) (a : Action.t) =
+    match Action.to_either4 a with
+    | First (r, v) -> action_assign s r v
+    | Second (r, p, v) -> action_load s r p v
+    | Third (p, v) -> action_store s p v
+    | Fourth () -> action_nop s
 
   let build_arg (s : t) (tagv : Interop.tag) (v : Value.t) :
       (Interop.t, String.t) Result.t =

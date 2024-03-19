@@ -72,8 +72,16 @@
   LocalMemoryF
   MemoryF
   ;; semantics-sto
+  StoreActionF
   LowStore
   HighStoreF
+  ;; semantics-action
+  SCallTargetF
+  SCallF
+  STailCallF
+  SRetF
+  LowActionF
+  HighActionF
   ;; semantics-state
   HighStateF
   StateStoreF

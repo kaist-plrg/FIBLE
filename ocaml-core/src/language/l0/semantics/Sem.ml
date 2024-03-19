@@ -1,5 +1,6 @@
 module Value = Common.NumericValue
 module Store = Common.LowStore
+module Action = Common.LowActionF.Make (Value) (Common.LowStore.Action)
 
 module State = struct
   open Common

@@ -39,6 +39,7 @@ let load_string (s : t) (addr : Addr.t) : (string, String.t) Result.t =
 
 let load_bytes (s : t) (addr : Addr.t) (length : Int32.t) :
     (String.t, String.t) Result.t =
+  if length > 10000l then [%log info "%ld" length];
   let rec aux (addr : Addr.t) (length : Int32.t) (acc : string) :
       (String.t, String.t) Result.t =
     if length = 0l then Ok acc

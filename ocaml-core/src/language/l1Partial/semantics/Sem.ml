@@ -1,9 +1,49 @@
 module Cont = Common.ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)
 module Value = Common.NumericValue
+module StoreAction = Common.StoreActionF.Make (Value)
 module TimeStamp = Common.UnitTimeStamp
 module Cursor = Common.CursorF.Make (TimeStamp)
 module RegFile = Common.RegFileF.Make (Value)
 module Store = Common.LowStore
+
+module SCallTarget =
+  Common.SCallTargetF.Make (CallTarget) (Value) (Store)
+    (struct
+      type t = Unit.t
+
+      let eval (s : Store.t) (c : CallTarget.Attr.t) : (t, String.t) Result.t =
+        () |> Result.ok
+    end)
+
+module SCall =
+  Common.SCallF.Make (CallTarget) (JCall) (Value) (Store) (SCallTarget)
+    (struct
+      type t = Unit.t
+
+      let eval (s : Store.t) (c : JCall.Attr.t) : (t, String.t) Result.t =
+        () |> Result.ok
+    end)
+
+module STailCall =
+  Common.STailCallF.Make (CallTarget) (JTailCall) (Value) (Store) (SCallTarget)
+    (struct
+      type t = Unit.t
+
+      let eval (s : Store.t) (c : JTailCall.Attr.t) : (t, String.t) Result.t =
+        () |> Result.ok
+    end)
+
+module SRet =
+  Common.SRetF.Make (JRet) (Value) (Store)
+    (struct
+      type t = Value.t
+
+      let eval (s : Store.t) (c : JRet.Attr.t) : (t, String.t) Result.t =
+        Store.eval_vn s c
+    end)
+
+module Action =
+  Common.HighActionF.Make (Value) (StoreAction) (SCall) (STailCall) (SRet)
 
 module Stack = struct
   open Common
@@ -23,9 +63,15 @@ module Stack = struct
 end
 
 module State =
-  Common.HighStateF.Make (Func) (Prog) (CallTarget) (JCall) (JRet) (TimeStamp)
+  Common.HighStateF.Make (Func) (Prog) (CallTarget) (JCall) (JTailCall) (JRet)
+    (TimeStamp)
     (Value)
     (Store)
+    (SCallTarget)
+    (SCall)
+    (STailCall)
+    (SRet)
+    (Action)
     (Cont)
     (Cursor)
     (Stack)

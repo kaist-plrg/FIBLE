@@ -1,6 +1,8 @@
+open StdlibExt.Notation
 module NonNumericValue = NonNumericValue
 module Cont = Common.ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)
 module Value = Common.ValueF.Make (NonNumericValue)
+module StoreAction = Common.StoreActionF.Make (Value)
 module TimeStamp = Common.Int64TimeStamp
 module Cursor = Common.CursorF.Make (TimeStamp)
 module RegFile = Common.RegFileF.Make (Value)
@@ -9,8 +11,78 @@ module LocalMemory = Common.LocalMemoryF.Make (Value) (Frame)
 module Memory = Common.MemoryF.Make (Value)
 
 module Store =
-  Common.HighStoreF.Make (Prog) (Value) (Cursor) (RegFile) (Memory) (Frame)
+  Common.HighStoreF.Make (Prog) (Value) (StoreAction) (Cursor) (RegFile)
+    (Memory)
+    (Frame)
     (LocalMemory)
+
+module SCallTarget_Attr = struct
+  type t = { outputs : Common.RegId.t List.t; inputs : Value.t List.t }
+
+  let eval (s : Store.t) (c : CallTarget.Attr.t) : (t, String.t) Result.t =
+    let* inputs =
+      List.fold_right
+        (fun vn lst ->
+          let* v = Store.eval_vn s vn in
+          Result.map (fun lst -> v :: lst) lst)
+        c.inputs (Ok [])
+    in
+    { outputs = c.outputs; inputs } |> Result.ok
+end
+
+module SCallTarget =
+  Common.SCallTargetF.Make (CallTarget) (Value) (Store) (SCallTarget_Attr)
+
+module SCall =
+  Common.SCallF.Make (CallTarget) (JCall) (Value) (Store) (SCallTarget)
+    (struct
+      type t = JCall.Attr.t
+
+      let eval (s : Store.t) (c : JCall.Attr.t) : (t, String.t) Result.t =
+        c |> Result.ok
+    end)
+
+module STailCall_Attr = struct
+  type t = {
+    reserved_stack : Int64.t;
+    sp_diff : Int64.t;
+    returns : Value.t List.t;
+  }
+
+  let eval (s : Store.t) (c : JTailCall.Attr.t) : (t, String.t) Result.t =
+    let* returns =
+      List.fold_right
+        (fun vn lst ->
+          let* v = Store.eval_vn s vn in
+          Result.map (fun lst -> v :: lst) lst)
+        c.returns (Ok [])
+    in
+    { reserved_stack = c.reserved_stack; sp_diff = c.sp_diff; returns }
+    |> Result.ok
+end
+
+module STailCall =
+  Common.STailCallF.Make (CallTarget) (JTailCall) (Value) (Store) (SCallTarget)
+    (STailCall_Attr)
+
+module SRet =
+  Common.SRetF.Make (JRet) (Value) (Store)
+    (struct
+      type t = Value.t List.t
+
+      let eval (s : Store.t) (c : JRet.Attr.t) : (t, String.t) Result.t =
+        let* returns =
+          List.fold_right
+            (fun vn lst ->
+              let* v = Store.eval_vn s vn in
+              Result.map (fun lst -> v :: lst) lst)
+            c (Ok [])
+        in
+        returns |> Result.ok
+    end)
+
+module Action =
+  Common.HighActionF.Make (Value) (StoreAction) (SCall) (STailCall) (SRet)
 
 module Stack = struct
   open Common
@@ -45,9 +117,15 @@ module Stack = struct
 end
 
 module State =
-  Common.HighStateF.Make (Func) (Prog) (CallTarget) (JCall) (JRet) (TimeStamp)
+  Common.HighStateF.Make (Func) (Prog) (CallTarget) (JCall) (JTailCall) (JRet)
+    (TimeStamp)
     (Value)
     (Store)
+    (SCallTarget)
+    (SCall)
+    (STailCall)
+    (SRet)
+    (Action)
     (Cont)
     (Cursor)
     (Stack)

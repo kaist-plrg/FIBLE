@@ -32,12 +32,12 @@ module Inner = struct
     | JR r -> JRet.is_ret r
     | JswitchStop _ -> false
 
-  let get_call_target (j : t) : Loc.t option =
+  let resolve_calltarget_opt (j : t) : Loc.t option =
     match j with
-    | JI i -> JIntra.get_call_target i
-    | JC c -> JCall.get_call_target c
-    | JT t -> JTailCall.get_call_target t
-    | JR r -> JRet.get_call_target r
+    | JI i -> JIntra.resolve_calltarget_opt i
+    | JC c -> JCall.resolve_calltarget_opt c
+    | JT t -> JTailCall.resolve_calltarget_opt t
+    | JR r -> JRet.resolve_calltarget_opt r
     | JswitchStop _ -> None
 end
 

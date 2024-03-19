@@ -148,7 +148,9 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
     match cmd with
     | Quit -> ()
     | Continue -> (
-        match L3.Interp.step p s with
+        match
+          Result.bind (L3.Interp.step p s) (fun a -> L3.Interp.action p s a)
+        with
         | Ok s -> aux s bs true
         | Error NormalStop ->
             Format.fprintf out_formatter "Program terminated\n%!"
@@ -161,7 +163,9 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
             (Cont.get_loc s.cont);
           aux s bs false)
         else
-          match L3.Interp.step p s with
+          match
+            Result.bind (L3.Interp.step p s) (fun a -> L3.Interp.action p s a)
+          with
           | Ok s -> aux s bs continue
           | Error NormalStop ->
               Format.fprintf out_formatter "Program terminated\n%!"

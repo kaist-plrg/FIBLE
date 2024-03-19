@@ -1,7 +1,8 @@
 open StdlibExt
 open Notation
 module Value = NumericValue
-module RegFile = RegFileF.Make (NumericValue)
+module Action = StoreActionF.Make (Value)
+module RegFile = RegFileF.Make (Value)
 module Memory = DMemCombinedMemory
 
 type t = { regs : RegFile.t; mem : Memory.t }
@@ -67,25 +68,45 @@ let eval_assignment (s : t) (a : Assignable.t) (outwidth : Int32.t) :
       let* rv = eval_vn s rv in
       NumericBop.eval b lv rv outwidth
 
-let step_IA (s : t) ({ expr; output } : IAssignment.t) : (t, String.t) Result.t
-    =
+let step_IA (s : t) ({ expr; output } : IAssignment.t) :
+    (Action.t, String.t) Result.t =
   let* v = eval_assignment s expr output.width in
-  Ok { s with regs = RegFile.add_reg s.regs output v }
+  Ok (Action.Assign (output, v))
 
-let step_ILS (s : t) (v : ILoadStore.t) : (t, String.t) Result.t =
+let step_ILS (s : t) (v : ILoadStore.t) : (Action.t, String.t) Result.t =
   match v with
   | Load { pointer; output } ->
       let* addr = eval_vn s pointer in
       let* v = load_mem s addr output.width in
       [%log debug "Loading %a from %a" Value.pp v Value.pp addr];
-      Ok { s with regs = RegFile.add_reg s.regs output v }
+      Ok (Action.Load (output, addr, v))
   | Store { pointer; value } ->
       let* addr = eval_vn s pointer in
       let* v = eval_vn s value in
       [%log debug "Storing %a at %a" Value.pp v Value.pp addr];
-      Ok { s with mem = Memory.store_mem s.mem (Value.to_addr addr) v }
+      Ok (Action.Store (addr, v))
 
-let step_IN (s : t) (_ : INop.t) : (t, String.t) Result.t = Ok s
+let step_IN (s : t) (_ : INop.t) : (Action.t, String.t) Result.t = Ok Action.Nop
+
+let action_assign (s : t) (r : RegId.t_full) (v : Value.t) :
+    (t, String.t) Result.t =
+  Ok { s with regs = RegFile.add_reg s.regs r v }
+
+let action_load (s : t) (r : RegId.t_full) (p : Value.t) (v : Value.t) :
+    (t, String.t) Result.t =
+  Ok { s with regs = RegFile.add_reg s.regs r v }
+
+let action_store (s : t) (p : Value.t) (v : Value.t) : (t, String.t) Result.t =
+  Ok { s with mem = Memory.store_mem s.mem (Value.to_addr p) v }
+
+let action_nop (s : t) : (t, String.t) Result.t = Ok s
+
+let action (s : t) (a : Action.t) =
+  match a with
+  | Assign (r, v) -> action_assign s r v
+  | Load (r, p, v) -> action_load s r p v
+  | Store (p, v) -> action_store s p v
+  | Nop -> action_nop s
 
 let build_arg (s : t) (tagv : Interop.tag) (v : Value.t) :
     (Interop.t, String.t) Result.t =

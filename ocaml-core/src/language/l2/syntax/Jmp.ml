@@ -24,12 +24,12 @@ module Inner = struct
     | JT j -> JTailCall.is_ret j
     | JR j -> JRet.is_ret j
 
-  let get_call_target (j : t) : Loc.t option =
+  let resolve_calltarget_opt (j : t) : Loc.t option =
     match j with
-    | JI j -> JIntra.get_call_target j
-    | JC j -> JCall.get_call_target j
-    | JT j -> JTailCall.get_call_target j
-    | JR j -> JRet.get_call_target j
+    | JI j -> JIntra.resolve_calltarget_opt j
+    | JC j -> JCall.resolve_calltarget_opt j
+    | JT j -> JTailCall.resolve_calltarget_opt j
+    | JR j -> JRet.resolve_calltarget_opt j
 end
 
 include Inner

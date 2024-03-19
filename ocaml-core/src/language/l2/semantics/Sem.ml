@@ -1,6 +1,7 @@
 module NonNumericValue = NonNumericValue
 module Cont = Common.ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)
 module Value = Common.ValueF.Make (NonNumericValue)
+module StoreAction = Common.StoreActionF.Make (Value)
 module TimeStamp = Common.Int64TimeStamp
 module Cursor = Common.CursorF.Make (TimeStamp)
 module RegFile = Common.RegFileF.Make (Value)
@@ -9,8 +10,49 @@ module LocalMemory = Common.LocalMemoryF.Make (Value) (Frame)
 module Memory = Common.MemoryF.Make (Value)
 
 module Store =
-  Common.HighStoreF.Make (Prog) (Value) (Cursor) (RegFile) (Memory) (Frame)
+  Common.HighStoreF.Make (Prog) (Value) (StoreAction) (Cursor) (RegFile)
+    (Memory)
+    (Frame)
     (LocalMemory)
+
+module SCallTarget =
+  Common.SCallTargetF.Make (CallTarget) (Value) (Store)
+    (struct
+      type t = Unit.t
+
+      let eval (s : Store.t) (c : CallTarget.Attr.t) : (t, String.t) Result.t =
+        () |> Result.ok
+    end)
+
+module SCall =
+  Common.SCallF.Make (CallTarget) (JCall) (Value) (Store) (SCallTarget)
+    (struct
+      type t = JCall.Attr.t
+
+      let eval (s : Store.t) (c : JCall.Attr.t) : (t, String.t) Result.t =
+        c |> Result.ok
+    end)
+
+module STailCall =
+  Common.STailCallF.Make (CallTarget) (JTailCall) (Value) (Store) (SCallTarget)
+    (struct
+      type t = JTailCall.Attr.t
+
+      let eval (s : Store.t) (c : JTailCall.Attr.t) : (t, String.t) Result.t =
+        c |> Result.ok
+    end)
+
+module SRet =
+  Common.SRetF.Make (JRet) (Value) (Store)
+    (struct
+      type t = JRet.Attr.t
+
+      let eval (s : Store.t) (c : JRet.Attr.t) : (t, String.t) Result.t =
+        c |> Result.ok
+    end)
+
+module Action =
+  Common.HighActionF.Make (Value) (StoreAction) (SCall) (STailCall) (SRet)
 
 module Stack = struct
   open Common
@@ -35,9 +77,15 @@ module Stack = struct
 end
 
 module State =
-  Common.HighStateF.Make (Func) (Prog) (CallTarget) (JCall) (JRet) (TimeStamp)
+  Common.HighStateF.Make (Func) (Prog) (CallTarget) (JCall) (JTailCall) (JRet)
+    (TimeStamp)
     (Value)
     (Store)
+    (SCallTarget)
+    (SCall)
+    (STailCall)
+    (SRet)
+    (Action)
     (Cont)
     (Cursor)
     (Stack)

@@ -3,83 +3,90 @@ open Notation
 open Common
 open Sem
 
-let ( let* ) = Result.bind
+let step_call_internal (s : State.t) (p : Prog.t)
+    ({ target = { target = calln; attr }; attr = (); fallthrough } : SCall.t) :
+    (Store.t * Stack.elem_t, StopEvent.t) Result.t =
+  let* currf = State.get_current_function s p |> StopEvent.of_str_res in
+  let* f = State.get_func_from p calln |> StopEvent.of_str_res in
 
-let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) :
-    (Store.t, String.t) Result.t =
+  (* TODO: think ind copydepth
+     let* _ =
+       if snd f.sp_boundary <= copydepth then Ok ()
+       else Error "jcall_ind: copydepth not match"
+     in
+  *)
+  (s.sto, (s.cursor, fallthrough)) |> Result.ok
+
+let step_ret (s : State.t) (p : Prog.t) ({ attr } : SRet.t) (calln, retn') :
+    (Store.t, StopEvent.t) Result.t =
+  if Loc.compare (Value.to_loc attr) retn' != 0 then
+    StopEvent.FailStop "Retaddr not matched" |> Result.error
+  else Ok s.sto
+
+let action_JC = State.mk_action_JC step_call_internal
+let action_JR = State.mk_action_JR step_ret
+
+let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (curr : Cursor.t) :
+    (StoreAction.t, String.t) Result.t =
   match ins with
   | IA i -> Store.step_IA s i
   | ILS i -> Store.step_ILS s i
   | IN i -> Store.step_IN s i
 
-let step_call (p : Prog.t) (calln : Loc.t) (retn : Loc.t) (s : State.t) :
-    (State.t, String.t) Result.t =
-  match AddrMap.find_opt (Loc.to_addr calln) p.externs with
-  | None ->
-      let* ncont = Cont.of_func_entry_loc p calln in
-      let ncursor : Cursor.t =
-        { func = calln; tick = Common.UnitTimeStamp.succ s.timestamp }
-      in
-      Ok
-        {
-          s with
-          cont = ncont;
-          stack = (s.cursor, retn) :: s.stack;
-          cursor = ncursor;
-        }
-  | Some name ->
-      [%log debug "Calling %s" name];
-      let retpointer =
-        Store.get_reg s.sto { id = RegId.Register 32l; offset = 0l; width = 8l }
-      in
-      let* ncont = Cont.of_loc p (Cursor.get_func_loc s.cursor) retn in
-      Ok
-        {
-          s with
-          sto =
-            Store.add_reg s.sto
-              { id = RegId.Register 32l; offset = 0l; width = 8l }
-              (Value.of_int64 (Int64.add (Value.value_64 retpointer) 8L) 8l);
-          cont = ncont;
-          stack = s.stack;
-        }
-
-let step_jmp (p : Prog.t) (jmp : Jmp.t_full) (s : State.t) :
-    (State.t, String.t) Result.t =
-  match jmp.jmp with
+let step_jmp (p : Prog.t) (jmp : Jmp.t) (s : State.t) :
+    (Action.t, String.t) Result.t =
+  match jmp with
   | JI ji -> State.step_JI s p ji
-  | JC { target = Cdirect { target; _ }; fallthrough } ->
-      step_call p target fallthrough s
-  | JC { target = Cind { target; _ }; fallthrough } ->
-      let* calln = Store.eval_vn s.sto target in
-      step_call p (Value.to_loc calln) fallthrough s
-  | JR { attr = retvn } -> (
-      let* retn = Store.eval_vn s.sto retvn in
-      match s.stack with
-      | [] -> Error (Format.asprintf "ret to %a: Empty stack" Value.pp retn)
-      | (calln, retn') :: stack' ->
-          if Loc.compare (Value.to_loc retn) retn' = 0 then
-            let* ncont =
-              Cont.of_loc p (Cursor.get_func_loc calln) (Value.to_loc retn)
-            in
-            Ok { s with cont = ncont; stack = stack'; cursor = calln }
-          else
-            Error
-              (Format.asprintf "ret to %a: Expected %a" Value.pp retn Loc.pp
-                 retn'))
-  | JT _ -> Error "unimplemented jump"
-  | JswitchStop _ -> Error "switch stop"
+  | JC jc ->
+      let* sc = SCall.eval s.sto jc in
+      if AddrMap.mem (Loc.to_addr sc.target.target) p.externs then
+        Action.externcall sc.target.target sc.fallthrough |> Result.ok
+      else Action.call sc |> Result.ok
+  | JR jr ->
+      let* sr = SRet.eval s.sto jr in
+      Action.ret sr |> Result.ok
+  | JT _ | JswitchStop _ -> Error "unimplemented jump"
 
-let step (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
+let step (p : Prog.t) (s : State.t) : (Action.t, StopEvent.t) Result.t =
   match s.cont with
-  | { remaining = []; jmp } -> step_jmp p jmp s
-  | { remaining = i :: []; jmp } ->
-      let* sto' = step_ins p i.ins s.sto in
-      step_jmp p jmp { s with sto = sto' }
+  | { remaining = []; jmp } ->
+      step_jmp p jmp.jmp s |> StopEvent.of_str_res
+      |> Fun.flip StopEvent.add_loc jmp.loc
+  | { remaining = { ins = IN _; _ } :: []; jmp } ->
+      step_jmp p jmp.jmp s |> StopEvent.of_str_res
+      |> Fun.flip StopEvent.add_loc jmp.loc
+  | { remaining = i :: []; jmp = { jmp = JI (JIntra.Jfallthrough l) } } ->
+      let* a = step_ins p i.ins s.sto s.cursor |> StopEvent.of_str_res in
+      Action.of_store a (Some l) |> Result.ok
+      |> Fun.flip StopEvent.add_loc i.loc
   | { remaining = i :: res; jmp } ->
-      let* sto' = step_ins p i.ins s.sto in
-      Ok { s with sto = sto'; cont = { remaining = res; jmp } }
+      if List.is_empty res then
+        StopEvent.FailStop "Not possible inst" |> Result.error
+      else
+        let* a = step_ins p i.ins s.sto s.cursor |> StopEvent.of_str_res in
+        Action.of_store a None |> Result.ok |> Fun.flip StopEvent.add_loc i.loc
 
-let rec interp (p : Prog.t) (s : State.t) : (State.t, String.t) Result.t =
-  let s' = step p s in
-  match s' with Error _ -> s' | Ok s' -> interp p s'
+let action (p : Prog.t) (s : State.t) (a : Action.t) :
+    (State.t, StopEvent.t) Result.t =
+  match a with
+  | StoreAction (a, lo) -> (
+      let* sto = Store.action s.sto a |> StopEvent.of_str_res in
+      match (lo, s.cont) with
+      | None, { remaining = _ :: res; jmp } ->
+          Ok { s with sto; cont = { remaining = res; jmp } }
+      | Some l, _ ->
+          let* cont =
+            Cont.of_loc p (State.get_func_loc s) l |> StopEvent.of_str_res
+          in
+          Ok { s with sto; cont }
+      | _ -> StopEvent.FailStop "Not possible inst" |> Result.error)
+  | Jmp l -> State.action_jmp p s l |> StopEvent.of_str_res
+  | ExternCall (l, ft) -> State.action_extern p s l ft
+  | Call sc -> action_JC p s sc
+  | TailCall st -> StopEvent.FailStop "unimplemented jump" |> Result.error
+  | Ret sr -> action_JR p s sr
+
+let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
+  let* a = step p s in
+  let* s' = action p s a in
+  interp p s'

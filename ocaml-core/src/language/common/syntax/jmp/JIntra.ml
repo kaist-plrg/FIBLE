@@ -32,5 +32,5 @@ let succ (v : t) : Loc.t List.t =
   | Jjump_ind { candidates; _ } -> LocSet.to_seq candidates |> List.of_seq
   | Junimplemented -> []
 
-let get_call_target (v : t) = None
+let resolve_calltarget_opt (v : t) = None
 let is_ret (v : t) = false

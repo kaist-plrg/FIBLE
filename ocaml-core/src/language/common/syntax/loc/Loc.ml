@@ -1,6 +1,6 @@
 type t = Addr.t * int
 
-let compare = compare
+let compare (a : t) (b : t) = compare a b
 let pp fmt (addr, size) = Format.fprintf fmt "%a:%d" Addr.pp addr size
 
 let scan (ic : Scanf.Scanning.in_channel) : t =

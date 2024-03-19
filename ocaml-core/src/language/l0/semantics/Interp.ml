@@ -8,26 +8,36 @@ let fallthrough (p : Prog.t) (pc : Loc.t) (s : (Store.t, String.t) Result.t) :
   s |> Result.map (fun sto : State.t -> { sto; pc = Prog.fallthru p pc })
 
 let step_jump (p : Prog.t) (l : Loc.t) (s : State.t) :
-    (State.t, String.t) Result.t =
-  Ok { s with pc = l }
+    (Action.t, String.t) Result.t =
+  match AddrMap.find_opt (Loc.to_addr l) p.externs with
+  | None -> Ok (Action.jmp l)
+  | Some name -> Ok (Action.externcall l)
 
 let step_cbranch (p : Prog.t) (condition : VarNode.t) (target : Loc.t)
-    (s : State.t) : (State.t, String.t) Result.t =
+    (s : State.t) : (Action.t, String.t) Result.t =
   let* v = Store.eval_vn s.sto condition in
-  if Value.isZero v then Ok { s with pc = Prog.fallthru p s.pc }
-  else Ok { s with pc = target }
+  if Value.isZero v then Ok (Action.jmp (Prog.fallthru p s.pc))
+  else Ok (Action.jmp target)
 
 let step_jump_ind (p : Prog.t) (vn : VarNode.t) (s : State.t) :
-    (State.t, String.t) Result.t =
-  let* v = Store.eval_vn s.sto vn in
-  Ok { s with pc = Value.to_loc v }
+    (Action.t, String.t) Result.t =
+  let* l = Store.eval_vn s.sto vn in
+  match AddrMap.find_opt (Value.to_addr l) p.externs with
+  | None -> Ok (Action.jmp (Value.to_loc l))
+  | Some name -> Ok (Action.externcall (Value.to_loc l))
 
 let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
-    (State.t, String.t) Result.t =
+    (Action.t, String.t) Result.t =
   match ins with
-  | IA i -> Store.step_IA s.sto i |> fallthrough p s.pc
-  | ILS i -> Store.step_ILS s.sto i |> fallthrough p s.pc
-  | IN i -> Store.step_IN s.sto i |> fallthrough p s.pc
+  | IA i ->
+      let* a = Store.step_IA s.sto i in
+      Action.of_store a (Prog.fallthru p s.pc) |> Result.ok
+  | ILS i ->
+      let* a = Store.step_ILS s.sto i in
+      Action.of_store a (Prog.fallthru p s.pc) |> Result.ok
+  | IN i ->
+      let* a = Store.step_IN s.sto i in
+      Action.of_store a (Prog.fallthru p s.pc) |> Result.ok
   | Ijump l -> step_jump p l s
   | Icbranch { condition; target } -> step_cbranch p condition target s
   | Ijump_ind vn -> step_jump_ind p vn s
@@ -61,7 +71,16 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
           in
           { State.pc = Value.to_loc retaddr; sto = sto' } |> Result.ok)
 
-let step (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
+let action (p : Prog.t) (s : State.t) (a : Action.t) :
+    (State.t, StopEvent.t) Result.t =
+  match a with
+  | StoreAction (a, l) ->
+      let* sto = Store.action s.sto a |> StopEvent.of_str_res in
+      { State.sto; pc = l } |> Result.ok
+  | Jmp l -> { s with pc = l } |> Result.ok
+  | ExternCall l -> handle_extern p s
+
+let step (p : Prog.t) (s : State.t) : (Action.t, StopEvent.t) Result.t =
   let* ins =
     Prog.get_ins p s.pc
     |> Option.to_result
@@ -69,11 +88,9 @@ let step (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
            (StopEvent.FailStop
               (Format.asprintf "No instruction at %a" Loc.pp s.pc))
   in
-  let* ns =
-    step_ins p ins s |> Result.map_error (fun e -> StopEvent.FailStop e)
-  in
-  handle_extern p ns
+  step_ins p ins s |> Result.map_error (fun e -> StopEvent.FailStop e)
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
-  let s' = step p s in
-  match s' with Error _ -> s' | Ok s' -> interp p s'
+  let* a = step p s in
+  let* s' = action p s a in
+  interp p s'

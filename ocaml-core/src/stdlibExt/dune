@@ -3,6 +3,7 @@
  (flags -w -20-33-3)
  (modules
   Either3
+  Either4
   Int64Ext
   HashtblExt
   Int64Map

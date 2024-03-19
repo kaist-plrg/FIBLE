@@ -14,25 +14,14 @@ end) (CallTarget : sig
   end
 
   type t
-  type resolved_t
 
   val to_either : t -> (Loc.t * Attr.t, VarNode.t) Either.t
-  val mk_direct : Loc.t -> Attr.t -> resolved_t
-  val mk_indirect : Loc.t -> resolved_t
-  val get_target_resolved : resolved_t -> Loc.t
 end) (JCall : sig
-  module Attr : sig
-    type t
-  end
-
   type t
-  type resolved_t
 
   val get_target : t -> CallTarget.t
-  val get_target_resolved : resolved_t -> CallTarget.resolved_t
-  val get_attr_resolved : resolved_t -> Attr.t
-  val get_fallthrough_resolved : resolved_t -> Loc.t
-  val to_resolved : t -> CallTarget.resolved_t -> resolved_t
+end) (JTailCall : sig
+  type t
 end) (JRet : sig
   type t
 end) (TimeStamp : sig
@@ -68,6 +57,38 @@ end) (Store : sig
   val build_ret : t -> Interop.t -> (t, String.t) Result.t
   val add_sp_extern : t -> Prog.t -> (Value.t, String.t) Result.t
   val sp_extern : Prog.t -> RegId.t_full
+end) (SCallTarget : sig
+  type t
+
+  val get_target : t -> Loc.t
+end) (SCall : sig
+  type t
+
+  val get_target : t -> SCallTarget.t
+  val get_fallthrough : t -> Loc.t
+  val eval : Store.t -> JCall.t -> (t, String.t) Result.t
+end) (STailCall : sig
+  type t
+
+  val get_target : t -> SCallTarget.t
+  val eval : Store.t -> JTailCall.t -> (t, String.t) Result.t
+end) (SRet : sig
+  type t
+
+  val eval : Store.t -> JRet.t -> (t, String.t) Result.t
+end) (Action : sig
+  type t
+
+  module StoreAction : sig
+    type t
+  end
+
+  val of_store : StoreAction.t -> Loc.t Option.t -> t
+  val jmp : Loc.t -> t
+  val externcall : Loc.t -> Loc.t -> t
+  val call : SCall.t -> t
+  val tailcall : STailCall.t -> t
+  val ret : SRet.t -> t
 end) (Cont : sig
   type t
 
@@ -119,35 +140,29 @@ struct
       s.sto Cursor.pp s.cursor Cont.pp s.cont Stack.pp s.stack TimeStamp.pp
       s.timestamp
 
-  let step_JI (s : t) (p : Prog.t) (j : JIntra.t) : (t, String.t) Result.t =
+  let step_JI (s : t) (p : Prog.t) (j : JIntra.t) :
+      (Action.t, String.t) Result.t =
     match j with
-    | Jjump l ->
-        let* ncont = Cont.of_loc p (get_func_loc s) l in
-        set_cont s ncont |> Result.ok
-    | Jfallthrough l ->
-        let* ncont = Cont.of_loc p (get_func_loc s) l in
-        set_cont s ncont |> Result.ok
+    | Jjump l | Jfallthrough l -> Action.jmp l |> Result.ok
     | Jjump_ind { target; candidates; _ } ->
         let* tv = Store.eval_vn (get_store s) target in
         let* loc = Value.try_loc tv in
-        if LocSet.mem loc candidates then
-          let* ncont = Cont.of_loc p (get_func_loc s) loc in
-          set_cont s ncont |> Result.ok
+        if LocSet.mem loc candidates then Action.jmp loc |> Result.ok
         else "jump_ind: Not a valid jump" |> Result.error
     | Jcbranch { condition; target_true; target_false } ->
         let* v = Store.eval_vn (get_store s) condition in
         [%log debug "Jcbranch %a" Value.pp v];
         let* iz = Value.try_isZero v in
-        if iz then
-          let* ncont = Cont.of_loc p (get_func_loc s) target_false in
-          set_cont s ncont |> Result.ok
-        else
-          let* ncont = Cont.of_loc p (get_func_loc s) target_true in
-          set_cont s ncont |> Result.ok
+        if iz then Action.jmp target_false |> Result.ok
+        else Action.jmp target_true |> Result.ok
     | Junimplemented -> "unimplemented jump" |> Result.error
 
-  let step_call_external (s : Store.t) (p : Prog.t) (name : String.t)
-      (jcr : JCall.resolved_t) : (Store.t, StopEvent.t) Result.t =
+  let action_jmp (p : Prog.t) (s : t) (l : Loc.t) : (t, String.t) Result.t =
+    let* ncont = Cont.of_loc p (get_func_loc s) l in
+    set_cont s ncont |> Result.ok
+
+  let step_call_external (s : Store.t) (p : Prog.t) (name : String.t) :
+      (Store.t, StopEvent.t) Result.t =
     [%log debug "Calling %s" name];
     let* fsig, _ =
       StringMap.find_opt name Environment.signature_map
@@ -184,62 +199,41 @@ struct
     in
     Ok sto
 
-  let mk_step_JC
-      (s_internal :
-        t ->
-        Prog.t ->
-        JCall.resolved_t ->
-        (Store.t * Stack.elem_t, StopEvent.t) result) (s : t) (p : Prog.t)
-      (jc : JCall.t) : (t, StopEvent.t) Result.t =
-    let step_call (s : t) (p : Prog.t) (jcr : JCall.resolved_t) :
-        (t, StopEvent.t) Result.t =
-      let target_loc =
-        CallTarget.get_target_resolved (JCall.get_target_resolved jcr)
-      in
-      match AddrMap.find_opt (Loc.to_addr target_loc) (Prog.get_externs p) with
-      | None ->
-          let* sto, selem = s_internal s p jcr in
-          let* ncont =
-            Cont.of_func_entry_loc p target_loc |> StopEvent.of_str_res
-          in
-          let ncursor : Cursor.t =
-            Cursor.make target_loc (TimeStamp.succ s.timestamp)
-          in
-          Ok
-            {
-              timestamp = TimeStamp.succ s.timestamp;
-              cont = ncont;
-              stack = selem :: s.stack;
-              cursor = ncursor;
-              sto;
-            }
-      | Some name ->
-          let* sto = step_call_external s.sto p name jcr in
-          let* ncont =
-            Cont.of_loc p
-              (Cursor.get_func_loc s.cursor)
-              (JCall.get_fallthrough_resolved jcr)
-            |> StopEvent.of_str_res
-          in
-          Ok { s with cont = ncont; sto }
-    in
-    let* (cr : CallTarget.resolved_t) =
-      match CallTarget.to_either (JCall.get_target jc) with
-      | Left (target, attr) -> CallTarget.mk_direct target attr |> Result.ok
-      | Right target ->
-          let* calln =
-            Result.bind (Store.eval_vn s.sto target) Value.try_loc
-            |> StopEvent.of_str_res
-          in
-          CallTarget.mk_indirect calln |> Result.ok
-    in
-    let jcr : JCall.resolved_t = JCall.to_resolved jc cr in
-    step_call s p jcr
+  let action_extern (p : Prog.t) (s : t) (l : Loc.t) (ft : Loc.t) :
+      (t, StopEvent.t) Result.t =
+    match AddrMap.find_opt (Loc.to_addr l) (Prog.get_externs p) with
+    | None -> StopEvent.FailStop "Not extern call" |> Result.error
+    | Some name ->
+        let* sto = step_call_external s.sto p name in
+        let* ncont =
+          Cont.of_loc p (Cursor.get_func_loc s.cursor) ft
+          |> StopEvent.of_str_res
+        in
+        Ok { s with cont = ncont; sto }
 
-  let mk_step_JR
-      (step_ret :
-        t -> Prog.t -> JRet.t -> Stack.elem_t -> (Store.t, StopEvent.t) result)
-      (s : t) (p : Prog.t) (jr : JRet.t) : (t, StopEvent.t) Result.t =
+  let mk_action_JC
+      (s_internal :
+        t -> Prog.t -> SCall.t -> (Store.t * Stack.elem_t, StopEvent.t) result)
+      (p : Prog.t) (s : t) (sc : SCall.t) : (t, StopEvent.t) Result.t =
+    let target_loc = SCallTarget.get_target (SCall.get_target sc) in
+    let* sto, selem = s_internal s p sc in
+    let* ncont = Cont.of_func_entry_loc p target_loc |> StopEvent.of_str_res in
+    let ncursor : Cursor.t =
+      Cursor.make target_loc (TimeStamp.succ s.timestamp)
+    in
+    Ok
+      {
+        timestamp = TimeStamp.succ s.timestamp;
+        cont = ncont;
+        stack = selem :: s.stack;
+        cursor = ncursor;
+        sto;
+      }
+
+  let mk_action_JR
+      (action_ret :
+        t -> Prog.t -> SRet.t -> Stack.elem_t -> (Store.t, StopEvent.t) result)
+      (p : Prog.t) (s : t) (sr : SRet.t) : (t, StopEvent.t) Result.t =
     match s.stack with
     | [] -> Error StopEvent.NormalStop
     | e :: stack' ->
@@ -250,7 +244,7 @@ struct
           |> StopEvent.of_str_res
         in
         let cursor = Stack.get_cursor e in
-        let* sto = step_ret s p jr e in
+        let* sto = action_ret s p sr e in
         Ok
           {
             timestamp = TimeStamp.succ s.timestamp;
