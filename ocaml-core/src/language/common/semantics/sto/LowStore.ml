@@ -3,7 +3,7 @@ open Notation
 module Value = NumericValue
 module Action = StoreActionF.Make (Value)
 module RegFile = RegFileF.Make (Value)
-module Memory = DMemCombinedMemory
+module Memory = DMemCombinedFailableMemory
 
 type t = { regs : RegFile.t; mem : Memory.t }
 
@@ -17,16 +17,16 @@ let get_reg (s : t) (r : RegId.t_full) : Value.t = RegFile.get_reg s.regs r
 let load_mem (s : t) (v : Value.t) (width : Int32.t) :
     (Value.t, String.t) Result.t =
   let* addr = NumericValue.try_addr v in
-  Memory.load_mem s.mem addr width |> Result.ok
+  Memory.load_mem s.mem addr width
 
 let load_string (s : t) (v : Value.t) : (String.t, String.t) Result.t =
   let* addr = NumericValue.try_addr v in
-  Memory.load_string s.mem addr |> Result.ok
+  Memory.load_string s.mem addr
 
 let load_bytes (s : t) (v : Value.t) (width : Int32.t) :
     (String.t, String.t) Result.t =
   let* addr = NumericValue.try_addr v in
-  Memory.load_bytes s.mem addr width |> Result.ok
+  Memory.load_bytes s.mem addr width
 
 let store_mem (s : t) (v : Value.t) (v : Value.t) : (t, String.t) Result.t =
   let* addr = NumericValue.try_addr v in

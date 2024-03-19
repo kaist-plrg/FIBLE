@@ -65,8 +65,6 @@
   ;; semantics-mem
   MemoryBlock
   DMem
-  NumericMemory
-  DMemCombinedMemory
   FailableMemory
   DMemCombinedFailableMemory
   FrameF

@@ -1,25 +1,19 @@
+open StdlibExt.Notation
 include AddrMap
-
-let ( let* ) = Result.bind
 
 type t = Storable.t AddrMap.t
 
 let load_mem (s : t) (addr : Addr.t) (width : Int32.t) :
     (NumericValue.t, String.t) Result.t =
-  let rec aux (addr : Addr.t) (width : Int32.t) (acc : Char.t list) :
-      (Char.t list, String.t) Result.t =
+  let rec aux (addr : Addr.t) (width : Int32.t) (acc : Storable.t list) :
+      (Storable.t list, String.t) Result.t =
     if width = 0l then Ok acc
     else
-      let c =
-        AddrMap.find_opt addr s
-        |> Option.value ~default:(Storable.Byte (Char.chr 0))
-      in
-      match c with
-      | Undef -> Error "Undefined memory"
-      | Byte c -> aux (Addr.succ addr) (Int32.pred width) (c :: acc)
+      let c = AddrMap.find_opt addr s |> Option.value ~default:Storable.Undef in
+      aux (Addr.succ addr) (Int32.pred width) (c :: acc)
   in
   let* chars = aux addr width [] in
-  Ok (NumericValue.of_chars (List.rev chars))
+  Ok (List.rev chars)
 
 let load_string (s : t) (addr : Addr.t) : (string, String.t) Result.t =
   let rec aux (addr : Addr.t) (acc : string) : (string, String.t) Result.t =

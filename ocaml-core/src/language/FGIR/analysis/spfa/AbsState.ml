@@ -62,7 +62,6 @@ let post_single_jmp (i : Jmp.t) (c : t) (sp_num : Int32.t) (fp_num : Int32.t) :
   | JC _ ->
       ( AccessD.bottom,
         {
-          c with
           regs =
             ( ARegFile.TopHoleMap RegIdMap.empty |> fun r ->
               ARegFile.add r (RegId.Register sp_num)
@@ -73,6 +72,7 @@ let post_single_jmp (i : Jmp.t) (c : t) (sp_num : Int32.t) (fp_num : Int32.t) :
               |> fun r ->
               ARegFile.add r (RegId.Register fp_num)
                 (ARegFile.get c.regs (RegId.Register fp_num)) );
+          stack = AStack.TopHoleMap AddrMap.empty;
         } )
   | _ -> (AccessD.bottom, c)
 

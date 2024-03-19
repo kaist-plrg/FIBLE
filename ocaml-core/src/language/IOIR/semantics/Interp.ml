@@ -181,7 +181,10 @@ let action (p : Prog.t) (s : State.t) (a : Action.t) :
     (State.t, StopEvent.t) Result.t =
   match a with
   | StoreAction (a, lo) -> (
-      let* sto = Store.action s.sto a |> StopEvent.of_str_res in
+      let* sto =
+        Store.action s.sto a |> StopEvent.of_str_res
+        |> Fun.flip StopEvent.add_loc (Cont.get_loc (State.get_cont s))
+      in
       match (lo, s.cont) with
       | None, { remaining = _ :: res; jmp } ->
           Ok { s with sto; cont = { remaining = res; jmp } }
@@ -223,6 +226,8 @@ let action_with_computed_extern (p : Prog.t) (s : State.t) (a : Action.t)
   | Ret sr -> action_JR p s sr
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
-  let* a = step p s in
+  let* a =
+    step p s |> Fun.flip StopEvent.add_loc (Cont.get_loc (State.get_cont s))
+  in
   let* s' = action p s a in
   interp p s'
