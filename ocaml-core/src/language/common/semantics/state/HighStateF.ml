@@ -85,7 +85,7 @@ end) (Action : sig
 
   val of_store : StoreAction.t -> Loc.t Option.t -> t
   val jmp : Loc.t -> t
-  val externcall : Loc.t -> Loc.t -> t
+  val externcall : String.t -> Value.t List.t -> Interop.t List.t -> Loc.t -> t
   val call : SCall.t -> t
   val tailcall : STailCall.t -> t
   val ret : SRet.t -> t
@@ -161,17 +161,14 @@ struct
     let* ncont = Cont.of_loc p (get_func_loc s) l in
     set_cont s ncont |> Result.ok
 
-  let step_call_external (s : Store.t) (p : Prog.t) (name : String.t) :
-      (Store.t, StopEvent.t) Result.t =
+  let step_call_external (p : Prog.t) (s : Store.t) (name : String.t)
+      (fallthrough : Loc.t) : (Action.t, String.t) Result.t =
     [%log debug "Calling %s" name];
     let* fsig, _ =
       StringMap.find_opt name Environment.signature_map
-      |> Option.to_result
-           ~none:
-             (StopEvent.FailStop
-                (Format.asprintf "No external function %s" name))
+      |> Option.to_result ~none:(Format.asprintf "No external function %s" name)
     in
-    let* bargs = Store.build_args s fsig |> StopEvent.of_str_res in
+    let* bargs = Store.build_args s fsig in
     let values, args = bargs |> List.split in
     [%log
       debug "Call values: %a"
@@ -181,11 +178,12 @@ struct
       debug "Call args: %a"
         (Format.pp_print_list ~pp_sep:Format.pp_print_space Interop.pp)
         args];
-    let* sides, retv =
-      match Environment.request_call_opt name args with
-      | Some (sides, retv) -> Ok (sides, retv)
-      | None -> Error StopEvent.NormalStop
-    in
+
+    Action.externcall name values args fallthrough |> Result.ok
+
+  let action_external_sto (p : Prog.t) (s : Store.t) (values : Value.t List.t)
+      (sides : (int * Interop.t) List.t) (retv : Interop.t) :
+      (Store.t, StopEvent.t) Result.t =
     [%log
       debug "Side values: %a"
         (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun fmt (i, v) ->
@@ -199,17 +197,14 @@ struct
     in
     Ok sto
 
-  let action_extern (p : Prog.t) (s : t) (l : Loc.t) (ft : Loc.t) :
+  let action_extern (p : Prog.t) (s : t) (values : Value.t List.t)
+      (sides : (int * Interop.t) List.t) (retv : Interop.t) (ft : Loc.t) :
       (t, StopEvent.t) Result.t =
-    match AddrMap.find_opt (Loc.to_addr l) (Prog.get_externs p) with
-    | None -> StopEvent.FailStop "Not extern call" |> Result.error
-    | Some name ->
-        let* sto = step_call_external s.sto p name in
-        let* ncont =
-          Cont.of_loc p (Cursor.get_func_loc s.cursor) ft
-          |> StopEvent.of_str_res
-        in
-        Ok { s with cont = ncont; sto }
+    let* sto = action_external_sto p s.sto values sides retv in
+    let* ncont =
+      Cont.of_loc p (Cursor.get_func_loc s.cursor) ft |> StopEvent.of_str_res
+    in
+    Ok { s with cont = ncont; sto }
 
   let mk_action_JC
       (s_internal :

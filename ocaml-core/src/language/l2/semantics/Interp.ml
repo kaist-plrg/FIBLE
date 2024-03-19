@@ -80,11 +80,11 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t) (s : State.t) :
     (Action.t, String.t) Result.t =
   match jmp with
   | JI ji -> State.step_JI s p ji
-  | JC jc ->
+  | JC jc -> (
       let* sc = SCall.eval s.sto jc in
-      if AddrMap.mem (Loc.to_addr sc.target.target) p.externs then
-        Action.externcall sc.target.target sc.fallthrough |> Result.ok
-      else Action.call sc |> Result.ok
+      match AddrMap.find_opt (Loc.to_addr sc.target.target) p.externs with
+      | None -> Action.call sc |> Result.ok
+      | Some name -> State.step_call_external p s.sto name sc.fallthrough)
   | JR jr ->
       let* sr = SRet.eval s.sto jr in
       Action.ret sr |> Result.ok
@@ -124,7 +124,7 @@ let action (p : Prog.t) (s : State.t) (a : Action.t) :
           Ok { s with sto; cont }
       | _ -> StopEvent.FailStop "Not possible inst" |> Result.error)
   | Jmp l -> State.action_jmp p s l |> StopEvent.of_str_res
-  | ExternCall (l, ft) -> State.action_extern p s l ft
+  | ExternCall (name, values, args, ft) -> Ok s (* TODO *)
   | Call sc -> action_JC p s sc
   | TailCall st -> StopEvent.FailStop "unimplemented jump" |> Result.error
   | Ret sr -> action_JR p s sr
