@@ -1,52 +1,100 @@
 open StdlibExt
+open Notation
+open Storable
 
-type t = String.t
+type t = Storable.t List.t
 
-let zero width = String.make (Int32.to_int width) '\x00'
-let isZero x = String.for_all (Char.equal '\x00') x
-let try_isZero (x : t) : (Bool.t, String.t) Result.t = isZero x |> Result.ok
-let width (x : t) = Int32.of_int (String.length x)
+let zero width = List.init (Int32.to_int width) (fun _ -> Byte '\x00')
+let undefined width = List.init (Int32.to_int width) (fun _ -> Undef)
+
+let isZero (x : t) : Bool.t Option.t =
+  if List.for_all (fun s -> Storable.compare (Byte '\x00') s = 0) x then
+    Some true
+  else if List.exists (fun s -> Storable.compare (Byte '\x00') s <> 0) x then
+    Some false
+  else None
+
+let try_isZero (x : t) : (Bool.t, String.t) Result.t =
+  isZero x |> Option.to_result ~none:"NumericValue.try_isZero: unknown"
+
+let width (x : t) = Int32.of_int (List.length x)
 
 let extend (x : t) (size : Int32.t) =
-  if String.length x >= Int32.to_int size then x
+  if List.length x >= Int32.to_int size then x
   else
-    let pad = String.make (Int32.to_int size - String.length x) '\x00' in
-    x ^ pad
+    let pad =
+      List.init (Int32.to_int size - List.length x) (fun _ -> Byte '\x00')
+    in
+    List.append x pad
 
-let value_64 (x : t) : Int64.t = String.get_int64_le (extend x 8l) 0
-let value_32 (x : t) : Int32.t = String.get_int32_le (extend x 4l) 0
-let to_addr (x : t) : Addr.t = value_64 x
-let to_loc (x : t) : Loc.t = (to_addr x, 0)
-let try_loc (x : t) : (Loc.t, String.t) Result.t = to_loc x |> Result.ok
+let extend_undef (x : t) (size : Int32.t) =
+  if List.length x >= Int32.to_int size then x
+  else
+    let pad = List.init (Int32.to_int size - List.length x) (fun _ -> Undef) in
+    List.append x pad
+
+let try_string (x : t) : (String.t, String.t) Result.t =
+  List.fold_right
+    (fun x acc ->
+      let* c = Storable.try_byte x in
+      Result.map (fun (acc : Char.t List.t) -> c :: acc) acc)
+    x (Ok [])
+  |> Result.map (fun x -> List.to_seq x |> String.of_seq)
+
+let value_64 (x : t) : (Int64.t, String.t) Result.t =
+  let* s = try_string (extend x 8l) in
+  String.get_int64_le s 0 |> Result.ok
+
+let value_32 (x : t) : (Int32.t, String.t) Result.t =
+  let* s = try_string (extend x 4l) in
+  String.get_int32_le s 0 |> Result.ok
+
+let try_addr (x : t) : (Addr.t, String.t) Result.t = value_64 x
+
+let try_loc (x : t) : (Loc.t, String.t) Result.t =
+  let* addr = try_addr x in
+  (addr, 0) |> Result.ok
 
 let pp fmt (x : t) =
   Format.fprintf fmt "@[%a:%d@]"
-    (Format.pp_print_list (fun fmt c -> Format.fprintf fmt "%02x" (Char.code c)))
-    (String.to_seq x |> List.of_seq |> List.rev)
-    (String.length x)
+    (Format.pp_print_list Storable.pp)
+    (List.to_seq x |> List.of_seq |> List.rev)
+    (List.length x)
 
 let pp_float fmt (x : t) =
-  match String.length x with
-  | 4 -> Format.fprintf fmt "%f:4" (Int32.float_of_bits (value_32 x))
-  | 8 -> Format.fprintf fmt "%f:8" (Int64.float_of_bits (value_64 x))
+  match List.length x with
+  | 4 -> (
+      match value_32 x with
+      | Ok x -> Format.fprintf fmt "%f:4" (Int32.float_of_bits x)
+      | Error _ ->
+          Format.fprintf fmt "float(%a):4" (Format.pp_print_list Storable.pp) x)
+  | 8 -> (
+      match value_64 x with
+      | Ok x -> Format.fprintf fmt "%f:8" (Int64.float_of_bits x)
+      | Error _ ->
+          Format.fprintf fmt "float(%a):8" (Format.pp_print_list Storable.pp) x)
   | _ ->
       Format.fprintf fmt "float(%a):%d"
-        (Format.pp_print_list (fun fmt c ->
-             Format.fprintf fmt "%02x" (Char.code c)))
-        (String.to_seq x |> List.of_seq |> List.rev)
-        (String.length x)
+        (Format.pp_print_list Storable.pp)
+        x (List.length x)
 
 let of_int64_le (x : Int64.t) (width : Int32.t) : t =
   let rec loop acc i v =
     if i < 0 then acc
     else
-      let c = Char.chr (Int64.to_int (Int64.logand v 0xffL)) in
+      let c = Byte (Char.chr (Int64.to_int (Int64.logand v 0xffL))) in
       loop (c :: acc) (i - 1) (Int64.shift_right_logical v 8)
   in
-  List.rev (loop [] (Int32.to_int width - 1) x) |> List.to_seq |> String.of_seq
+  List.rev (loop [] (Int32.to_int width - 1) x)
 
-let of_chars (cs : Char.t list) : t = List.to_seq cs |> String.of_seq
-let to_chars (x : t) : Char.t list = String.to_seq x |> List.of_seq
+let of_chars (cs : Char.t list) : t = List.map (fun c -> Byte c) cs
+
+let try_chars (x : t) : (Char.t list, String.t) Result.t =
+  List.fold_right
+    (fun x acc ->
+      let* c = Storable.try_byte x in
+      Result.map (fun (acc : Char.t List.t) -> c :: acc) acc)
+    x (Ok [])
 
 let of_int64 v width =
   let bits = Int64Ext.bitwidth v in
@@ -66,17 +114,31 @@ let of_int64_safe (v : Int64.t) (width : Int32.t) : (t, String.t) Result.t =
          "NumericValue.of_int64_safe: %Ld does not fit in %ld bytes" v width)
   else Ok (of_int64_le v width)
 
+let rec sublist (x : t) (offset : Int.t) (size : Int.t) : t =
+  match x with
+  | [] ->
+      if offset = 0 && size = 0 then []
+      else raise (Invalid_argument "sublist_empty")
+  | x :: rest ->
+      if offset = 0 && size > 0 then x :: sublist rest offset (size - 1)
+      else if offset = 0 && size = 0 then []
+      else if offset < 0 then raise (Invalid_argument "sublist_invalid_offset")
+      else sublist rest (offset - 1) size
+
 let get (x : t) (offset : Int32.t) (size : Int32.t) : t =
-  String.sub x (Int32.to_int offset) (Int32.to_int size)
+  sublist x (Int32.to_int offset) (Int32.to_int size)
 
 let set (orig : t) (inserted : t) (offset : Int32.t) =
-  if String.length orig < Int32.to_int offset + String.length inserted then
+  if List.length orig < Int32.to_int offset + List.length inserted then
     [%log error "NumericValue.set: out of range"]
   else
-    let left = String.sub orig 0 (Int32.to_int offset) in
+    let left = sublist orig 0 (Int32.to_int offset) in
     let right =
-      String.sub orig
-        (Int32.to_int offset + String.length inserted)
-        (String.length orig - Int32.to_int offset - String.length inserted)
+      sublist orig
+        (Int32.to_int offset + List.length inserted)
+        (List.length orig - Int32.to_int offset - List.length inserted)
     in
-    left ^ inserted ^ right
+    List.append (List.append left inserted) right
+
+let subsume (a : t) (b : t) : Bool.t =
+  List.length a = List.length b && List.for_all2 Storable.subsume a b

@@ -180,8 +180,12 @@ let request_call (fname : String.t) (arg : Interop.t list) : event_t =
     | "allocate" -> (
         match (List.nth arg 0, List.nth arg 2) with
         | Interop.V64 v, Interop.VBuffer b ->
+            let aligned_v =
+              Int64.mul 4096L (Int64.div (Int64.add v 4095L) 4096L)
+            in
             Bytes.set_int64_le b 0 !Global.global_blk_offset;
-            Global.global_blk_offset := Int64.add v !Global.global_blk_offset;
+            Global.global_blk_offset :=
+              Int64.add aligned_v !Global.global_blk_offset;
             EventReturn ([ (2, Interop.VBuffer b) ], Interop.V32 0l)
         | _ -> [%log fatal "Not reacahble"])
     | "deallocate" -> EventReturn ([], Interop.V32 0l)

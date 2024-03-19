@@ -18,6 +18,7 @@ end) (Value : sig
   val eval_bop : Bop.t -> t -> t -> Int32.t -> (t, String.t) Result.t
   val zero : Int32.t -> t
   val sp : SPVal.t -> t
+  val undefined : Int32.t -> t
   val pp : Format.formatter -> t -> unit
   val to_either : t -> (NumericValue.t, NonNumericValue.t) Either.t
 end) (Action : sig
@@ -104,7 +105,7 @@ struct
       (Value.t, String.t) Result.t =
     match Value.get_space v with
     | First adv ->
-        let addr = NumericValue.to_addr adv in
+        let* addr = NumericValue.try_addr adv in
         Ok (load_mem_global s addr width)
     | Second sv -> Ok (load_mem_local s sv width)
     | Third _ -> Error "load: Undefined address"
@@ -112,7 +113,7 @@ struct
   let load_string (s : t) (v : Value.t) : (String.t, String.t) Result.t =
     match Value.get_space v with
     | First adv ->
-        let addr = NumericValue.to_addr adv in
+        let* addr = NumericValue.try_addr adv in
         load_string_global s addr
     | Second sv -> load_string_local s sv
     | Third _ -> "load: Undefined address" |> Result.error
@@ -121,7 +122,7 @@ struct
       (String.t, String.t) Result.t =
     match Value.get_space v with
     | First adv ->
-        let addr = NumericValue.to_addr adv in
+        let* addr = NumericValue.try_addr adv in
         Memory.load_bytes s.mem addr width
     | Second sv -> LocalMemory.load_bytes s.local sv width
     | Third _ -> "load: Undefined address" |> Result.error
@@ -129,7 +130,7 @@ struct
   let store_mem (s : t) (v : Value.t) (e : Value.t) : (t, String.t) Result.t =
     match Value.get_space v with
     | First adv ->
-        let addr = NumericValue.to_addr adv in
+        let* addr = NumericValue.try_addr adv in
         store_mem_global s addr e |> Result.ok
     | Second sv -> store_mem_local s sv e
     | Third _ -> "store: Undefined address" |> Result.error
@@ -138,7 +139,7 @@ struct
       =
     match Value.get_space v with
     | First adv ->
-        let addr = NumericValue.to_addr adv in
+        let* addr = NumericValue.try_addr adv in
         { s with mem = Memory.store_bytes s.mem addr e } |> Result.ok
     | Second sv ->
         let* local = LocalMemory.store_bytes s.local sv e in
@@ -250,24 +251,28 @@ struct
     | T8 -> (
         match Value.to_either v with
         | Left value ->
-            Interop.V8 (Char.chr (Int64.to_int (NumericValue.value_64 value)))
-            |> Result.ok
+            let* value = NumericValue.value_64 value in
+            Interop.V8 (Char.chr (Int64.to_int value)) |> Result.ok
         | Right _ -> Error "Not a number")
     | T16 -> (
         match Value.to_either v with
         | Left value ->
-            Interop.V16 (Int64.to_int32 (NumericValue.value_64 value))
-            |> Result.ok
+            let* value = NumericValue.value_64 value in
+
+            Interop.V16 (Int64.to_int32 value) |> Result.ok
         | Right _ -> Error "Not a number")
     | T32 -> (
         match Value.to_either v with
         | Left value ->
-            Interop.V32 (Int64.to_int32 (NumericValue.value_64 value))
-            |> Result.ok
+            let* value = NumericValue.value_64 value in
+
+            Interop.V32 (Int64.to_int32 value) |> Result.ok
         | Right _ -> Error "Not a number")
     | T64 -> (
         match Value.to_either v with
-        | Left value -> Interop.V64 (NumericValue.value_64 value) |> Result.ok
+        | Left value ->
+            let* value = NumericValue.value_64 value in
+            Interop.V64 value |> Result.ok
         | Right _ ->
             Interop.V64
               (Foreign.foreign "strdup"

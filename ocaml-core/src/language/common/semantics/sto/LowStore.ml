@@ -16,24 +16,24 @@ let get_reg (s : t) (r : RegId.t_full) : Value.t = RegFile.get_reg s.regs r
 
 let load_mem (s : t) (v : Value.t) (width : Int32.t) :
     (Value.t, String.t) Result.t =
-  let addr = NumericValue.to_addr v in
+  let* addr = NumericValue.try_addr v in
   Memory.load_mem s.mem addr width |> Result.ok
 
 let load_string (s : t) (v : Value.t) : (String.t, String.t) Result.t =
-  let addr = NumericValue.to_addr v in
+  let* addr = NumericValue.try_addr v in
   Memory.load_string s.mem addr |> Result.ok
 
 let load_bytes (s : t) (v : Value.t) (width : Int32.t) :
     (String.t, String.t) Result.t =
-  let addr = NumericValue.to_addr v in
+  let* addr = NumericValue.try_addr v in
   Memory.load_bytes s.mem addr width |> Result.ok
 
 let store_mem (s : t) (v : Value.t) (v : Value.t) : (t, String.t) Result.t =
-  let addr = NumericValue.to_addr v in
+  let* addr = NumericValue.try_addr v in
   { s with mem = Memory.store_mem s.mem addr v } |> Result.ok
 
 let store_bytes (s : t) (v : Value.t) (e : String.t) : (t, String.t) Result.t =
-  let addr = NumericValue.to_addr v in
+  let* addr = NumericValue.try_addr v in
   let mem = Memory.store_bytes s.mem addr e in
   { s with mem } |> Result.ok
 
@@ -97,7 +97,8 @@ let action_load (s : t) (r : RegId.t_full) (p : Value.t) (v : Value.t) :
   Ok { s with regs = RegFile.add_reg s.regs r v }
 
 let action_store (s : t) (p : Value.t) (v : Value.t) : (t, String.t) Result.t =
-  Ok { s with mem = Memory.store_mem s.mem (Value.to_addr p) v }
+  let* p = Value.try_addr p in
+  Ok { s with mem = Memory.store_mem s.mem p v }
 
 let action_nop (s : t) : (t, String.t) Result.t = Ok s
 
@@ -114,10 +115,18 @@ let build_arg (s : t) (tagv : Interop.tag) (v : Value.t) :
   | TString ->
       let* v = load_string s v in
       Interop.VString v |> Result.ok
-  | T8 -> Interop.V8 (Char.chr (Int64.to_int (Value.value_64 v))) |> Result.ok
-  | T16 -> Interop.V16 (Int64.to_int32 (Value.value_64 v)) |> Result.ok
-  | T32 -> Interop.V32 (Int64.to_int32 (Value.value_64 v)) |> Result.ok
-  | T64 -> Interop.V64 (Value.value_64 v) |> Result.ok
+  | T8 ->
+      let* v = Value.value_64 v in
+      Interop.V8 (Char.chr (Int64.to_int v)) |> Result.ok
+  | T16 ->
+      let* v = Value.value_64 v in
+      Interop.V16 (Int64.to_int32 v) |> Result.ok
+  | T32 ->
+      let* v = Value.value_64 v in
+      Interop.V32 (Int64.to_int32 v) |> Result.ok
+  | T64 ->
+      let* v = Value.value_64 v in
+      Interop.V64 v |> Result.ok
   | TBuffer n ->
       let* v = load_bytes s v (Int64.to_int32 n) in
       Interop.VBuffer (v |> String.to_bytes) |> Result.ok

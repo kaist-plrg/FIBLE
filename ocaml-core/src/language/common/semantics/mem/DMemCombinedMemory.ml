@@ -37,7 +37,7 @@ let load_bytes (s : t) (addr : Addr.t) (length : Int32.t) : string =
   aux addr length ""
 
 let store_mem (s : t) (addr : Addr.t) (v : NumericValue.t) : t =
-  let chars = NumericValue.to_chars v in
+  let chars = NumericValue.try_chars v |> Result.get_ok in
   let rec aux (addr : Addr.t) (chars : Char.t list) (acc : Char.t AddrMap.t) :
       Char.t AddrMap.t =
     match chars with

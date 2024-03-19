@@ -51,6 +51,7 @@
   ;; semantics-cont
   ContF
   ;; semantics-value
+  Storable
   NumericValue
   NumericBop
   NumericUop

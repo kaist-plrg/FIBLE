@@ -25,7 +25,7 @@ let check_val (v1 : FGIR.Sem.Value.t) (v2 : ASIR.Sem.Value.t)
     (v3 : IOIR.Sem.Value.t) : (Unit.t, StopEvent.t) Result.t =
   match (v1, v2, v3) with
   | v, Num v', Num v'' ->
-      if v = v' && v' = v'' then Ok ()
+      if NumericValue.subsume v v' && NumericValue.subsume v' v'' then Ok ()
       else
         Error
           (FailStop
@@ -43,21 +43,49 @@ let check_action (a1 : FGIR.Sem.Action.t) (a2 : ASIR.Sem.Action.t)
   | ( StoreAction (Load (r, p, v), lo),
       StoreAction (Load (r', p', v'), lo'),
       StoreAction (Load (r'', p'', v''), lo'') ) ->
-      let* _ = check_reg r r' r'' in
-      let* _ = check_val p p' p'' in
-      let* _ = check_val v v' v'' in
+      let* _ =
+        check_reg r r' r''
+        |> Fun.flip StopEvent.map_error (fun s ->
+               Format.asprintf "Load-1: %s" s)
+      in
+      let* _ =
+        check_val p p' p''
+        |> Fun.flip StopEvent.map_error (fun s ->
+               Format.asprintf "Load-2: %s" s)
+      in
+      let* _ =
+        check_val v v' v''
+        |> Fun.flip StopEvent.map_error (fun s ->
+               Format.asprintf "Load-3: %s" s)
+      in
       Ok ()
   | ( StoreAction (Store (p, v), lo),
       StoreAction (Store (p', v'), lo'),
       StoreAction (Store (p'', v''), lo'') ) ->
-      let* _ = check_val p p' p'' in
-      let* _ = check_val v v' v'' in
+      let* _ =
+        check_val p p' p''
+        |> Fun.flip StopEvent.map_error (fun s ->
+               Format.asprintf "Store-1: %s" s)
+      in
+      let* _ =
+        check_val v v' v''
+        |> Fun.flip StopEvent.map_error (fun s ->
+               Format.asprintf "Store-2: %s" s)
+      in
       Ok ()
   | ( StoreAction (Assign (r, v), lo),
       StoreAction (Assign (r', v'), lo'),
       StoreAction (Assign (r'', v''), lo'') ) ->
-      let* _ = check_reg r r' r'' in
-      let* _ = check_val v v' v'' in
+      let* _ =
+        check_reg r r' r''
+        |> Fun.flip StopEvent.map_error (fun s ->
+               Format.asprintf "Assign-1: %s" s)
+      in
+      let* _ =
+        check_val v v' v''
+        |> Fun.flip StopEvent.map_error (fun s ->
+               Format.asprintf "Assign-2: %s" s)
+      in
       Ok ()
   | StoreAction (Nop, lo), StoreAction (Nop, lo'), StoreAction (Nop, lo'') ->
       Ok ()
@@ -94,12 +122,30 @@ let run (l1 : FGIR.Prog.t) (l2 : ASIR.Prog.t) (l3 : IOIR.Prog.t) (addr : Addr.t)
     let a1 = FGIR.Interp.step l1 l1_state in
     let a2 = ASIR.Interp.step l2 l2_state in
     let a3 = IOIR.Interp.step l3 l3_state in
-    let* a1, a2, a3 = check_error a1 a2 a3 in
-    let* _ = check_action a1 a2 a3 in
+    let* a1, a2, a3 =
+      check_error a1 a2 a3
+      |> Fun.flip StopEvent.map_error (fun s ->
+             Format.asprintf "Error-1: %a %s" Loc.pp
+               (FGIR.Sem.Cont.get_loc (FGIR.Sem.State.get_cont l1_state))
+               s)
+    in
+    let* _ =
+      check_action a1 a2 a3
+      |> Fun.flip StopEvent.map_error (fun s ->
+             Format.asprintf "Action: %a %s" Loc.pp
+               (FGIR.Sem.Cont.get_loc (FGIR.Sem.State.get_cont l1_state))
+               s)
+    in
     let nl1, nl2, nl3 =
       action_all a1 l1 l1_state a2 l2 l2_state a3 l3 l3_state
     in
-    let* nl1, nl2, nl3 = check_error nl1 nl2 nl3 in
+    let* nl1, nl2, nl3 =
+      check_error nl1 nl2 nl3
+      |> Fun.flip StopEvent.map_error (fun s ->
+             Format.asprintf "Error-2: %a %s" Loc.pp
+               (FGIR.Sem.Cont.get_loc (FGIR.Sem.State.get_cont l1_state))
+               s)
+    in
     aux nl1 nl2 nl3
   in
   aux l1_state l2_state l3_state

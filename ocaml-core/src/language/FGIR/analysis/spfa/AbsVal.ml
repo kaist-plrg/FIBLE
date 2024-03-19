@@ -18,9 +18,9 @@ module Inner = struct
         |> Result.to_option
         |> Option.map (fun x -> Const x)
     | Bop.Bint_add, SP x, Const y | Bop.Bint_add, Const y, SP x ->
-        Some (SP (Int64.add x (NumericValue.value_64 y)))
+        Some (SP (Int64.add x (NumericValue.value_64 y |> Result.get_ok)))
     | Bop.Bint_sub, SP x, Const y ->
-        Some (SP (Int64.sub x (NumericValue.value_64 y)))
+        Some (SP (Int64.sub x (NumericValue.value_64 y |> Result.get_ok)))
     | Bop.Bint_sub, SP x, SP y ->
         Some (Const (NumericValue.of_int64 (Int64.sub x y) 8l))
     | _ -> None

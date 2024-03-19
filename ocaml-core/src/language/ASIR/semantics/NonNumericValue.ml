@@ -25,24 +25,29 @@ let eval_bop (b : Bop.t)
     (outwidth : Int32.t) : (NumericValue.t, t) Either.t =
   match (b, vs) with
   | _, Second (Undef _, _) | _, Third (_, Undef _) -> Right (Undef outwidth)
-  | Bop.Bint_add, Second (SP o, lv) | Bop.Bint_add, Third (lv, SP o) ->
-      Right
-        (eval_sp_arith o
-           (Int64Ext.sext (NumericValue.value_64 lv) (NumericValue.width lv) 8l))
-  | Bop.Bint_sub, Second (SP o, rv) ->
-      Right
-        (eval_sp_arith o
-           (Int64.neg
-              (Int64Ext.sext (NumericValue.value_64 rv) (NumericValue.width rv)
-                 8l)))
-  | Bop.Bint_sub, Third (rv, SP o) ->
-      Right
-        (SP
-           {
-             o with
-             multiplier = Int64.neg o.multiplier;
-             offset = Int64.sub (NumericValue.value_64 rv) o.offset;
-           })
+  | Bop.Bint_add, Second (SP o, lv) | Bop.Bint_add, Third (lv, SP o) -> (
+      match NumericValue.value_64 lv with
+      | Ok ln ->
+          Right (eval_sp_arith o (Int64Ext.sext ln (NumericValue.width lv) 8l))
+      | Error _ -> Right (Undef outwidth))
+  | Bop.Bint_sub, Second (SP o, rv) -> (
+      match NumericValue.value_64 rv with
+      | Ok rn ->
+          Right
+            (eval_sp_arith o
+               (Int64.neg (Int64Ext.sext rn (NumericValue.width rv) 8l)))
+      | Error _ -> Right (Undef outwidth))
+  | Bop.Bint_sub, Third (rv, SP o) -> (
+      match NumericValue.value_64 rv with
+      | Ok rn ->
+          Right
+            (SP
+               {
+                 o with
+                 multiplier = Int64.neg o.multiplier;
+                 offset = Int64.sub rn o.offset;
+               })
+      | Error _ -> Right (Undef outwidth))
   | Bop.Bint_sub, First (SP o1, SP o2) ->
       if (o1.timestamp, o1.func) = (o2.timestamp, o2.func) then
         if o1.multiplier = o2.multiplier then

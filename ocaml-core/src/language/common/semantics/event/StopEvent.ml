@@ -9,3 +9,10 @@ let add_loc (v : ('a, t) Result.t) (loc : Loc.t) : ('a, t) Result.t =
   | Error (FailStop e) ->
       Error (FailStop (Format.asprintf "%a: %s" Loc.pp loc e))
   | Error NormalStop -> Error NormalStop
+
+let map_error (v : ('a, t) Result.t) (f : String.t -> String.t) :
+    ('a, t) Result.t =
+  match v with
+  | Ok x -> Ok x
+  | Error (FailStop e) -> Error (FailStop (f e))
+  | Error NormalStop -> Error NormalStop

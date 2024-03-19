@@ -16,15 +16,18 @@ let step_jump (p : Prog.t) (l : Loc.t) (s : State.t) :
 let step_cbranch (p : Prog.t) (condition : VarNode.t) (target : Loc.t)
     (s : State.t) : (Action.t, String.t) Result.t =
   let* v = Store.eval_vn s.sto condition in
-  if Value.isZero v then Ok (Action.jmp (Prog.fallthru p s.pc))
-  else Ok (Action.jmp target)
+  match Value.try_isZero v with
+  | Ok true -> Ok (Action.jmp (Prog.fallthru p s.pc))
+  | Ok false -> Ok (Action.jmp target)
+  | Error e -> Error e
 
 let step_jump_ind (p : Prog.t) (vn : VarNode.t) (s : State.t) :
     (Action.t, String.t) Result.t =
   let* l = Store.eval_vn s.sto vn in
-  match AddrMap.find_opt (Value.to_addr l) p.externs with
-  | None -> Ok (Action.jmp (Value.to_loc l))
-  | Some name -> Ok (Action.externcall (Value.to_loc l))
+  let* l = Value.try_addr l in
+  match AddrMap.find_opt l p.externs with
+  | None -> Ok (Action.jmp (Loc.of_addr l))
+  | Some name -> Ok (Action.externcall (Loc.of_addr l))
 
 let step_ins (p : Prog.t) (ins : Inst.t) (s : State.t) :
     (Action.t, String.t) Result.t =
@@ -61,15 +64,17 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
       match World.Environment.request_call name args with
       | World.Environment.EventTerminate -> Error StopEvent.NormalStop
       | World.Environment.EventReturn (_, retv) ->
+          let* rv = Value.value_64 retpointer |> StopEvent.of_str_res in
+          let* retaddr = Value.try_loc retaddr |> StopEvent.of_str_res in
           let* sto' =
             Store.build_ret
               (Store.add_reg s.sto
                  { id = RegId.Register 32l; offset = 0l; width = 8l }
-                 (Value.of_int64 (Int64.add (Value.value_64 retpointer) 8L) 8l))
+                 (Value.of_int64 (Int64.add rv 8L) 8l))
               retv
             |> StopEvent.of_str_res
           in
-          { State.pc = Value.to_loc retaddr; sto = sto' } |> Result.ok)
+          { State.pc = retaddr; sto = sto' } |> Result.ok)
 
 let action (p : Prog.t) (s : State.t) (a : Action.t) :
     (State.t, StopEvent.t) Result.t =

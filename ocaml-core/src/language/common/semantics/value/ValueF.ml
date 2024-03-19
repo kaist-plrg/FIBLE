@@ -53,17 +53,17 @@ struct
 
   let try_addr (v : t) : (Addr.t, String.t) Result.t =
     match v with
-    | Num n -> Ok (NumericValue.to_addr n)
+    | Num n -> NumericValue.try_addr n
     | NonNum n -> Error (Format.asprintf "try_addr: %a" NonNumericValue.pp n)
 
   let try_loc (v : t) : (Loc.t, String.t) Result.t =
     match v with
-    | Num n -> Ok (NumericValue.to_loc n)
+    | Num n -> NumericValue.try_loc n
     | NonNum n -> Error (Format.asprintf "try_loc: %a" NonNumericValue.pp n)
 
   let try_isZero (v : t) : (Bool.t, String.t) Result.t =
     match v with
-    | Num n -> Ok (NumericValue.isZero n)
+    | Num n -> NumericValue.try_isZero n
     | NonNum n -> Error (Format.asprintf "try_isZero: %a" NonNumericValue.pp n)
 
   let eval_uop (u : Uop.t) (v : t) (outwidth : Int32.t) : (t, String.t) Result.t
@@ -116,7 +116,7 @@ struct
     | Num orig, Num inserted -> Num (NumericValue.set orig inserted offset)
     | NonNum orig, Num inserted ->
         if Int32.equal offset Int32.zero then
-          Num (NumericValue.extend inserted (NonNumericValue.width orig))
+          Num (NumericValue.extend_undef inserted (NonNumericValue.width orig))
         else NonNum (NonNumericValue.undefined (NonNumericValue.width orig))
     | Num orig, NonNum inserted ->
         if
@@ -132,4 +132,13 @@ struct
         else NonNum (NonNumericValue.undefined (NonNumericValue.width inserted))
 
   let sp (sp : SPVal.t) : t = NonNum (NonNumericValue.sp sp)
+  let undefined (size : Int32.t) : t = NonNum (NonNumericValue.undefined size)
+
+  let extend_undef (x : t) (size : Int32.t) : t =
+    match x with
+    | Num n -> Num (NumericValue.extend_undef n size)
+    | NonNum n ->
+        if NonNumericValue.width n < size then
+          NonNum (NonNumericValue.undefined size)
+        else NonNum n
 end

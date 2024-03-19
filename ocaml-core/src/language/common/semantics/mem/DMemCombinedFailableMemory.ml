@@ -1,12 +1,11 @@
 open StdlibExt.Notation
 include AddrMap
 
-type storable = Byte of Char.t | Undef
-type t = { ram : storable AddrMap.t; rom : DMem.t }
+type t = { ram : Storable.t AddrMap.t; rom : DMem.t }
 
 let from_rom (rom : DMem.t) : t = { ram = AddrMap.empty; rom }
 
-let find (s : t) (addr : Addr.t) : storable =
+let find (s : t) (addr : Addr.t) : Storable.t =
   match AddrMap.find_opt addr s.ram with
   | Some v -> v
   | None -> Byte (DMem.get_byte s.rom addr)
@@ -39,7 +38,6 @@ let load_string (s : t) (addr : Addr.t) : (string, String.t) Result.t =
 
 let load_bytes (s : t) (addr : Addr.t) (length : Int32.t) :
     (String.t, String.t) Result.t =
-  if length > 10000l then [%log info "%ld" length];
   let rec aux (addr : Addr.t) (length : Int32.t) (acc : string) :
       (String.t, String.t) Result.t =
     if length = 0l then Ok acc
@@ -54,35 +52,35 @@ let load_bytes (s : t) (addr : Addr.t) (length : Int32.t) :
   aux addr length ""
 
 let store_mem (s : t) (addr : Addr.t) (v : NumericValue.t) : t =
-  let chars = NumericValue.to_chars v in
-  let rec aux (addr : Addr.t) (chars : Char.t list) (acc : storable AddrMap.t) :
-      storable AddrMap.t =
+  let chars = v in
+  let rec aux (addr : Addr.t) (chars : Storable.t list)
+      (acc : Storable.t AddrMap.t) : Storable.t AddrMap.t =
     match chars with
     | [] -> acc
     | c :: chars ->
-        let acc = AddrMap.add addr (Byte c) acc in
+        let acc = AddrMap.add addr c acc in
         aux (Addr.succ addr) chars acc
   in
   { s with ram = aux addr chars s.ram }
 
 let store_bytes (s : t) (addr : Addr.t) (bytes : string) : t =
-  let rec aux (addr : Addr.t) (bytes : string) (acc : storable AddrMap.t) :
-      storable AddrMap.t =
+  let rec aux (addr : Addr.t) (bytes : string) (acc : Storable.t AddrMap.t) :
+      Storable.t AddrMap.t =
     match bytes with
     | "" -> acc
     | bytes ->
         let c = String.get bytes 0 in
-        let acc = AddrMap.add addr (Byte c) acc in
+        let acc = AddrMap.add addr (Storable.Byte c) acc in
         aux (Addr.succ addr) (String.sub bytes 1 (String.length bytes - 1)) acc
   in
   { s with ram = aux addr bytes s.ram }
 
 let undef_mem (s : t) (addr : Addr.t) (length : Int32.t) : t =
-  let rec aux (addr : Addr.t) (length : Int32.t) (acc : storable AddrMap.t) :
-      storable AddrMap.t =
+  let rec aux (addr : Addr.t) (length : Int32.t) (acc : Storable.t AddrMap.t) :
+      Storable.t AddrMap.t =
     if length = 0l then acc
     else
-      let acc = AddrMap.add addr Undef acc in
+      let acc = AddrMap.add addr Storable.Undef acc in
       aux (Addr.succ addr) (Int32.pred length) acc
   in
   { s with ram = aux addr length s.ram }

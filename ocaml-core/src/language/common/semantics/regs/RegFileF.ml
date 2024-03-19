@@ -4,8 +4,10 @@ module Make (Value : sig
   type t
 
   val zero : Int32.t -> t
+  val undefined : Int32.t -> t
   val get : t -> Int32.t -> Int32.t -> t
   val extend : t -> Int32.t -> t
+  val extend_undef : t -> Int32.t -> t
   val set : t -> t -> Int32.t -> t
   val pp : Format.formatter -> t -> unit
 end) =
@@ -21,15 +23,15 @@ struct
 
   let get_reg (s : t) (r : RegId.t_full) : Value.t =
     RegIdMap.find_opt r.id s
-    |> Option.map (Fun.flip Value.extend (Int32.add r.offset r.width))
+    |> Option.map (Fun.flip Value.extend_undef (Int32.add r.offset r.width))
     |> Option.map (fun v -> Value.get v r.offset r.width)
-    |> Option.value ~default:(Value.zero r.width)
+    |> Option.value ~default:(Value.undefined r.width)
 
   let add_reg (s : t) (r : RegId.t_full) (v : Value.t) : t =
     let v =
       RegIdMap.find_opt r.id s
-      |> Option.map (Fun.flip Value.extend (Int32.add r.offset r.width))
-      |> Option.value ~default:(Value.zero r.width)
+      |> Option.map (Fun.flip Value.extend_undef (Int32.add r.offset r.width))
+      |> Option.value ~default:(Value.undefined r.width)
       |> fun o -> Value.set o v r.offset
     in
     RegIdMap.add r.id v s

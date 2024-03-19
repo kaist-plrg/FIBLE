@@ -21,7 +21,7 @@ let load_string (s : t) (addr : Addr.t) : string =
   aux addr ""
 
 let store_mem (s : t) (addr : Addr.t) (v : NumericValue.t) : Char.t AddrMap.t =
-  let chars = NumericValue.to_chars v in
+  let chars = NumericValue.try_chars v |> Result.get_ok in
   let rec aux (addr : Addr.t) (chars : Char.t list) (acc : Char.t AddrMap.t) :
       Char.t AddrMap.t =
     match chars with
