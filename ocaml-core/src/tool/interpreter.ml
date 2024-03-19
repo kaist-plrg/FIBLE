@@ -21,10 +21,10 @@ let speclist =
 
 let interp_l1 l1 =
   match
-    L1.Interp.interp l1
-      (L1.Init.from_signature l1
+    FGIR.Interp.interp l1
+      (FGIR.Init.from_signature l1
          ((List.find
-             (fun (x : L1.Func.t) ->
+             (fun (x : FGIR.Func.t) ->
                String.equal (Option.value x.nameo ~default:"") "main")
              l1.funcs)
             .entry |> fst))
@@ -34,10 +34,10 @@ let interp_l1 l1 =
 
 let interp_l2 l2 =
   match
-    L2.Interp.interp l2
-      (L2.Init.from_signature l2
+    ASIR.Interp.interp l2
+      (ASIR.Init.from_signature l2
          ((List.find
-             (fun (x : L2.Func.t) ->
+             (fun (x : ASIR.Func.t) ->
                String.equal (Option.value x.nameo ~default:"") "main")
              l2.funcs)
             .entry |> fst))
@@ -46,7 +46,7 @@ let interp_l2 l2 =
   | Error (FailStop e) -> [%log error "Error: %s\n" e]
 
 let interp_l3 l3 =
-  (match L3.Interp.interp l3 (L3.Init.default l3) with
+  (match IOIR.Interp.interp l3 (IOIR.Init.default l3) with
   | Ok _ | Error NormalStop -> ()
   | Error (FailStop e) -> [%log error "Error: %s\n" e]);
   ()

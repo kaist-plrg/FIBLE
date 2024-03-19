@@ -58,14 +58,14 @@ let speclist =
       ": add log feature" );
   ]
 
-let dump_cfa (cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list)
+let dump_cfa (cfa_res : (String.t * Addr.t * ILIR.Shallow_CFA.t) list)
     (dump_path : string) =
   List.iter
     (fun (fname, _, x) ->
       let dump_cfa_path = Filename.concat dump_path (fname ^ ".boundary") in
-      let { L0.Shallow_CFA.sound_jump } = x in
+      let { ILIR.Shallow_CFA.sound_jump } = x in
       let contained_addrs =
-        L0.JumpG.G.fold_vertex
+        ILIR.JumpG.G.fold_vertex
           (fun l s -> LocSetD.add l s)
           sound_jump LocSetD.empty
       in
@@ -83,10 +83,10 @@ let dump_cfa (cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list)
     cfa_res;
   ()
 
-let dump_spfa (spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list)
+let dump_spfa (spfa_res : (FGIR.Func.t * FGIR.SPFA.Immutable.t) list)
     (dump_path : string) =
   List.iter
-    (fun ((func : L1.Func.t), x) ->
+    (fun ((func : FGIR.Func.t), x) ->
       let fname : String.t =
         Option.value func.nameo
           ~default:(Format.asprintf "%a" Loc.pp func.entry)
@@ -94,12 +94,12 @@ let dump_spfa (spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list)
       let dump_spfa_path =
         Filename.concat dump_path (fname ^ ".stack_boundary")
       in
-      let { L1.SPFA.Immutable.accesses } = x in
+      let { FGIR.SPFA.Immutable.accesses } = x in
       let oc = open_out dump_spfa_path in
       let ofmt = Format.formatter_of_out_channel oc in
       match accesses with
-      | L1.AccessD.Top -> Format.fprintf ofmt "Top\n"
-      | L1.AccessD.Fin accesses ->
+      | FGIR.AccessD.Top -> Format.fprintf ofmt "Top\n"
+      | FGIR.AccessD.Fin accesses ->
           (match Int64SetD.min_elt_opt accesses with
           | None -> Format.fprintf ofmt "Empty\n"
           | Some addr -> Format.fprintf ofmt "%Ld\n" addr);
@@ -153,7 +153,7 @@ let main () =
           Util.DMemWrapper.read_file (!dump_path ^ "/" ^ ifile_base ^ ".dmem")
         in
         let c0 = Sys.time () in
-        let l0 : L0.Prog.t =
+        let l0 : ILIR.Prog.t =
           {
             ins_mem = server.instfunc;
             rom;
@@ -163,36 +163,36 @@ let main () =
         in
         let c1 = Sys.time () in
         [%log info "L0 translation time: %f" (c1 -. c0)];
-        let cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list =
+        let cfa_res : (String.t * Addr.t * ILIR.Shallow_CFA.t) list =
           func_with_addrs
           |> List.map (fun (fname, e) ->
-                 (fname, e, L0.Shallow_CFA.follow_flow l0 e))
+                 (fname, e, ILIR.Shallow_CFA.follow_flow l0 e))
         in
         let c2 = Sys.time () in
         [%log info "CFA time: %f" (c2 -. c1)];
-        let l1_init : L1Partial.Prog.t =
-          L1Partial.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
+        let l1_init : FGIR_partial.Prog.t =
+          FGIR_partial.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
         in
         let c3 = Sys.time () in
         [%log info "L1 translation time: %f" (c3 -. c2)];
-        let l1_refine : L1Partial.Prog.t =
-          L1Partial.Refine.apply_prog l0 l1_init
+        let l1_refine : FGIR_partial.Prog.t =
+          FGIR_partial.Refine.apply_prog l0 l1_init
         in
         let c4 = Sys.time () in
         [%log info "L1 refinement time: %f" (c4 -. c3)];
-        let l1 : L1.Prog.t = l1_refine |> L1.Prog.from_partial in
+        let l1 : FGIR.Prog.t = l1_refine |> FGIR.Prog.from_partial in
         let c5 = Sys.time () in
         [%log info "L1 time: %f" (c5 -. c4)];
         let cnt : int =
           l1.funcs
           |> List.fold_left
-               (fun (a : Int64Set.t) (f : L1.Func.t) ->
+               (fun (a : Int64Set.t) (f : FGIR.Func.t) ->
                  List.fold_left
-                   (fun (a : Int64Set.t) (b : L1.Block.t) ->
+                   (fun (a : Int64Set.t) (b : FGIR.Block.t) ->
                      Int64Set.add_seq
                        (List.to_seq
                           (List.map
-                             (fun (i : L1.Inst.t_full) -> fst i.loc)
+                             (fun (i : FGIR.Inst.t_full) -> fst i.loc)
                              b.body))
                        a)
                    a f.blocks)
@@ -200,23 +200,23 @@ let main () =
           |> Int64Set.cardinal
         in
         [%log info "Total number of instructions: %d" cnt];
-        let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
+        let spfa_res : (FGIR.Func.t * FGIR.SPFA.Immutable.t) list =
           l1.funcs
-          |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l 40l))
+          |> List.map (fun x -> (x, FGIR.SPFA.Immutable.analyze x 32l 40l))
         in
         let c6 = Sys.time () in
         [%log info "SPFA time: %f" (c6 -. c5)];
-        let l2 : L2.Prog.t =
-          L2.L1toL2.translate_prog_from_spfa l1 spfa_res 32l 40l
+        let l2 : ASIR.Prog.t =
+          ASIR.L1toL2.translate_prog_from_spfa l1 spfa_res 32l 40l
         in
         let c7 = Sys.time () in
         [%log info "L2 translation time: %f" (c7 -. c6)];
-        let lva_res : (L2.Func.t * L2.REA.astate) List.t =
-          L2.REA.compute_all l2
+        let lva_res : (ASIR.Func.t * ASIR.REA.astate) List.t =
+          ASIR.REA.compute_all l2
         in
         let c8 = Sys.time () in
         [%log info "REA time: %f" (c8 -. c7)];
-        let l3 : L3.Prog.t = L3.L2toL3.translate_prog_from_rea l2 lva_res in
+        let l3 : IOIR.Prog.t = IOIR.L2toL3.translate_prog_from_rea l2 lva_res in
         let c9 = Sys.time () in
         [%log info "L3 translation time: %f" (c9 -. c8)];
         if
@@ -230,15 +230,15 @@ let main () =
                -dump-path"];
         if !(dump_flag.cfa) then dump_cfa cfa_res !dump_path else ();
         if !(dump_flag.l1) then (
-          L1.Prog.write_prog l1 (!dump_path ^ "/" ^ ifile_base ^ ".fgir");
+          FGIR.Prog.write_prog l1 (!dump_path ^ "/" ^ ifile_base ^ ".fgir");
           Artifact.Dumper.dump (Artifact.Data.L1 l1)
             (!dump_path ^ "/" ^ ifile_base ^ ".fgir_dump"))
         else ();
-        if !(dump_flag.basic_block) then L1.Prog.write_basic_block l1 !dump_path
+        if !(dump_flag.basic_block) then FGIR.Prog.write_basic_block l1 !dump_path
         else ();
         if !(dump_flag.spfa) then dump_spfa spfa_res !dump_path else ();
         if !(dump_flag.l2) then (
-          L2.Prog.write_prog l2 (!dump_path ^ "/" ^ ifile_base ^ ".asir");
+          ASIR.Prog.write_prog l2 (!dump_path ^ "/" ^ ifile_base ^ ".asir");
           Artifact.Dumper.dump (Artifact.Data.L2 l2)
             (!dump_path ^ "/" ^ ifile_base ^ ".asir_dump"))
         else ();
@@ -247,7 +247,7 @@ let main () =
                (Filename.basename !ifile |> Filename.remove_extension)
            else (); *)
         if !(dump_flag.l3) then (
-          L3.Prog.write_prog l3 (!dump_path ^ "/" ^ ifile_base ^ ".ioir");
+          IOIR.Prog.write_prog l3 (!dump_path ^ "/" ^ ifile_base ^ ".ioir");
           Artifact.Dumper.dump (Artifact.Data.L3 l3)
             (!dump_path ^ "/" ^ ifile_base ^ ".ioir_dump"))
         else ();

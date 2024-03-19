@@ -18,7 +18,7 @@ let debug_l1 l1 = failwith "not implemented"
 let debug_l2 l2 = failwith "not implemented"
 
 let debug_l3 (in_chan, out_chan) l3 =
-  Artifact.L3_repl.repl (in_chan, out_chan) l3 (L3.Init.default l3)
+  Artifact.IOIR_repl.repl (in_chan, out_chan) l3 (IOIR.Init.default l3)
 
 let main () =
   Arg.parse speclist

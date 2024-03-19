@@ -58,7 +58,7 @@ let main () =
           List.map (fun x -> (x, Ghidra.get_func_addr server x)) target_funcs
         in
         (*
-                 let l0 : L0.Prog.t =
+                 let l0 : ILIR.Prog.t =
                    {
                      ins_mem = server.instfunc;
                      rom = server.initstate;
@@ -66,23 +66,23 @@ let main () =
                      externs = Util.ExternalFunction.to_addrMap server.external_function;
                    }
                  in
-                 let cfa_res : (String.t * Addr.t * L0.Shallow_CFA.t) list =
+                 let cfa_res : (String.t * Addr.t * ILIR.Shallow_CFA.t) list =
                    func_with_addrs
                    |> List.map (fun (fname, e) ->
-                          (fname, e, L0.Shallow_CFA.follow_flow l0 e))
+                          (fname, e, ILIR.Shallow_CFA.follow_flow l0 e))
                  in
-                 let l1_init : L1Partial.Prog.t =
-                   L1Partial.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
+                 let l1_init : FGIR_partial.Prog.t =
+                   FGIR_partial.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
                  in
-                 let l1_refine : L1Partial.Prog.t =
-                   L1Partial.Refine.apply_prog l0 l1_init
+                 let l1_refine : FGIR_partial.Prog.t =
+                   FGIR_partial.Refine.apply_prog l0 l1_init
                  in
-                 let l1 : L1.Prog.t = l1_refine |> L1.Prog.from_partial in
-                 let spfa_res : (L1.Func.t * L1.SPFA.Immutable.t) list =
-                   l1.funcs |> List.map (fun x -> (x, L1.SPFA.Immutable.analyze x 32l))
+                 let l1 : FGIR.Prog.t = l1_refine |> FGIR.Prog.from_partial in
+                 let spfa_res : (FGIR.Func.t * FGIR.SPFA.Immutable.t) list =
+                   FGIR.funcs |> List.map (fun x -> (x, FGIR.SPFA.Immutable.analyze x 32l))
                  in
                  let l2 : L2Partial.Prog.t =
-                   L2Partial.L1toL2.translate_prog_from_spfa l1 spfa_res 32l
+                   L2Partial.L1toASIR.translate_prog_from_spfa l1 spfa_res 32l
                  in
                  (match
                     Simulation.Check_simulation.run server.regspec.base_size l0 l1 l2
