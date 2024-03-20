@@ -12,16 +12,28 @@ let pp fmt (a : astate) =
     RegIdSetD.pp a.must_def_regs RegIdSetD.pp a.may_def_regs RegIdSetD.pp
     a.dependent_regs
 
+let caller_saved_regs =
+  [
+    0l (* RAX *);
+    8l (* RCX *);
+    48l (* RSI *);
+    56l (* RDI *);
+    128l (* R8 *);
+    136l (* R9 *);
+    144l (* R10 *);
+    152l (* R11 *);
+  ]
+
 let default =
   {
     must_def_regs =
       RegIdSetD.Set
-        (RegIdSet.of_list
-           [ RegId.Register 0l; RegId.Register 144l; RegId.Register 152l ]);
+        (List.map (fun x -> RegId.Register x) caller_saved_regs
+        |> RegIdSet.of_list);
     may_def_regs =
       RegIdSetD.Set
-        (RegIdSet.of_list
-           [ RegId.Register 0l; RegId.Register 144l; RegId.Register 152l ]);
+        (List.map (fun x -> RegId.Register x) caller_saved_regs
+        |> RegIdSet.of_list);
     dependent_regs = RegIdSetD.bot;
   }
 
@@ -187,6 +199,7 @@ module RegAnalysisDomain = struct
             ( fst a,
               accumulate_astate (snd a)
                 (LocMap.find_opt target (fst a) |> Option.value ~default) )
+        | JC { target = Cind _; _ } -> (fst a, accumulate_astate (snd a) default)
         | _ -> a)
 
   let bot =
