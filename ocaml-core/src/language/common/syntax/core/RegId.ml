@@ -9,7 +9,7 @@ let pp (fmt : Format.formatter) (v : t) =
   | Unique n -> Format.fprintf fmt "$U%lx" n
 
 let pp_full (fmt : Format.formatter) (v : t_full) =
-  Format.fprintf fmt "%a:%ld:%ld" pp v.id v.offset v.width
+  Format.fprintf fmt "%a(%ld:%ld)" pp v.id v.offset v.width
 
 let compare (a : t) (b : t) =
   match (a, b) with
