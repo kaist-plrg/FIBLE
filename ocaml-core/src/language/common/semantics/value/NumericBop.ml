@@ -7,24 +7,18 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
   let* rn = NumericValue.value_64 rv in
   match b with
   | Bpiece ->
-      let* fv =
-        Int64Ext.concat ln rn (NumericValue.width lv) (NumericValue.width rv)
-      in
-      NumericValue.of_int64_safe (Int64Ext.cut_width fv outwidth) outwidth
+    List.append rv lv |> Result.ok
   | Bsubpiece ->
-      NumericValue.of_int64_safe
-        (Int64Ext.cut_width
-           (Int64.shift_right_logical ln (Int64.to_int rn * 8))
-           outwidth)
-        outwidth
+    NumericValue.sublist lv (Int64.to_int rn) (Int32.to_int outwidth)
+    |> Result.ok
   | Bint_equal ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_equal: different bitwidth"
-      else NumericValue.of_int64_safe (if ln = rn then 1L else 0L) outwidth
+      else NumericValue.of_int64_safe (if lv = rv then 1L else 0L) outwidth
   | Bint_notequal ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_notequal: different bitwidth"
-      else NumericValue.of_int64_safe (if ln <> rn then 1L else 0L) outwidth
+      else NumericValue.of_int64_safe (if lv <> rv then 1L else 0L) outwidth
   | Bint_less ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_less: different bitwidth"

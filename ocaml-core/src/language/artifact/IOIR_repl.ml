@@ -106,7 +106,7 @@ let parse_show =
           (Angstrom.string "x/" *> Angstrom.option 8 parse_num
           <* Angstrom.string "x ")
       >>= fun n ->
-        parse_val >>| fun v -> Show (ShowMem (8, v)) )
+        parse_val >>| fun v -> Show (ShowMem (n, v)) )
   <|> ( lex (Angstrom.string "x/s ") *> parse_val >>| fun v ->
         Show (ShowString v) )
   <|> ( lex (Angstrom.string "x/i")
