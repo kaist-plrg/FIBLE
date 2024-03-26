@@ -1,6 +1,7 @@
 (library
  (name stdlibExt)
  (flags -w -20-33-3)
+ (libraries unix)
  (modules
   Either3
   Either4

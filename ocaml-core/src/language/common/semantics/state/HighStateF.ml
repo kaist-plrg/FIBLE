@@ -48,6 +48,9 @@ end) (Store : sig
   val store_bytes : t -> Value.t -> String.t -> (t, String.t) Result.t
   val eval_vn : t -> VarNode.t -> (Value.t, String.t) Result.t
 
+  val eval_vn_list :
+    t -> VarNode.t List.t -> (Value.t List.t, String.t) Result.t
+
   val build_args :
     t -> Interop.func_sig -> ((Value.t * Interop.t) List.t, String.t) Result.t
 

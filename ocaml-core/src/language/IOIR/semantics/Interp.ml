@@ -8,37 +8,28 @@ let build_inputs_from_sig (f : Func.t) : VarNode.t List.t =
   |> List.map (fun v -> VarNode.Register { id = v; offset = 0l; width = 8l })
 
 let reg_build_from_values (sto : Store.t) (values : Value.t List.t) (f : Func.t)
-    : RegFile.t =
+    : (RegFile.t, String.t) Result.t =
+  let* fv =
+    try Ok (List.combine f.inputs values)
+    with Invalid_argument _ ->
+      Error
+        (Format.asprintf
+           "Mismatched number of arguments for call inputs,\n\
+           \                      %d for %s and %d for call instruction"
+           (List.length f.inputs)
+           (f.nameo |> Option.value ~default:"noname")
+           (List.length values))
+  in
   List.fold_left
     (fun r (i, v) -> RegFile.add_reg r { id = i; offset = 0l; width = 8l } v)
-    (RegFile.of_seq Seq.empty)
-    (try List.combine f.inputs values
-     with Invalid_argument _ ->
-       [%log
-         fatal
-           "Mismatched number of arguments for call inputs,\n\
-           \                      %d for %s and %d for call instruction"
-           (List.length f.inputs)
-           (f.nameo |> Option.value ~default:"noname")
-           (List.length values)])
+    (RegFile.mapi (fun r _ -> Value.NonNum (Reg r)) sto.regs)
+    fv
+  |> Result.ok
 
 let reg_build_from_input (sto : Store.t) (inputs : VarNode.t List.t)
-    (f : Func.t) : RegFile.t =
-  List.fold_left
-    (fun r (i, v) ->
-      RegFile.add_reg r
-        { id = i; offset = 0l; width = 8l }
-        (Store.eval_vn sto v |> Result.get_ok))
-    (RegFile.of_seq Seq.empty)
-    (try List.combine f.inputs inputs
-     with Invalid_argument _ ->
-       [%log
-         fatal
-           "Mismatched number of arguments for call inputs,\n\
-           \                      %d for %s and %d for call instruction"
-           (List.length f.inputs)
-           (f.nameo |> Option.value ~default:"noname")
-           (List.length inputs)])
+    (f : Func.t) : (RegFile.t, String.t) Result.t =
+  let* inputs = Store.eval_vn_list sto inputs in
+  reg_build_from_values sto inputs f
 
 let step_call_internal (s : State.t) (p : Prog.t)
     ({
@@ -63,14 +54,19 @@ let step_call_internal (s : State.t) (p : Prog.t)
   let* saved_sp =
     Store.build_saved_sp s.sto p sp_diff |> StopEvent.of_str_res
   in
-  let ndepth, regs, outputs =
+  let* ndepth, regs, outputs =
     match attr with
     | Some { inputs; outputs } ->
-        let regs = reg_build_from_values s.sto inputs f in
-        (copydepth, regs, outputs)
+        let* regs =
+          reg_build_from_values s.sto inputs f |> StopEvent.of_str_res
+        in
+        (copydepth, regs, outputs) |> Result.ok
     | None ->
-        let regs = reg_build_from_input s.sto (build_inputs_from_sig f) f in
-        (snd f.sp_boundary, regs, f.outputs)
+        let* regs =
+          reg_build_from_input s.sto (build_inputs_from_sig f) f
+          |> StopEvent.of_str_res
+        in
+        (snd f.sp_boundary, regs, f.outputs) |> Result.ok
   in
   let* nlocal =
     Store.build_local_frame s.sto p f.sp_boundary ndepth |> StopEvent.of_str_res
@@ -115,20 +111,31 @@ let step_ret (s : State.t) (p : Prog.t) ({ attr } : SRet.t)
      } :
       Stack.elem_t) : (Store.t, StopEvent.t) Result.t =
   let values = attr in
-  let output_values =
-    try List.combine outputs values
+  let* output_values =
+    try Ok (List.combine outputs values)
     with Invalid_argument _ ->
-      [%log fatal "Mismatched number of outputs for call outputs"]
+      Error "Mismatched number of outputs for call outputs"
+      |> StopEvent.of_str_res
+  in
+  let* merge_reg =
+    List.fold_left
+      (fun x (o, v) ->
+        let* rf = x in
+        match v with
+        | Value.NonNum (Reg r) ->
+            if RegId.compare o r != 0 then Error "Unmatched reg"
+            else rf |> Result.ok
+        | _ ->
+            RegFile.add_reg rf { id = o; offset = 0l; width = 8l } v
+            |> Result.ok)
+      (Ok regs') output_values
+    |> StopEvent.of_str_res
   in
   Ok
     {
       s.sto with
       regs =
-        RegFile.add_reg
-          (List.fold_left
-             (fun r (o, v) ->
-               RegFile.add_reg r { id = o; offset = 0l; width = 8l } v)
-             regs' output_values)
+        RegFile.add_reg merge_reg
           { id = RegId.Register p.sp_num; offset = 0l; width = 8l }
           sp_saved;
     }

@@ -1,11 +1,12 @@
 open StdlibExt
 open Common
 
-type t = SP of SPVal.t | Undef of Int32.t
+type t = SP of SPVal.t | Undef of Int32.t | Reg of RegId.t
 
 let pp fmt = function
   | SP sp -> SPVal.pp fmt sp
   | Undef i -> Format.fprintf fmt "undef_%ld" i
+  | Reg r -> Format.fprintf fmt "reg_%a" RegId.pp r
 
 let eval_uop (u : Uop.t) (v : t) (outwidth : Int32.t) :
     (NumericValue.t, t) Either.t =

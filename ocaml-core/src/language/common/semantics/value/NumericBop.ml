@@ -6,11 +6,10 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
   let* ln = NumericValue.value_64 lv in
   let* rn = NumericValue.value_64 rv in
   match b with
-  | Bpiece ->
-    List.append rv lv |> Result.ok
+  | Bpiece -> List.append rv lv |> Result.ok
   | Bsubpiece ->
-    NumericValue.sublist lv (Int64.to_int rn) (Int32.to_int outwidth)
-    |> Result.ok
+      NumericValue.sublist lv (Int64.to_int rn) (Int32.to_int outwidth)
+      |> Result.ok
   | Bint_equal ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_equal: different bitwidth"

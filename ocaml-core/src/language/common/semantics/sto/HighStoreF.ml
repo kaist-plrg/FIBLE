@@ -154,6 +154,17 @@ struct
     | Ram v ->
         load_mem s (NumericValue.of_int64 v.value 8l |> Value.of_num) v.width
 
+  let eval_vn_list (s : t) (vnl : VarNode.t List.t) :
+      (Value.t List.t, String.t) Result.t =
+    List.fold_right
+      (fun vn acc ->
+        match acc with
+        | Ok acc ->
+            let* v = eval_vn s vn in
+            Ok (v :: acc)
+        | Error e -> Error e)
+      vnl (Ok [])
+
   let eval_assignment (s : t) (a : Assignable.t) (outwidth : Int32.t) :
       (Value.t, String.t) Result.t =
     match a with

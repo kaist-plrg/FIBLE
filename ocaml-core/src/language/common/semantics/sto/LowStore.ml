@@ -56,6 +56,17 @@ let eval_vn (s : t) (vn : VarNode.t) : (Value.t, String.t) Result.t =
   | Const v -> Value.of_int64 v.value v.width |> Result.ok
   | Ram v -> load_mem s (Value.of_int64 v.value 8l) v.width
 
+let eval_vn_list (s : t) (vnl : VarNode.t List.t) :
+    (Value.t List.t, String.t) Result.t =
+  List.fold_right
+    (fun vn acc ->
+      match acc with
+      | Ok acc ->
+          let* v = eval_vn s vn in
+          Ok (v :: acc)
+      | Error e -> Error e)
+    vnl (Ok [])
+
 let eval_assignment (s : t) (a : Assignable.t) (outwidth : Int32.t) :
     (Value.t, String.t) Result.t =
   match a with
