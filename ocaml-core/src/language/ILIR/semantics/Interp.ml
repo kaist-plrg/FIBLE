@@ -96,6 +96,6 @@ let step (p : Prog.t) (s : State.t) : (Action.t, StopEvent.t) Result.t =
   step_ins p ins s |> Result.map_error (fun e -> StopEvent.FailStop e)
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
-  let* a = step p s in
-  let* s' = action p s a in
+  let* a = step p s |> Fun.flip StopEvent.add_loc s.pc in
+  let* s' = action p s a |> Fun.flip StopEvent.add_loc s.pc in
   interp p s'

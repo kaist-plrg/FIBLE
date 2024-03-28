@@ -13,7 +13,6 @@ let subsume a b =
   | _, Undef -> true
   | Undef, _ -> false
 
-let get_byte = function Byte c -> c | Undef -> failwith "Undefined byte"
 let try_byte = function Byte c -> Ok c | Undef -> Error "Undefined byte"
 
 let pp fmt c =

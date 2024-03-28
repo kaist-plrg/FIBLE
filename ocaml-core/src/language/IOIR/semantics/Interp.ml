@@ -167,31 +167,24 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t) (s : State.t) :
 
 let step (p : Prog.t) (s : State.t) : (Action.t, StopEvent.t) Result.t =
   match s.cont with
-  | { remaining = []; jmp } ->
-      step_jmp p jmp.jmp s |> StopEvent.of_str_res
-      |> Fun.flip StopEvent.add_loc jmp.loc
+  | { remaining = []; jmp } -> step_jmp p jmp.jmp s |> StopEvent.of_str_res
   | { remaining = { ins = IN _; _ } :: []; jmp } ->
       step_jmp p jmp.jmp s |> StopEvent.of_str_res
-      |> Fun.flip StopEvent.add_loc jmp.loc
   | { remaining = i :: []; jmp = { jmp = JI (JIntra.Jfallthrough l) } } ->
       let* a = step_ins p i.ins s.sto s.cursor |> StopEvent.of_str_res in
       Action.of_store a (Some l) |> Result.ok
-      |> Fun.flip StopEvent.add_loc i.loc
   | { remaining = i :: res; jmp } ->
       if List.is_empty res then
         StopEvent.FailStop "Not possible inst" |> Result.error
       else
         let* a = step_ins p i.ins s.sto s.cursor |> StopEvent.of_str_res in
-        Action.of_store a None |> Result.ok |> Fun.flip StopEvent.add_loc i.loc
+        Action.of_store a None |> Result.ok
 
 let action (p : Prog.t) (s : State.t) (a : Action.t) :
     (State.t, StopEvent.t) Result.t =
   match a with
   | StoreAction (a, lo) -> (
-      let* sto =
-        Store.action s.sto a |> StopEvent.of_str_res
-        |> Fun.flip StopEvent.add_loc (Cont.get_loc (State.get_cont s))
-      in
+      let* sto = Store.action s.sto a |> StopEvent.of_str_res in
       match (lo, s.cont) with
       | None, { remaining = _ :: res; jmp } ->
           Ok { s with sto; cont = { remaining = res; jmp } }
@@ -236,5 +229,7 @@ let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   let* a =
     step p s |> Fun.flip StopEvent.add_loc (Cont.get_loc (State.get_cont s))
   in
-  let* s' = action p s a in
+  let* s' =
+    action p s a |> Fun.flip StopEvent.add_loc (Cont.get_loc (State.get_cont s))
+  in
   interp p s'
