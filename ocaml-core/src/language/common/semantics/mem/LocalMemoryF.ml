@@ -15,11 +15,6 @@ end) (Frame : sig
   val store_bytes : t -> Int64.t -> String.t -> (t, String.t) Result.t
 end) =
 struct
-  module FuncTimestampMap = Map.Make (struct
-    type t = Loc.t * Int64.t
-
-    let compare = compare
-  end)
 
   type t = Frame.t FuncTimestampMap.t
 

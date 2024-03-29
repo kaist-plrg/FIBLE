@@ -1,5 +1,6 @@
 (executable
- (flags -w -20-33-3 -g)
+ (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
+ (flags -w -20-33-3)
  (preprocess
   (pps ppx_log ppx_cwd))
  (name interpreter)
@@ -22,7 +23,8 @@
  (modules interpreter))
 
 (executable
- (flags -w -20-33-3 -g)
+ (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
+ (flags -w -20-33-3)
  (preprocess
   (pps ppx_log ppx_cwd))
  (name debugger)
@@ -45,6 +47,7 @@
  (modules debugger))
 
 (executable
+ (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
  (flags -w -20-33-3)
  (preprocess
   (pps ppx_log ppx_cwd))
@@ -68,6 +71,7 @@
  (modules decompiler))
 
 (executable
+ (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
  (flags -w -20-33-3)
  (preprocess
   (pps ppx_log ppx_cwd))

@@ -1,6 +1,7 @@
 (library
  (name basic_domain)
  (libraries common)
+ (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
  (modules
   DomainSpec
   BotMapD

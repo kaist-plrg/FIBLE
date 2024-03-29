@@ -1,5 +1,6 @@
 (library
  (name stdlibExt)
+ (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
  (flags -w -20-33-3)
  (libraries unix)
  (modules

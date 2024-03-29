@@ -135,6 +135,7 @@ struct
   let set_store (s : t) (sto : Store.t) : t = { s with sto }
   let get_cont (s : t) : Cont.t = s.cont
   let set_cont (s : t) (cont : Cont.t) : t = { s with cont }
+  let get_timestamp (s : t) : TimeStamp.t = s.timestamp
   let get_func_loc (s : t) : Loc.t = Cursor.get_func_loc s.cursor
 
   let pp fmt (s : t) : unit =

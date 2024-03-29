@@ -3,6 +3,7 @@
 (library
  (name artifact)
  (flags -w -20-33-3)
+ (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
  (preprocess
   (pps ppx_log))
  (libraries angstrom stdlibExt ppx_log common ILIR FGIR ASIR IOIR)

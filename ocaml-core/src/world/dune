@@ -3,5 +3,6 @@
  (preprocess
   (pps ppx_log ppx_cwd))
  (libraries unix stdlibExt ppx_log ctypes ctypes-foreign common)
+ (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
  (flags -w -20-33-3)
  (modules Interaction Ghidra Environment Util Global))
