@@ -8,9 +8,12 @@
   Either4
   Int64Ext
   HashtblExt
+  ResultExt
+  IntMap
   Int64Map
   Int32Map
   StringMap
+  IntSet
   Int64Set
   Int32Set
   Int64Hashtbl

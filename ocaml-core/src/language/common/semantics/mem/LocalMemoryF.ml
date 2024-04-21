@@ -15,7 +15,6 @@ end) (Frame : sig
   val store_bytes : t -> Int64.t -> String.t -> (t, String.t) Result.t
 end) =
 struct
-
   type t = Frame.t FuncTimestampMap.t
 
   let empty = FuncTimestampMap.empty

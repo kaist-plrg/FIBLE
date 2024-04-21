@@ -13,6 +13,7 @@ depends: [
   "ctypes"
   "ctypes-foreign"
   "angstrom"
+  "xml-light"
   "odoc" {with-doc}
 ]
 build: [

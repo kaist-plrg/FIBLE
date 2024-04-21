@@ -94,3 +94,14 @@
   artifact
   simulation)
  (modules sim_checker))
+
+(executable
+ (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
+ (flags -w -20-33-3)
+ (preprocess
+  (pps ppx_log ppx_cwd))
+ (name slaparser)
+ (public_name multi-step-decomp)
+ (package multi-step-decomp)
+ (libraries stdlibExt sleighDef world)
+ (modules slaparser))

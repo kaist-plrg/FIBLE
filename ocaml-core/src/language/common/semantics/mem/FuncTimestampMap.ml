@@ -1,5 +1,5 @@
 include Map.Make (struct
-type t = Loc.t * Int64.t
+  type t = Loc.t * Int64.t
 
-let compare = compare
+  let compare = compare
 end)

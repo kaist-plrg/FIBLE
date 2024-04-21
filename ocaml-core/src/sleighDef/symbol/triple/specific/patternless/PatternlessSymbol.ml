@@ -1,0 +1,32 @@
+open StdlibExt
+open Notation
+
+(*
+
+       - PatternlessSymbol
+        x EpsilonSymbol
+        x VarNodeSymbol
+
+        have patexp = ConstantValue(0)
+
+   *)
+
+type t = Epsilon of EpsilonSymbol.t | VarNode of VarNodeSymbol.t
+
+let of_epsilon (v : EpsilonSymbol.t) : t = Epsilon v
+let of_varnode (v : VarNodeSymbol.t) : t = VarNode v
+
+let get_name (symbol : t) : string =
+  match symbol with
+  | Epsilon v -> EpsilonSymbol.get_name v
+  | VarNode v -> VarNodeSymbol.get_name v
+
+let get_id (symbol : t) : Int32.t =
+  match symbol with
+  | Epsilon v -> EpsilonSymbol.get_id v
+  | VarNode v -> VarNodeSymbol.get_id v
+
+let get_scopeid (symbol : t) : Int32.t =
+  match symbol with
+  | Epsilon v -> EpsilonSymbol.get_scopeid v
+  | VarNode v -> VarNodeSymbol.get_scopeid v

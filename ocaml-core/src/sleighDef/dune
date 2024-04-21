@@ -1,0 +1,77 @@
+(include_subdirs unqualified)
+
+(library
+ (name sleighDef)
+ (preprocess
+  (pps ppx_log ppx_cwd))
+ (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
+ (flags -w -20-33-3)
+ (libraries xml-light stdlibExt)
+ (modules
+  XmlExt
+  Scope
+  ParserContext
+  ParserWalker
+  SymbolTag
+  UserOpSymbol
+  UserOpPtr
+  SubtableSymbol
+  SubtablePtr
+  Next2Symbol
+  Next2Ptr
+  StartSymbol
+  StartPtr
+  VarNodeSymbol
+  VarNodePtr
+  EpsilonSymbol
+  EpsilonPtr
+  PatternlessSymbol
+  PatternlessPtr
+  OperandSymbol
+  OperandPtr
+  EndSymbol
+  EndPtr
+  SpecificSymbol
+  SpecificPtr
+  VarNodeListSymbol
+  VarNodeListPtr
+  ValueMapSymbol
+  ValueMapPtr
+  NameSymbol
+  NamePtr
+  ContextSymbol
+  ContextPtr
+  PureValueSymbol
+  PureValuePtr
+  ValueSymbol
+  ValuePtr
+  FamilySymbol
+  FamilyPtr
+  TripleSymbol
+  TriplePtr
+  Symbol
+  SymbolPtr
+  SymbolHeader
+  AddrSpace
+  Spaces
+  SourceFileIndexer
+  SleighInit
+  ConstTpl
+  VarNodeTpl
+  OpTpl
+  HandleTpl
+  ConstructTpl
+  ContextOp
+  ContextCommit
+  ContextChange
+  Constructor
+  PatternBlock
+  ContextPattern
+  InstructionPattern
+  CombinePattern
+  DisjointPattern
+  DecisionNode
+  PatternValue
+  PatternExpression
+  SymTable
+  Sla))
