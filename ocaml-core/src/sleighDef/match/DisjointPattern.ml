@@ -19,3 +19,20 @@ let decode (xml : Xml.xml) : (t, String.t) Result.t =
       let* v = CombinePattern.decode xml in
       Combine v |> Result.ok
   | _ -> Result.Error "unknown tag"
+
+let pp (fmt : Format.formatter) (pattern : t) : unit =
+  match pattern with
+  | Context v -> ContextPattern.pp fmt v
+  | Instruction v -> InstructionPattern.pp fmt v
+  | Combine v -> CombinePattern.pp fmt v
+
+let match_pattern (pattern : t) (walker : ParserWalker.t) : Bool.t = true
+(*
+  match pattern with
+  | Context { pattern } -> PatternBlock.isContextMatch pattern walker
+  | Instruction { pattern } -> PatternBlock.isInstructionMatch pattern walker
+  | Combine { context = { pattern = cpattern }; instr = { pattern = ipattern } }
+    ->
+      PatternBlock.isContextMatch cpattern walker
+      && PatternBlock.isInstructionMatch ipattern walker
+*)

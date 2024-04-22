@@ -11,3 +11,7 @@ let decode (xml : Xml.xml) : (t, String.t) Result.t =
       let* instr = InstructionPattern.decode instr in
       { context; instr } |> Result.ok
   | _ -> Error "Expected two children"
+
+let pp (fmt : Format.formatter) (t : t) : unit =
+  Format.fprintf fmt "@[<v 2>Context: %a@,@[<v 2>Instruction: %a@]@]"
+    PatternBlock.pp t.context.pattern PatternBlock.pp t.instr.pattern

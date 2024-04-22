@@ -17,16 +17,29 @@ let print_attribs (xml : Xml.xml) : Unit.t =
 module StringSet = Set.Make (String)
 
 let do_a (s : SleighDef.Sla.t) : Unit.t =
-  [%log info "scopes: %d" (Int32Map.cardinal s.symbol_table.scopeMap)];
-  [%log info "symbols: %d" (Int32Map.cardinal s.symbol_table.symbolMap)];
-  [%log
-    info "instruction constructor length: %d" (List.length s.root.construct)];
-  let l = List.length s.root.construct / 200 in
-  List.init l (fun i -> i * 200)
-  |> List.iter (fun i ->
-         let c = List.nth s.root.construct i in
-         [%log
-           info "instruction constructor %d: %a" i Constructor.pp_printpiece c])
+  let res =
+    [%log info "scopes: %d" (Int32Map.cardinal s.symbol_table.scopeMap)];
+    [%log info "symbols: %d" (Int32Map.cardinal s.symbol_table.symbolMap)];
+    [%log
+      info "instruction constructor length: %d"
+        (ConstructorMap.cardinal s.root.construct)];
+    let l = ConstructorMap.cardinal s.root.construct / 200 in
+    List.init l (fun i -> Int32.of_int (i * 200))
+    |> List.iter (fun i ->
+           let _ =
+             let* c = ConstructorMap.find_offset s.root.construct i in
+             [%log
+               info "instruction constructor %ld: %a" i
+                 Constructor.pp_printpiece c]
+             |> Result.ok
+           in
+           ());
+    let* v =
+      SubtableSymbol.resolve s.root (ParserWalker.of_mock "\xc2\x13\x00")
+    in
+    [%log info "resolve: %a" Constructor.pp_printpiece v] |> Result.ok
+  in
+  match res with Ok () -> () | Error s -> [%log info "%s" s]
 
 let main () =
   Arg.parse speclist

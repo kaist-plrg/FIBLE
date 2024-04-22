@@ -10,8 +10,6 @@
  (modules
   XmlExt
   Scope
-  ParserContext
-  ParserWalker
   SymbolTag
   UserOpSymbol
   UserOpPtr
@@ -64,7 +62,12 @@
   ContextOp
   ContextCommit
   ContextChange
+  ConstructorPtr
+  ConstructState
+  ParserContext
+  ParserWalker
   Constructor
+  ConstructorMap
   PatternBlock
   ContextPattern
   InstructionPattern
