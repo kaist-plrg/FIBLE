@@ -1,13 +1,7 @@
 open StdlibExt
 open Notation
 
-type t = {
-  name : String.t;
-  id : Int32.t;
-  scopeid : Int32.t;
-  pattern : PatternExpression.t;
-  values : Int32.t List.t;
-}
+type t = TypeDef.valuemap_t
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
     : (t, String.t) Result.t =
@@ -20,13 +14,14 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
         |> List.map (fun xml -> XmlExt.attrib_int xml "val")
         |> ResultExt.join_list
       in
-      {
-        name = header.name;
-        id = header.id;
-        scopeid = header.scopeid;
-        pattern;
-        values;
-      }
+      ({
+         name = header.name;
+         id = header.id;
+         scopeid = header.scopeid;
+         pattern;
+         values;
+       }
+        : t)
       |> Result.ok
   | _ -> "Invalid number of children" |> Result.error
 

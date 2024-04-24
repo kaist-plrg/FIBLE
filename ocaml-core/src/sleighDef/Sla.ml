@@ -1,7 +1,7 @@
 open StdlibExt
 open Notation
 
-type t = {
+type 'subtable_t poly_t = {
   maxdelayslotbytes : Int32.t;
   unique_allocatemask : Int32.t;
   numSections : Int32.t;
@@ -12,8 +12,11 @@ type t = {
   sourcefiles : SourceFileIndexer.t;
   spaces : Spaces.t;
   symbol_table : SymTable.t;
-  root : SubtableSymbol.t;
+  root : 'subtable_t;
 }
+
+type ptr_t = SubtableSymbol.ptr_t poly_t
+type t = SubtableSymbol.t poly_t
 
 let build_from_sleighInit
     ({
@@ -29,6 +32,7 @@ let build_from_sleighInit
      } :
       SleighInit.t) (symbol_table : SymTable.t) : (t, String.t) Result.t =
   let* root = SymTable.get_root symbol_table in
+  let* root = PtrBuilder.build_subtable root symbol_table.symbolMap in
   {
     maxdelayslotbytes;
     unique_allocatemask;
@@ -77,3 +81,10 @@ let decode (xml : Xml.xml) : (t, String.t) Result.t =
     |> Fun.flip Result.bind (Fun.flip SymTable.decode sleighInit)
   in
   build_from_sleighInit sleighInit symbol_table
+
+let deref_triple (v : ptr_t) (tp : TriplePtr.t) :
+    (TripleSymbol.ptr_t, String.t) Result.t =
+  let* s = SymTable.get_symbol v.symbol_table (SymbolPtr.of_triple tp) in
+  match s with
+  | Triple s -> s |> Result.ok
+  | _ -> "not triple symbol" |> Result.error

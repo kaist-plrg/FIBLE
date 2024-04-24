@@ -11,10 +11,13 @@ open Notation
 
    *)
 
-type t = Epsilon of EpsilonSymbol.t | VarNode of VarNodeSymbol.t
+type t = TypeDef.patternless_t
 
 let of_epsilon (v : EpsilonSymbol.t) : t = Epsilon v
 let of_varnode (v : VarNodeSymbol.t) : t = VarNode v
+
+let try_varnode (p : t) : VarNodeSymbol.t option =
+  match p with VarNode v -> Some v | _ -> None
 
 let get_name (symbol : t) : string =
   match symbol with

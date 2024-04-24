@@ -1,19 +1,9 @@
 open StdlibExt
 open Notation
 
-type printpiece = Str of String.t | OperInd of Int32.t
-
-type t = {
-  parentId : SubtablePtr.t;
-  minimumlength : Int32.t;
-  firstWhitespace : Int32.t;
-  flowthruIndex : Int32.t Option.t;
-  operandIds : OperandPtr.t List.t;
-  printpieces : printpiece List.t;
-  context : ContextChange.t List.t;
-  tmpl : ConstructTpl.t;
-  namedtmpl : ConstructTpl.t Int32Map.t;
-}
+type 'operand_t poly_t = 'operand_t TypeDef.constructor_poly_t
+type t = TypeDef.constructor_t
+type ptr_t = TypeDef.constructor_ptr_t
 
 let split (childs : Xml.xml List.t) :
     Xml.xml List.t * Xml.xml List.t * Xml.xml List.t * Xml.xml List.t =
@@ -27,8 +17,8 @@ let split (childs : Xml.xml List.t) :
   in
   List.fold_right aux childs ([], [], [], [])
 
-let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
-    =
+let decode (xml : Xml.xml) (sleighInit : SleighInit.t) :
+    (ptr_t, String.t) Result.t =
   let* parentId =
     XmlExt.attrib_int xml "parent" |> Result.map SubtablePtr.of_int32
   in
@@ -48,10 +38,10 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
         match XmlExt.tag xml with
         | "print" ->
             let* str = XmlExt.attrib xml "piece" in
-            Str str |> Result.ok
+            TypeDef.Str str |> Result.ok
         | "opprint" ->
             let* id = XmlExt.attrib_int xml "id" in
-            OperInd id |> Result.ok
+            TypeDef.OperInd id |> Result.ok
         | _ -> Error "Invalid tag")
       prints
     |> ResultExt.join_list
@@ -82,7 +72,7 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
     match printpieces with [ OperInd i ] -> Some i | _ -> None
   in
   {
-    parentId;
+    TypeDef.parentId;
     minimumlength;
     firstWhitespace;
     flowthruIndex;
@@ -94,10 +84,10 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
   }
   |> Result.ok
 
-let pp_printpiece (fmt : Format.formatter) (v : t) : Unit.t =
+let pp_printpiece (fmt : Format.formatter) (v : 'a poly_t) : Unit.t =
   let pp_printpiece fmt = function
-    | Str s -> Format.fprintf fmt "%s" s
-    | OperInd i -> Format.fprintf fmt "@<%ld>" i
+    | TypeDef.Str s -> Format.fprintf fmt "%s" s
+    | TypeDef.OperInd i -> Format.fprintf fmt "@<%ld>" i
   in
   Format.pp_print_list
     ~pp_sep:(fun fmt () -> Format.fprintf fmt " ")

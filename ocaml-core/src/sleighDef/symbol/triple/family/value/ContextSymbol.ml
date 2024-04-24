@@ -1,16 +1,7 @@
 open StdlibExt
 open Notation
 
-type t = {
-  name : String.t;
-  id : Int32.t;
-  scopeid : Int32.t;
-  pattern : PatternExpression.t;
-  varNodeId : VarNodePtr.t;
-  low : Int32.t;
-  high : Int32.t;
-  flow : Bool.t;
-}
+type t = TypeDef.context_t
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
     : (t, String.t) Result.t =
@@ -21,16 +12,17 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
   and* low = XmlExt.attrib_int xml "low"
   and* high = XmlExt.attrib_int xml "high" in
   let flow = XmlExt.attrib_bool_value xml "flow" false in
-  {
-    name = header.name;
-    id = header.id;
-    scopeid = header.scopeid;
-    pattern;
-    varNodeId;
-    low;
-    high;
-    flow;
-  }
+  ({
+     name = header.name;
+     id = header.id;
+     scopeid = header.scopeid;
+     pattern;
+     varNodeId;
+     low;
+     high;
+     flow;
+   }
+    : t)
   |> Result.ok
 
 let get_name (symbol : t) : String.t = symbol.name

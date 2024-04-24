@@ -1,16 +1,12 @@
 open StdlibExt
 open Notation
 
-type t = {
-  name : String.t;
-  id : Int32.t;
-  scopeid : Int32.t;
-  pattern : PatternExpression.t;
-  varNodeIds : VarNodePtr.t Option.t List.t;
-}
+type 'varnode_t poly_t = 'varnode_t TypeDef.varnodelist_poly_t
+type t = TypeDef.varnodelist_t
+type ptr_t = TypeDef.varnodelist_ptr_t
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
-    : (t, String.t) Result.t =
+    : (ptr_t, String.t) Result.t =
   let childs = XmlExt.children xml in
   match childs with
   | pattern :: varNodeIds ->
@@ -22,16 +18,17 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
                |> Result.map VarNodePtr.of_int32
                |> Result.to_option)
       in
-      {
-        name = header.name;
-        id = header.id;
-        scopeid = header.scopeid;
-        pattern;
-        varNodeIds;
-      }
+      ({
+         name = header.name;
+         id = header.id;
+         scopeid = header.scopeid;
+         pattern;
+         varNodeIds;
+       }
+        : ptr_t)
       |> Result.ok
   | _ -> "Invalid number of children" |> Result.error
 
-let get_name (symbol : t) : String.t = symbol.name
-let get_id (symbol : t) : Int32.t = symbol.id
-let get_scopeid (symbol : t) : Int32.t = symbol.scopeid
+let get_name (symbol : 'varnode_t poly_t) : String.t = symbol.name
+let get_id (symbol : 'varnode_t poly_t) : Int32.t = symbol.id
+let get_scopeid (symbol : 'varnode_t poly_t) : Int32.t = symbol.scopeid

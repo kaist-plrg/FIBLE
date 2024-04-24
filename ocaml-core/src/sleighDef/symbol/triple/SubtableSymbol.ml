@@ -1,13 +1,12 @@
 open StdlibExt
 open Notation
 
-type t = {
-  name : String.t;
-  id : Int32.t;
-  scopeid : Int32.t;
-  construct : ConstructorMap.t;
-  decisiontree : DecisionNode.t;
-}
+type ('operand_t, 'constructor_t) poly_t =
+  ('operand_t, 'constructor_t) TypeDef.subtable_poly_t
+
+type 'operand_t middle_t = 'operand_t TypeDef.subtable_middle_t
+type t = TypeDef.subtable_t
+type ptr_t = TypeDef.subtable_ptr_t
 
 let partition_list (l : 'a List.t) (x : Int.t) : 'a List.t * 'a List.t =
   let a, b, _ =
@@ -19,7 +18,7 @@ let partition_list (l : 'a List.t) (x : Int.t) : 'a List.t * 'a List.t =
   (a |> List.rev, b |> List.rev)
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
-    : (t, String.t) Result.t =
+    : (ptr_t, String.t) Result.t =
   let* numct = XmlExt.attrib_int xml "numct" in
   let consts, rest =
     partition_list (Xml.children xml) (numct |> Int32.to_int)
@@ -34,24 +33,47 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
     | [ xml ] -> DecisionNode.decode xml header.id
     | _ -> Result.error "Expected exactly one decision node"
   in
-  {
-    name = header.name;
-    id = header.id;
-    scopeid = header.scopeid;
-    construct = constructMap;
-    decisiontree;
-  }
+  ({
+     name = header.name;
+     id = header.id;
+     scopeid = header.scopeid;
+     construct = constructMap;
+     decisiontree;
+   }
+    : ptr_t)
   |> Result.ok
 
-let get_name (symbol : t) : String.t = symbol.name
-let get_id (symbol : t) : Int32.t = symbol.id
-let get_scopeid (symbol : t) : Int32.t = symbol.scopeid
+let lift_middle (construct : 'operand_t TypeDef.constructor_map_poly_t)
+    (s : DecisionNode.ptr_t) :
+    ('operand_t DecisionNode.middle_t, String.t) Result.t =
+  let rec lift_dec (d : DecisionNode.ptr_t) :
+      ('a DecisionNode.middle_t, String.t) Result.t =
+    match d with
+    | Leaf (n, f) ->
+        let* nf =
+          List.map
+            (fun (p, ptr) ->
+              let* nptr = ConstructorMap.get_constructor construct ptr in
+              (p, nptr) |> Result.ok)
+            f
+          |> ResultExt.join_list
+        in
 
-let get_constructor (symbol : t) (ptr : ConstructorPtr.t) :
-    (Constructor.t, String.t) Result.t =
+        Ok (TypeDef.Leaf (n, nf))
+    | Node (n, c) ->
+        let* nc = List.map lift_dec c |> ResultExt.join_list in
+        Ok (TypeDef.Node (n, nc))
+  in
+  lift_dec s
+
+let get_name (symbol : ('a, 'b) poly_t) : String.t = symbol.name
+let get_id (symbol : ('a, 'b) poly_t) : Int32.t = symbol.id
+let get_scopeid (symbol : ('a, 'b) poly_t) : Int32.t = symbol.scopeid
+
+let get_constructor (symbol : ('a, 'b) poly_t) (ptr : ConstructorPtr.t) :
+    ('a Constructor.poly_t, String.t) Result.t =
   ConstructorMap.get_constructor symbol.construct ptr
 
-let resolve (v : t) (walker : ParserWalker.t) :
-    (Constructor.t, String.t) Result.t =
-  let* ptr = DecisionNode.resolve v.decisiontree walker in
-  ConstructorMap.get_constructor v.construct ptr
+let resolve (v : ('a, 'b) poly_t) (walker : ParserWalker.t) :
+    ('a Constructor.poly_t, String.t) Result.t =
+  DecisionNode.resolve v.decisiontree walker

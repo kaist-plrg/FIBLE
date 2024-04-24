@@ -26,6 +26,7 @@ open Notation
 type t = TriplePtr of TriplePtr.t | UserOpPtr of UserOpPtr.t
 
 let of_userop (v : UserOpPtr.t) = UserOpPtr v
+let of_triple (v : TriplePtr.t) = TriplePtr v
 let of_epsilon (v : EpsilonPtr.t) = TriplePtr (TriplePtr.of_epsilon v)
 let of_purevalue (v : PureValuePtr.t) = TriplePtr (TriplePtr.of_purevalue v)
 let of_valuemap (v : ValueMapPtr.t) = TriplePtr (TriplePtr.of_valuemap v)

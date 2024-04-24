@@ -5,7 +5,7 @@ type t = {
   curScope : Scope.t;
   scopeMap : Scope.t Int32Map.t;
   symbolHeaderMap : SymbolHeader.t Int32Map.t;
-  symbolMap : Symbol.t Int32Map.t;
+  symbolMap : Symbol.ptr_t Int32Map.t;
 }
 
 let partition_list (l : 'a List.t) (x : Int.t) (y : Int.t) :
@@ -51,7 +51,7 @@ let add_symbolhds (symbolhds : Xml.xml List.t) (scopeMap : Scope.t Int32Map.t) :
 
 let add_symbols (symbols : Xml.xml List.t)
     (symbolHeaderMap : SymbolHeader.t Int32Map.t) (sleighInit : SleighInit.t) :
-    (Symbol.t Int32Map.t, String.t) Result.t =
+    (Symbol.ptr_t Int32Map.t, String.t) Result.t =
   ResultExt.fold_left_M
     (fun symbolMap smap ->
       let* symbol = Symbol.decode smap symbolHeaderMap sleighInit in
@@ -75,16 +75,19 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
   in
   { curScope; scopeMap; symbolHeaderMap; symbolMap } |> Result.ok
 
-let get_root (s : t) : (SubtableSymbol.t, String.t) Result.t =
+let get_root (s : t) : (SubtableSymbol.ptr_t, String.t) Result.t =
   let v =
     Int32Map.filter_map
-      (fun _ v ->
+      (fun _ (v : Symbol.ptr_t) ->
         match v with
-        | Symbol.Triple (Subtable s) when String.equal s.name "instruction" ->
-            Some s
+        | Triple (Subtable s) when String.equal s.name "instruction" -> Some s
         | _ -> None)
       s.symbolMap
   in
   match Int32Map.min_binding_opt v with
   | Some (_, s) -> Ok s
   | None -> Error "No root symbol"
+
+let get_symbol (s : t) (pt : SymbolPtr.t) : (Symbol.ptr_t, String.t) Result.t =
+  Int32Map.find_opt (SymbolPtr.get_id pt) s.symbolMap
+  |> Option.to_result ~none:"not found symbol id"

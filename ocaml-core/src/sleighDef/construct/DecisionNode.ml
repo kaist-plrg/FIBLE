@@ -1,18 +1,14 @@
 open StdlibExt
 open Notation
 
-type node_t = {
-  num : Int32.t;
-  contextdecision : Bool.t;
-  startbit : Int32.t;
-  bitsize : Int32.t;
-}
+type node_t = TypeDef.decision_node_t
+type 'constructor_t poly_t = 'constructor_t TypeDef.decision_poly_t
+type 'operand_t middle_t = 'operand_t TypeDef.decision_middle_t
+type t = TypeDef.decision_t
+type ptr_t = TypeDef.decision_ptr_t
 
-type t =
-  | Leaf of node_t * (DisjointPattern.t * ConstructorPtr.t) List.t
-  | Node of node_t * t List.t
-
-let rec decode (xml : Xml.xml) (table_id : Int32.t) : (t, String.t) Result.t =
+let rec decode (xml : Xml.xml) (table_id : Int32.t) : (ptr_t, String.t) Result.t
+    =
   let* num = XmlExt.attrib_int xml "number" in
   let* contextdecision = XmlExt.attrib_bool xml "context" in
   let* startbit = XmlExt.attrib_int xml "start" in
@@ -34,17 +30,17 @@ let rec decode (xml : Xml.xml) (table_id : Int32.t) : (t, String.t) Result.t =
       |> ResultExt.join_list |> Result.map Either.left
     else Error "Invalid children"
   in
-  let node = { num; contextdecision; startbit; bitsize } in
+  let node = ({ num; contextdecision; startbit; bitsize } : node_t) in
   match r with
-  | Left l -> Leaf (node, l) |> Result.ok
-  | Right r -> Node (node, r) |> Result.ok
+  | Left l -> (Leaf (node, l) : ptr_t) |> Result.ok
+  | Right r -> (Node (node, r) : ptr_t) |> Result.ok
 
 let pp_node (fmt : Format.formatter) (node : node_t) : unit =
   Format.fprintf fmt "{num=%ld, contextdecision=%b, startbit=%ld, bitsize=%ld}"
     node.num node.contextdecision node.startbit node.bitsize
 
-let rec resolve (v : t) (walker : ParserWalker.t) :
-    (ConstructorPtr.t, String.t) Result.t =
+let rec resolve (v : 'a poly_t) (walker : ParserWalker.t) :
+    ('a, String.t) Result.t =
   match v with
   | Leaf (_, patterns) -> (
       let m =
@@ -55,19 +51,17 @@ let rec resolve (v : t) (walker : ParserWalker.t) :
       in
       match m with
       | (m, ptr) :: _ ->
-          [%log
-            info "Matched pattern %a, %ld" DisjointPattern.pp m
-              (ConstructorPtr.get_offset ptr)];
+          [%log debug "Matched pattern %a" DisjointPattern.pp m];
           ptr |> Result.ok
       | _ -> "No matching pattern" |> Result.error)
   | Node (node, children) ->
-      [%log info "Resolving node %a" pp_node node];
+      [%log debug "Resolving node %a" pp_node node];
       let* index =
         if node.contextdecision then
           ParserWalker.getContextBits walker node.startbit node.bitsize
         else ParserWalker.getInstructionBits walker node.startbit node.bitsize
       in
-      [%log info "Index: %ld" index];
+      [%log debug "Index: %ld" index];
       let index = Int32.to_int index in
       List.nth_opt children index
       |> Option.to_result

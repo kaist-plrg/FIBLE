@@ -1,17 +1,13 @@
 open StdlibExt
 open Notation
 
-type t = {
-  name : String.t;
-  id : Int32.t;
-  scopeid : Int32.t;
-  const_space : AddrSpace.t;
-}
+type t = TypeDef.epsilon_t
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
     : (t, String.t) Result.t =
   let* const_space = SleighInit.get_constant_space sleighInit in
-  { name = header.name; id = header.id; scopeid = header.scopeid; const_space }
+  ({ name = header.name; id = header.id; scopeid = header.scopeid; const_space }
+    : t)
   |> Result.ok
 
 let get_name (symbol : t) : String.t = symbol.name

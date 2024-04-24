@@ -1,12 +1,13 @@
 open StdlibExt
 open Notation
 
-type t = { name : String.t; id : Int32.t; scopeid : Int32.t; index : Int32.t }
+type t = TypeDef.user_t
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
     : (t, String.t) Result.t =
   let* index = XmlExt.attrib_int xml "index" in
-  { name = header.name; id = header.id; scopeid = header.scopeid; index }
+  ({ name = header.name; id = header.id; scopeid = header.scopeid; index }
+    : TypeDef.user_t)
   |> Result.ok
 
 let get_name (symbol : t) : String.t = symbol.name

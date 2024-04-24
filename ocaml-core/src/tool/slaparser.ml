@@ -18,22 +18,11 @@ module StringSet = Set.Make (String)
 
 let do_a (s : SleighDef.Sla.t) : Unit.t =
   let res =
-    [%log info "scopes: %d" (Int32Map.cardinal s.symbol_table.scopeMap)];
-    [%log info "symbols: %d" (Int32Map.cardinal s.symbol_table.symbolMap)];
+    [%log debug "scopes: %d" (Int32Map.cardinal s.symbol_table.scopeMap)];
+    [%log debug "symbols: %d" (Int32Map.cardinal s.symbol_table.symbolMap)];
     [%log
-      info "instruction constructor length: %d"
+      debug "instruction constructor length: %d"
         (ConstructorMap.cardinal s.root.construct)];
-    let l = ConstructorMap.cardinal s.root.construct / 200 in
-    List.init l (fun i -> Int32.of_int (i * 200))
-    |> List.iter (fun i ->
-           let _ =
-             let* c = ConstructorMap.find_offset s.root.construct i in
-             [%log
-               info "instruction constructor %ld: %a" i
-                 Constructor.pp_printpiece c]
-             |> Result.ok
-           in
-           ());
     let* v =
       SubtableSymbol.resolve s.root (ParserWalker.of_mock "\xc2\x13\x00")
     in

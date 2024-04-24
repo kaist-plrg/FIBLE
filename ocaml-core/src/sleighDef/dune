@@ -9,6 +9,10 @@
  (libraries xml-light stdlibExt)
  (modules
   XmlExt
+  ConstructorPtr
+  ConstructState
+  ParserContext
+  ParserWalker
   Scope
   SymbolTag
   UserOpSymbol
@@ -45,10 +49,13 @@
   ValuePtr
   FamilySymbol
   FamilyPtr
+  TupleSymbol
+  TuplePtr
   TripleSymbol
   TriplePtr
   Symbol
   SymbolPtr
+  TypeDef
   SymbolHeader
   AddrSpace
   Spaces
@@ -62,10 +69,6 @@
   ContextOp
   ContextCommit
   ContextChange
-  ConstructorPtr
-  ConstructState
-  ParserContext
-  ParserWalker
   Constructor
   ConstructorMap
   PatternBlock
@@ -77,4 +80,6 @@
   PatternValue
   PatternExpression
   SymTable
-  Sla))
+  PtrBuilder
+  Sla
+  SymbolPrinter))

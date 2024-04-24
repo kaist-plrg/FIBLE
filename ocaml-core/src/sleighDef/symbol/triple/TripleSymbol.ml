@@ -19,50 +19,87 @@ open Notation
      x Next2Symbol
    x SubtableSymbol
 *)
-type t =
-  | Family of FamilySymbol.t
-  | Specific of SpecificSymbol.t
-  | Subtable of SubtableSymbol.t
+type ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) TypeDef.triple_poly_t
 
-let of_purevalue (v : PureValueSymbol.t) : t =
-  Family (FamilySymbol.of_purevalue v)
+type t = TypeDef.triple_t
+type ptr_t = TypeDef.triple_ptr_t
 
-let of_context (v : ContextSymbol.t) : t = Family (FamilySymbol.of_context v)
-let of_name (v : NameSymbol.t) : t = Family (FamilySymbol.of_name v)
-let of_valuemap (v : ValueMapSymbol.t) : t = Family (FamilySymbol.of_valuemap v)
+let of_purevalue (v : PureValueSymbol.t) :
+    ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  Tuple (TupleSymbol.of_purevalue v)
 
-let of_varnodelist (v : VarNodeListSymbol.t) : t =
-  Family (FamilySymbol.of_varnodelist v)
+let of_context (v : ContextSymbol.t) :
+    ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  Tuple (TupleSymbol.of_context v)
 
-let of_end (v : EndSymbol.t) : t = Specific (SpecificSymbol.of_end v)
+let of_name (v : NameSymbol.t) :
+    ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  Tuple (TupleSymbol.of_name v)
 
-let of_operand (v : OperandSymbol.t) : t =
-  Specific (SpecificSymbol.of_operand v)
+let of_valuemap (v : ValueMapSymbol.t) :
+    ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  Tuple (TupleSymbol.of_valuemap v)
 
-let of_epsilon (v : EpsilonSymbol.t) : t =
-  Specific (SpecificSymbol.of_epsilon v)
+let of_varnodelist (v : 'varnode_t VarNodeListSymbol.poly_t) :
+    ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  Tuple (TupleSymbol.of_varnodelist v)
 
-let of_varnode (v : VarNodeSymbol.t) : t =
-  Specific (SpecificSymbol.of_varnode v)
+let of_end (v : EndSymbol.t) :
+    ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  Tuple (TupleSymbol.of_end v)
 
-let of_start (v : StartSymbol.t) : t = Specific (SpecificSymbol.of_start v)
-let of_next2 (v : Next2Symbol.t) : t = Specific (SpecificSymbol.of_next2 v)
-let of_subtable (v : SubtableSymbol.t) : t = Subtable v
+let of_operand (v : 'triple_t OperandSymbol.poly_t) :
+    ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  Tuple (TupleSymbol.of_operand v)
 
-let get_name (symbol : t) : string =
+let try_operand (v : ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t)
+    =
+  match v with Tuple v -> TupleSymbol.try_operand v | _ -> None
+
+let of_epsilon (v : EpsilonSymbol.t) :
+    ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  Tuple (TupleSymbol.of_epsilon v)
+
+let of_varnode (v : VarNodeSymbol.t) :
+    ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  Tuple (TupleSymbol.of_varnode v)
+
+let try_varnode (v : ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t)
+    =
+  match v with Tuple v -> TupleSymbol.try_varnode v | _ -> None
+
+let of_start (v : StartSymbol.t) :
+    ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  Tuple (TupleSymbol.of_start v)
+
+let of_next2 (v : Next2Symbol.t) :
+    ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  Tuple (TupleSymbol.of_next2 v)
+
+let try_tuple (v : ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t) =
+  match v with Tuple v -> Some v | _ -> None
+
+let of_subtable (v : ('operand_t, 'constructor_t) SubtableSymbol.poly_t) :
+    ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
+  Subtable v
+
+let get_name
+    (symbol : ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t) :
+    string =
   match symbol with
-  | Family v -> FamilySymbol.get_name v
-  | Specific v -> SpecificSymbol.get_name v
+  | Tuple v -> TupleSymbol.get_name v
   | Subtable v -> SubtableSymbol.get_name v
 
-let get_id (symbol : t) : Int32.t =
+let get_id (symbol : ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t)
+    : Int32.t =
   match symbol with
-  | Family v -> FamilySymbol.get_id v
-  | Specific v -> SpecificSymbol.get_id v
+  | Tuple v -> TupleSymbol.get_id v
   | Subtable v -> SubtableSymbol.get_id v
 
-let get_scopeid (symbol : t) : Int32.t =
+let get_scopeid
+    (symbol : ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t) :
+    Int32.t =
   match symbol with
-  | Family v -> FamilySymbol.get_scopeid v
-  | Specific v -> SpecificSymbol.get_scopeid v
+  | Tuple v -> TupleSymbol.get_scopeid v
   | Subtable v -> SubtableSymbol.get_scopeid v
