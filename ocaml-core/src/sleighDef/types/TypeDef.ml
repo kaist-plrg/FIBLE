@@ -109,12 +109,17 @@ type end_t = {
   patexp : PatternExpression.t;
 }
 
-type 'tuple_t operand_poly_t = {
+type ('tuple_t, 'mapped_t) operand_elem =
+  | OTriple of ('tuple_t, 'mapped_t) Either.t
+  | ODefExp of PatternExpression.t
+
+type operand_ptr_elem = (TuplePtr.t, SubtablePtr.t) operand_elem
+
+type ('tuple_t, 'mapped_t) operand_poly_t = {
   name : String.t;
   id : Int32.t;
   scopeid : Int32.t;
-  defexp : PatternExpression.t Option.t;
-  tripleId : 'tuple_t Option.t;
+  operand_value : ('tuple_t, 'mapped_t) operand_elem;
   localexp : PatternExpression.t;
   flags : Int32.t;
   hand : Int32.t;
@@ -123,7 +128,7 @@ type 'tuple_t operand_poly_t = {
   minimumlength : Int32.t;
 }
 
-type operand_ptr_t = TuplePtr.t operand_poly_t
+type operand_ptr_t = (TuplePtr.t, SubtablePtr.t) operand_poly_t
 
 type epsilon_t = {
   name : String.t;
@@ -159,14 +164,14 @@ type next2_t = {
   patexp : PatternExpression.t;
 }
 
-type 'tuple_t specific_poly_t =
+type ('tuple_t, 'mapped_t) specific_poly_t =
   | End of end_t
-  | Operand of 'tuple_t operand_poly_t
+  | Operand of ('tuple_t, 'mapped_t) operand_poly_t
   | Patternless of patternless_t
   | Start of start_t
   | Next2 of next2_t
 
-type specific_ptr_t = TuplePtr.t specific_poly_t
+type specific_ptr_t = (TuplePtr.t, SubtablePtr.t) specific_poly_t
 
 type 'operand_t constructor_map_poly_t = {
   id : Int32.t;
@@ -204,44 +209,89 @@ type 'operand_t subtable_middle_t =
 
 type subtable_ptr_t = (OperandPtr.t, ConstructorPtr.t) subtable_poly_t
 
-type ('varnode_t, 'tuple_t) tuple_poly_t =
+type ('varnode_t, 'tuple_t, 'mapped_t) tuple_poly_t =
   | Family of 'varnode_t family_poly_t
-  | Specific of 'tuple_t specific_poly_t
+  | Specific of ('tuple_t, 'mapped_t) specific_poly_t
 
-type tuple_ptr_t = (VarNodePtr.t, TuplePtr.t) tuple_poly_t
+type tuple_ptr_t = (VarNodePtr.t, TuplePtr.t, SubtablePtr.t) tuple_poly_t
 
-type ('varnode_t, 'tuple_t, 'operand_t, 'constructor_t) triple_poly_t =
-  | Tuple of ('varnode_t, 'tuple_t) tuple_poly_t
+type ('varnode_t, 'tuple_t, 'mapped_t, 'operand_t, 'constructor_t) triple_poly_t =
+  | Tuple of ('varnode_t, 'tuple_t, 'mapped_t) tuple_poly_t
   | Subtable of ('operand_t, 'constructor_t) subtable_poly_t
 
 type triple_ptr_t =
-  (VarNodePtr.t, TuplePtr.t, OperandPtr.t, ConstructorPtr.t) triple_poly_t
+  ( VarNodePtr.t,
+    TuplePtr.t,
+    SubtablePtr.t,
+    OperandPtr.t,
+    ConstructorPtr.t )
+  triple_poly_t
 
-type ('varnode_t, 'tuple_t, 'operand_t, 'constructor_t) sym_poly_t =
-  | Triple of ('varnode_t, 'tuple_t, 'operand_t, 'constructor_t) triple_poly_t
+type ('varnode_t, 'tuple_t, 'mapped_t, 'operand_t, 'constructor_t) sym_poly_t =
+  | Triple of
+      ( 'varnode_t,
+        'tuple_t,
+        'mapped_t,
+        'operand_t,
+        'constructor_t )
+      triple_poly_t
   | UserOp of user_t
 
 type sym_ptr_t =
-  (VarNodePtr.t, TuplePtr.t, OperandPtr.t, ConstructorPtr.t) sym_poly_t
+  ( VarNodePtr.t,
+    TuplePtr.t,
+    SubtablePtr.t,
+    OperandPtr.t,
+    ConstructorPtr.t )
+  sym_poly_t
 
 (* resolve recursion *)
-type constructor_t = operand_t constructor_poly_t
-and operand_t = tuple_t operand_poly_t
+type 'mapped_t constructor_t = 'mapped_t operand_t constructor_poly_t
+and 'mapped_t operand_t = ('mapped_t tuple_t, 'mapped_t) operand_poly_t
 
-and tuple_t =
+and 'mapped_t tuple_t =
   | Family of varnode_t family_poly_t
-  | Specific of tuple_t specific_poly_t
+  | Specific of ('mapped_t tuple_t, 'mapped_t) specific_poly_t
 
-type constructor_map_t = operand_t constructor_map_poly_t
+type constructor_unmapped = SubtablePtr.t constructor_t
+type constructor_mapped = C of constructor_mapped constructor_t
+type operand_unmapped = SubtablePtr.t operand_t
+type operand_mapped = constructor_mapped operand_t
+type tuple_unmapped = SubtablePtr.t tuple_t
+type tuple_mapped = constructor_mapped tuple_t
+type 'mapped_t constructor_map_t = 'mapped_t operand_t constructor_map_poly_t
+type constructor_map_unmapped = SubtablePtr.t constructor_map_t
+type constructor_map_mapped = constructor_mapped constructor_map_t
 type varnodelist_t = varnode_t varnodelist_poly_t
 type value_t = varnode_t value_poly_t
 type family_t = varnode_t family_poly_t
-type decision_t = constructor_t decision_poly_t
-type subtable_t = (operand_t, constructor_t) subtable_poly_t
-type specific_t = tuple_t specific_poly_t
+type 'mapped_t decision_t = 'mapped_t constructor_t decision_poly_t
+type decision_unmapped = SubtablePtr.t decision_t
+type decision_mapped = constructor_mapped decision_t
 
-type triple_t =
-  | Tuple of tuple_t
-  | Subtable of (operand_t, constructor_t) subtable_poly_t
+type 'mapped_t subtable_t =
+  ('mapped_t operand_t, 'mapped_t constructor_t) subtable_poly_t
 
-type sym_t = (varnode_t, tuple_t, operand_t, constructor_t) sym_poly_t
+type subtable_unmapped = SubtablePtr.t subtable_t
+type subtable_mapped = constructor_mapped subtable_t
+type 'mapped_t specific_t = ('mapped_t tuple_t, 'mapped_t) specific_poly_t
+type specific_unmapped = SubtablePtr.t specific_t
+type specific_mapped = constructor_mapped specific_t
+
+type 'mapped_t triple_t =
+  | Tuple of 'mapped_t tuple_t
+  | Subtable of ('mapped_t operand_t, 'mapped_t constructor_t) subtable_poly_t
+
+type triple_unmapped = SubtablePtr.t triple_t
+type triple_mapped = constructor_mapped triple_t
+
+type 'mapped_t sym_t =
+  ( varnode_t,
+    'mapped_t tuple_t,
+    'mapped_t,
+    'mapped_t operand_t,
+    'mapped_t constructor_t )
+  sym_poly_t
+
+type sym_unmapped = SubtablePtr.t sym_t
+type sym_mapped = constructor_mapped sym_t

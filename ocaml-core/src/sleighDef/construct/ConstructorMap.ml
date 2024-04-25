@@ -2,7 +2,7 @@ open StdlibExt
 open Notation
 
 type 'operand_t poly_t = 'operand_t TypeDef.constructor_map_poly_t
-type t = TypeDef.constructor_map_t
+type t = TypeDef.constructor_map_unmapped
 type ptr_t = TypeDef.constructor_map_ptr_t
 
 let cardinal (v : 'a poly_t) = Int32Map.cardinal v.map

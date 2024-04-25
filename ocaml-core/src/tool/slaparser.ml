@@ -23,10 +23,13 @@ let do_a (s : SleighDef.Sla.t) : Unit.t =
     [%log
       debug "instruction constructor length: %d"
         (ConstructorMap.cardinal s.root.construct)];
-    let* v =
-      SubtableSymbol.resolve s.root (ParserWalker.of_mock "\xc2\x13\x00")
+    [%log info "a"];
+    let* v = Sla.resolve s s.root (ParserWalker.of_mock "\x89\xe5") in
+    [%log info "resolve"];
+    let* s =
+      SymbolPrinter.print_constructor v s (ParserWalker.of_mock "\x89\xe5")
     in
-    [%log info "resolve: %a" Constructor.pp_printpiece v] |> Result.ok
+    [%log info "resolve: %s" s] |> Result.ok
   in
   match res with Ok () -> () | Error s -> [%log info "%s" s]
 

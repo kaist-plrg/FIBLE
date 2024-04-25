@@ -11,3 +11,6 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
   | "commit" ->
       ContextCommit.decode xml sleighInit |> Result.map (fun x -> Commit x)
   | _ -> "Unknown context type: " ^ XmlExt.tag xml |> Result.error
+
+let pp (fmt : Format.formatter) (x : t) : unit =
+  match x with Commit x -> ContextCommit.pp fmt x | Op x -> ContextOp.pp fmt x

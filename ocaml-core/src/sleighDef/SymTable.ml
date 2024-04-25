@@ -1,11 +1,17 @@
 open StdlibExt
 open Notation
 
-type t = {
+type ptr_t = {
   curScope : Scope.t;
   scopeMap : Scope.t Int32Map.t;
   symbolHeaderMap : SymbolHeader.t Int32Map.t;
   symbolMap : Symbol.ptr_t Int32Map.t;
+}
+
+type t = {
+  curScope : Scope.t;
+  scopeMap : Scope.t Int32Map.t;
+  symbolMap : SubtableSymbol.t Int32Map.t;
 }
 
 let partition_list (l : 'a List.t) (x : Int.t) (y : Int.t) :
@@ -58,8 +64,8 @@ let add_symbols (symbols : Xml.xml List.t)
       Int32Map.add (Symbol.get_id symbol) symbol symbolMap |> Result.ok)
     Int32Map.empty symbols
 
-let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
-    =
+let decode (xml : Xml.xml) (sleighInit : SleighInit.t) :
+    (ptr_t, String.t) Result.t =
   let* () = XmlExt.check_tag xml "symbol_table"
   and* scopesize = XmlExt.attrib_int xml "scopesize" |> Result.map Int32.to_int
   and* symbolsize =
@@ -75,7 +81,7 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
   in
   { curScope; scopeMap; symbolHeaderMap; symbolMap } |> Result.ok
 
-let get_root (s : t) : (SubtableSymbol.ptr_t, String.t) Result.t =
+let get_root (s : ptr_t) : (SubtableSymbol.ptr_t, String.t) Result.t =
   let v =
     Int32Map.filter_map
       (fun _ (v : Symbol.ptr_t) ->
@@ -88,6 +94,12 @@ let get_root (s : t) : (SubtableSymbol.ptr_t, String.t) Result.t =
   | Some (_, s) -> Ok s
   | None -> Error "No root symbol"
 
-let get_symbol (s : t) (pt : SymbolPtr.t) : (Symbol.ptr_t, String.t) Result.t =
+let get_symbol (s : ptr_t) (pt : SymbolPtr.t) :
+    (Symbol.ptr_t, String.t) Result.t =
   Int32Map.find_opt (SymbolPtr.get_id pt) s.symbolMap
   |> Option.to_result ~none:"not found symbol id"
+
+let get_subtable (s : t) (pt : SubtablePtr.t) :
+    (SubtableSymbol.t, String.t) Result.t =
+  Int32Map.find_opt (SubtablePtr.get_id pt) s.symbolMap
+  |> Option.to_result ~none:"not found subtable id"

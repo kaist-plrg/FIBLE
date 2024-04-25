@@ -1,15 +1,15 @@
 open StdlibExt
 open Notation
 
-let get_operand (P ptr : OperandPtr.t) (map : TypeDef.sym_ptr_t Int32Map.t) :
-    (OperandSymbol.ptr_t, String.t) Result.t =
+let get_operand_raw (P ptr : OperandPtr.t) (map : TypeDef.sym_ptr_t Int32Map.t)
+    : (OperandSymbol.ptr_t, String.t) Result.t =
   let* t =
     Int32Map.find_opt ptr map
     |> Option.to_result ~none:"OperandPtr not found in map"
   in
   Symbol.try_operand t |> Option.to_result ~none:"OperandPtr not an operand"
 
-let get_tuple (p : TuplePtr.t) (map : TypeDef.sym_ptr_t Int32Map.t) :
+let get_tuple_raw (p : TuplePtr.t) (map : TypeDef.sym_ptr_t Int32Map.t) :
     (TupleSymbol.ptr_t, String.t) Result.t =
   let id = TuplePtr.get_id p in
   let* t =
@@ -18,7 +18,7 @@ let get_tuple (p : TuplePtr.t) (map : TypeDef.sym_ptr_t Int32Map.t) :
   in
   Symbol.try_tuple t |> Option.to_result ~none:"TuplePtr not an tuple"
 
-let get_triple (p : TriplePtr.t) (map : TypeDef.sym_ptr_t Int32Map.t) :
+let get_triple_raw (p : TriplePtr.t) (map : TypeDef.sym_ptr_t Int32Map.t) :
     (TripleSymbol.ptr_t, String.t) Result.t =
   let id = TriplePtr.get_id p in
   let* t =
@@ -27,7 +27,7 @@ let get_triple (p : TriplePtr.t) (map : TypeDef.sym_ptr_t Int32Map.t) :
   in
   Symbol.try_triple t |> Option.to_result ~none:"TriplePtr not an triple"
 
-let get_varnode (p : VarNodePtr.t) (map : TypeDef.sym_ptr_t Int32Map.t) :
+let get_varnode_raw (p : VarNodePtr.t) (map : TypeDef.sym_ptr_t Int32Map.t) :
     (VarNodeSymbol.t, String.t) Result.t =
   let id = VarNodePtr.get_id p in
   let* t =
@@ -43,7 +43,7 @@ let build_varnodelist (v : VarNodeListSymbol.ptr_t)
     v.varNodeIds
     |> List.map (fun ptr ->
            match ptr with
-           | Some ptr -> get_varnode ptr map |> Result.map Option.some
+           | Some ptr -> get_varnode_raw ptr map |> Result.map Option.some
            | None -> None |> Result.ok)
     |> ResultExt.join_list
   in
@@ -65,76 +65,103 @@ let build_family (f : FamilySymbol.ptr_t) (map : TypeDef.sym_ptr_t Int32Map.t) :
   | Value s -> build_value s map |> Result.map (fun s -> TypeDef.Value s)
 
 let rec build_specific (s : SpecificSymbol.ptr_t)
-    (map : TypeDef.sym_ptr_t Int32Map.t) : (SpecificSymbol.t, String.t) Result.t
-    =
-  match s with
-  | End s -> TypeDef.End s |> Result.ok
-  | Start s -> TypeDef.Start s |> Result.ok
-  | Next2 s -> TypeDef.Next2 s |> Result.ok
-  | Patternless s -> TypeDef.Patternless s |> Result.ok
-  | Operand s -> build_operand s map |> Result.map (fun s -> TypeDef.Operand s)
+    (map : TypeDef.sym_ptr_t Int32Map.t) (fuel : Int.t) :
+    (SpecificSymbol.t, String.t) Result.t =
+  if fuel <= 0 then Error "Out of fuel"
+  else
+    match s with
+    | End s -> TypeDef.End s |> Result.ok
+    | Start s -> TypeDef.Start s |> Result.ok
+    | Next2 s -> TypeDef.Next2 s |> Result.ok
+    | Patternless s -> TypeDef.Patternless s |> Result.ok
+    | Operand s ->
+        build_operand 0xfffl s map (fuel - 1)
+        |> Result.map (fun s -> TypeDef.Operand s)
 
-and build_operand (op : OperandSymbol.ptr_t)
-    (map : TypeDef.sym_ptr_t Int32Map.t) : (OperandSymbol.t, String.t) Result.t
-    =
-  let* tripleId =
-    match op.tripleId with
-    | Some ptr ->
-        get_triple (TriplePtr.Tuple ptr) map
-        |> Result.map (fun t ->
-               match (t : TripleSymbol.ptr_t) with
-               | Tuple t -> t |> Option.some
-               | _ -> Option.none)
-        |> Fun.flip Result.bind (fun t ->
-               Option.map
-                 (fun t -> build_tuple t map |> Result.map Option.some)
-                 t
-               |> Option.value ~default:(Ok None))
-    | None -> Ok None
-  in
-  Ok { op with tripleId }
+and build_operand (id : Int32.t) (op : OperandSymbol.ptr_t)
+    (map : TypeDef.sym_ptr_t Int32Map.t) (fuel : Int.t) :
+    (OperandSymbol.t, String.t) Result.t =
+  if fuel <= 0 then Error "Out of fuel"
+  else
+    let* operand_value =
+      match op.operand_value with
+      | OTriple (Either.Left ptr) ->
+          get_triple_raw (TriplePtr.Tuple ptr) map
+          |> Fun.flip Result.bind (fun t ->
+                 match (t : TripleSymbol.ptr_t) with
+                 | Tuple t ->
+                     let* t = build_tuple t map (fuel - 1) in
+                     TypeDef.OTriple (Either.Left t) |> Result.ok
+                 | Subtable s ->
+                     TypeDef.OTriple (Either.Right (SubtablePtr.of_int32 s.id))
+                     |> Result.ok)
+      | OTriple (Either.Right ptr) -> "not reachable" |> Result.error
+      | ODefExp f -> TypeDef.ODefExp f |> Result.ok
+    in
+    Ok { op with operand_value }
 
-and build_tuple (t : TupleSymbol.ptr_t) (map : TypeDef.sym_ptr_t Int32Map.t) :
-    (TupleSymbol.t, String.t) Result.t =
-  match t with
-  | Specific s ->
-      build_specific s map |> Result.map (fun s -> TypeDef.Specific s)
-  | Family f -> build_family f map |> Result.map (fun f -> TypeDef.Family f)
+and build_tuple (t : TupleSymbol.ptr_t) (map : TypeDef.sym_ptr_t Int32Map.t)
+    (fuel : Int.t) : (TupleSymbol.t, String.t) Result.t =
+  if fuel <= 0 then Error "Out of fuel"
+  else
+    match t with
+    | Specific s ->
+        build_specific s map (fuel - 1)
+        |> Result.map (fun s -> TypeDef.Specific s)
+    | Family f -> build_family f map |> Result.map (fun f -> TypeDef.Family f)
 
-and build_triple (t : TripleSymbol.ptr_t) (map : TypeDef.sym_ptr_t Int32Map.t) :
-    (TripleSymbol.t, String.t) Result.t =
-  match t with
-  | Tuple s -> build_tuple s map |> Result.map (fun s -> TypeDef.Tuple s)
-  | Subtable f ->
-      build_subtable f map |> Result.map (fun f -> TypeDef.Subtable f)
+and build_triple (t : TripleSymbol.ptr_t) (map : TypeDef.sym_ptr_t Int32Map.t)
+    (fuel : Int.t) : (TripleSymbol.t, String.t) Result.t =
+  if fuel <= 0 then Error "Out of fuel"
+  else
+    match t with
+    | Tuple s ->
+        build_tuple s map (fuel - 1) |> Result.map (fun s -> TypeDef.Tuple s)
+    | Subtable f ->
+        build_subtable f map (fuel - 1)
+        |> Result.map (fun f -> TypeDef.Subtable f)
 
 and build_constructor (s : Constructor.ptr_t)
-    (map : TypeDef.sym_ptr_t Int32Map.t) : (Constructor.t, String.t) Result.t =
-  let* operandIds =
-    s.operandIds
-    |> List.map (fun ptr ->
-           let* optr = get_operand ptr map in
-           build_operand optr map)
-    |> ResultExt.join_list
-  in
-  { s with operandIds } |> Result.ok
+    (map : TypeDef.sym_ptr_t Int32Map.t) (fuel : Int.t) :
+    (Constructor.t, String.t) Result.t =
+  if fuel <= 0 then Error "Out of fuel"
+  else
+    let* operandIds =
+      s.operandIds
+      |> List.map (fun ptr ->
+             let* optr = get_operand_raw ptr map in
+             build_operand (SubtablePtr.get_id s.parentId) optr map (fuel - 1))
+      |> ResultExt.join_list
+    in
+    { s with operandIds } |> Result.ok
 
 and build_constructor_map (s : ConstructorMap.ptr_t)
-    (map : TypeDef.sym_ptr_t Int32Map.t) : (ConstructorMap.t, String.t) Result.t
-    =
-  let* nmap =
-    s.map |> Int32Map.to_list
-    |> List.map (fun (k, v) ->
-           let* v = build_constructor v map in
-           (k, v) |> Result.ok)
-    |> ResultExt.join_list
-  in
-  { s with map = Int32Map.of_list nmap } |> Result.ok
+    (map : TypeDef.sym_ptr_t Int32Map.t) (fuel : Int.t) :
+    (ConstructorMap.t, String.t) Result.t =
+  if fuel <= 0 then Error "Out of fuel"
+  else
+    let* nmap =
+      s.map |> Int32Map.to_list
+      |> List.map (fun (k, v) ->
+             let* v = build_constructor v map (fuel - 1) in
+             (k, v) |> Result.ok)
+      |> ResultExt.join_list
+    in
+    { s with map = Int32Map.of_list nmap } |> Result.ok
 
 and build_subtable (s : SubtableSymbol.ptr_t)
+    (map : TypeDef.sym_ptr_t Int32Map.t) (fuel : Int.t) :
+    (SubtableSymbol.t, String.t) Result.t =
+  if fuel <= 0 then Error "Out of fuel"
+  else (
+    [%log debug "Building subtable %ld %s" s.id s.name];
+    let* (construct : ConstructorMap.t) =
+      build_constructor_map s.construct map (fuel - 1)
+    in
+    let* decisiontree = SubtableSymbol.lift_middle construct s.decisiontree in
+    { s with construct; decisiontree } |> Result.ok)
+
+let build_subtable_full (s : SubtableSymbol.ptr_t)
     (map : TypeDef.sym_ptr_t Int32Map.t) : (SubtableSymbol.t, String.t) Result.t
     =
-  [%log info "Building subtable %ld %s" s.id s.name];
-  let* (construct : ConstructorMap.t) = build_constructor_map s.construct map in
-  let* decisiontree = SubtableSymbol.lift_middle construct s.decisiontree in
-  { s with construct; decisiontree } |> Result.ok
+  build_subtable s map ((Int32Map.cardinal map + 1) * 7)

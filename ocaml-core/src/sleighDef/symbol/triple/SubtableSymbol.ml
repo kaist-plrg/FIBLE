@@ -5,7 +5,7 @@ type ('operand_t, 'constructor_t) poly_t =
   ('operand_t, 'constructor_t) TypeDef.subtable_poly_t
 
 type 'operand_t middle_t = 'operand_t TypeDef.subtable_middle_t
-type t = TypeDef.subtable_t
+type t = TypeDef.subtable_unmapped
 type ptr_t = TypeDef.subtable_ptr_t
 
 let partition_list (l : 'a List.t) (x : Int.t) : 'a List.t * 'a List.t =
@@ -73,7 +73,3 @@ let get_scopeid (symbol : ('a, 'b) poly_t) : Int32.t = symbol.scopeid
 let get_constructor (symbol : ('a, 'b) poly_t) (ptr : ConstructorPtr.t) :
     ('a Constructor.poly_t, String.t) Result.t =
   ConstructorMap.get_constructor symbol.construct ptr
-
-let resolve (v : ('a, 'b) poly_t) (walker : ParserWalker.t) :
-    ('a Constructor.poly_t, String.t) Result.t =
-  DecisionNode.resolve v.decisiontree walker

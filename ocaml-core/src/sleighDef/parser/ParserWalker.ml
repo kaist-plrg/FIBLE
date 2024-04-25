@@ -17,6 +17,11 @@ let getInstructionBytes (v : t) (startbyte : Int32.t) (bytesize : Int32.t) =
   ParserContext.getInstructionBytes v.const_context startbyte bytesize
     v.point.offset
 
+let get_offset (v : t) = v.point.offset
+
+let replace_offset (v : t) (offset : Int32.t) =
+  { v with point = { v.point with offset } }
+
 let of_mock (s : String.t) : t =
   let const_context = ParserContext.of_mock s in
   let point : ConstructState.t =

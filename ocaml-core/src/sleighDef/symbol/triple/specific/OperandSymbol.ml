@@ -1,8 +1,11 @@
 open StdlibExt
 open Notation
 
-type 'triple_t poly_t = 'triple_t TypeDef.operand_poly_t
-type t = TypeDef.operand_t
+type ('triple_t, 'mapped_t) poly_t =
+  ('triple_t, 'mapped_t) TypeDef.operand_poly_t
+
+type t = TypeDef.operand_unmapped
+type mapped_t = TypeDef.operand_mapped
 type ptr_t = TypeDef.operand_ptr_t
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
@@ -28,12 +31,19 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
         Ok (localexp, None)
     | _ -> Error "Expected exactly one or two children"
   in
+  let* (opval : TypeDef.operand_ptr_elem) =
+    match (tripleId, defexp) with
+    | Some tripleId, Some defexp ->
+        Error "Expected either a tripleId or a defexp"
+    | Some tripleId, None -> TypeDef.OTriple (Either.left tripleId) |> Result.ok
+    | None, Some defexp -> TypeDef.ODefExp defexp |> Result.ok
+    | None, None -> Error "Expected either a tripleId or a defexp"
+  in
   ({
      name = header.name;
      id = header.id;
      scopeid = header.scopeid;
-     defexp;
-     tripleId;
+     operand_value = opval;
      localexp;
      flags;
      hand;
@@ -44,6 +54,6 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
     : ptr_t)
   |> Result.ok
 
-let get_name (symbol : 'a poly_t) : String.t = symbol.name
-let get_id (symbol : 'a poly_t) : Int32.t = symbol.id
-let get_scopeid (symbol : 'a poly_t) : Int32.t = symbol.scopeid
+let get_name (symbol : ('a, 'b) poly_t) : String.t = symbol.name
+let get_id (symbol : ('a, 'b) poly_t) : Int32.t = symbol.id
+let get_scopeid (symbol : ('a, 'b) poly_t) : Int32.t = symbol.scopeid

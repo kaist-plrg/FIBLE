@@ -23,8 +23,13 @@ open Notation
     x UserOpSymbol
 *)
 
-type ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t =
-  ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) TypeDef.sym_poly_t
+type ('varnode_t, 'triple_t, 'mapped_t, 'operand_t, 'constructor_t) poly_t =
+  ( 'varnode_t,
+    'triple_t,
+    'mapped_t,
+    'operand_t,
+    'constructor_t )
+  TypeDef.sym_poly_t
 
 type ptr_t = TypeDef.sym_ptr_t
 
@@ -44,7 +49,8 @@ let of_name (v : NameSymbol.t) = TypeDef.Triple (TripleSymbol.of_name v)
 let of_varnode (v : VarNodeSymbol.t) =
   TypeDef.Triple (TripleSymbol.of_varnode v)
 
-let try_varnode (v : ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t)
+let try_varnode
+    (v : ('varnode_t, 'triple_t, 'mapped_t, 'operand_t, 'constructor_t) poly_t)
     =
   match v with TypeDef.Triple v -> TripleSymbol.try_varnode v | _ -> None
 
@@ -54,17 +60,21 @@ let of_context (v : ContextSymbol.t) =
 let of_varnodelist (v : 'varnode_t VarNodeListSymbol.poly_t) =
   TypeDef.Triple (TripleSymbol.of_varnodelist v)
 
-let of_operand (v : 'triple_t OperandSymbol.poly_t) =
+let of_operand (v : ('triple_t, 'mapped_t) OperandSymbol.poly_t) =
   TypeDef.Triple (TripleSymbol.of_operand v)
 
-let try_operand (v : ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t)
+let try_operand
+    (v : ('varnode_t, 'triple_t, 'mapped_t, 'operand_t, 'constructor_t) poly_t)
     =
   match v with TypeDef.Triple v -> TripleSymbol.try_operand v | _ -> None
 
-let try_tuple (v : ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t) =
+let try_tuple
+    (v : ('varnode_t, 'triple_t, 'mapped_t, 'operand_t, 'constructor_t) poly_t)
+    =
   match v with TypeDef.Triple v -> TripleSymbol.try_tuple v | _ -> None
 
-let try_triple (v : ('varnode_t, 'triple_t, 'operand_t, 'constructor_t) poly_t)
+let try_triple
+    (v : ('varnode_t, 'triple_t, 'mapped_t, 'operand_t, 'constructor_t) poly_t)
     =
   match v with TypeDef.Triple v -> Some v | _ -> None
 
@@ -106,17 +116,17 @@ let decode (xml : Xml.xml) (symbolHeaderMap : SymbolHeader.t Int32Map.t)
   | TSubtable ->
       SubtableSymbol.decode xml sleighInit header |> Result.map of_subtable
 
-let get_name (symbol : ('a, 'b, 'c, 'd) poly_t) : String.t =
+let get_name (symbol : ('a, 'b, 'c, 'd, 'e) poly_t) : String.t =
   match symbol with
   | Triple symbol -> TripleSymbol.get_name symbol
   | UserOp symbol -> UserOpSymbol.get_name symbol
 
-let get_id (symbol : ('a, 'b, 'c, 'd) poly_t) : Int32.t =
+let get_id (symbol : ('a, 'b, 'c, 'd, 'e) poly_t) : Int32.t =
   match symbol with
   | Triple symbol -> TripleSymbol.get_id symbol
   | UserOp symbol -> UserOpSymbol.get_id symbol
 
-let get_scopeid (symbol : ('a, 'b, 'c, 'd) poly_t) : Int32.t =
+let get_scopeid (symbol : ('a, 'b, 'c, 'd, 'e) poly_t) : Int32.t =
   match symbol with
   | Triple symbol -> TripleSymbol.get_scopeid symbol
   | UserOp symbol -> UserOpSymbol.get_scopeid symbol

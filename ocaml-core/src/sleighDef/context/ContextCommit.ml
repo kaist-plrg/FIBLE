@@ -10,3 +10,8 @@ let decode (xml : Xml.xml) (sleightInit : SleighInit.t) : (t, String.t) Result.t
   let* mask = XmlExt.attrib_int xml "mask" in
   let* flow = XmlExt.attrib_bool xml "flow" in
   { symId; num; mask; flow } |> Result.ok
+
+let pp (fmt : Format.formatter) (sleight : t) : unit =
+  Format.fprintf fmt "symId: %ld, num: %ld, mask: %ld, flow: %b"
+    (TuplePtr.get_id sleight.symId)
+    sleight.num sleight.mask sleight.flow

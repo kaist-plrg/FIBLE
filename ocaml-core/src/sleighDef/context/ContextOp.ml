@@ -21,3 +21,7 @@ let decode (xml : Xml.xml) (sleightInit : SleighInit.t) : (t, String.t) Result.t
            |> Option.to_result ~none:"PatternExpression.decode failed")
   in
   { num; shift; mask; patexp } |> Result.ok
+
+let pp (fmt : Format.formatter) (t : t) : unit =
+  Format.fprintf fmt "{mask: %lx, shift: %ld, num: %ld, patexp: ...}" t.mask
+    t.shift t.num

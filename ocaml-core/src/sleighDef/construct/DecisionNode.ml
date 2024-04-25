@@ -4,7 +4,7 @@ open Notation
 type node_t = TypeDef.decision_node_t
 type 'constructor_t poly_t = 'constructor_t TypeDef.decision_poly_t
 type 'operand_t middle_t = 'operand_t TypeDef.decision_middle_t
-type t = TypeDef.decision_t
+type t = TypeDef.decision_unmapped
 type ptr_t = TypeDef.decision_ptr_t
 
 let rec decode (xml : Xml.xml) (table_id : Int32.t) : (ptr_t, String.t) Result.t
