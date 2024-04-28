@@ -14,3 +14,9 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
 
 let pp (fmt : Format.formatter) (x : t) : unit =
   match x with Commit x -> ContextCommit.pp fmt x | Op x -> ContextOp.pp fmt x
+
+let apply (v : t) (walker : ParserWalker.t) :
+    (ParserWalker.t, String.t) Result.t =
+  match v with
+  | Commit v -> ContextCommit.apply v walker
+  | Op v -> ContextOp.apply v walker

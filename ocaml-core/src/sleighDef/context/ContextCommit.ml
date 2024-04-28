@@ -15,3 +15,8 @@ let pp (fmt : Format.formatter) (sleight : t) : unit =
   Format.fprintf fmt "symId: %ld, num: %ld, mask: %ld, flow: %b"
     (TuplePtr.get_id sleight.symId)
     sleight.num sleight.mask sleight.flow
+
+let apply (v : t) (walker : ParserWalker.t) :
+    (ParserWalker.t, String.t) Result.t =
+  [%log info "WARN: not implemented"];
+  walker |> Result.ok

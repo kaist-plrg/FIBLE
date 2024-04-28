@@ -23,11 +23,11 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
   let* localexp, defexp =
     match XmlExt.children xml with
     | [ localexp; defexp ] ->
-        let* localexp = PatternExpression.decode localexp sleighInit in
-        let* defexp = PatternExpression.decode defexp sleighInit in
+        let* localexp = OperandValue.decode localexp sleighInit in
+        let* defexp = ContextExpression.decode defexp sleighInit in
         Ok (localexp, Some defexp)
     | [ localexp ] ->
-        let* localexp = PatternExpression.decode localexp sleighInit in
+        let* localexp = OperandValue.decode localexp sleighInit in
         Ok (localexp, None)
     | _ -> Error "Expected exactly one or two children"
   in

@@ -55,11 +55,10 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) :
     List.map (fun xml -> ConstructTpl.decode xml sleighInit) tmpls
     |> ResultExt.join_list
   in
-  let* tmpl =
+  let tmpl =
     List.find_opt
       (fun tmpl -> Option.is_none (ConstructTpl.get_sectionId tmpl))
       tmpls
-    |> Option.to_result ~none:"No main tmpl"
   in
   let namedtmpl =
     List.fold_left

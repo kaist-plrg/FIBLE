@@ -11,7 +11,7 @@ type 'operand_t constructor_poly_t = {
   operandIds : 'operand_t List.t;
   printpieces : printpiece List.t;
   context : ContextChange.t List.t;
-  tmpl : ConstructTpl.t;
+  tmpl : ConstructTpl.t Option.t;
   namedtmpl : ConstructTpl.t Int32Map.t;
 }
 
@@ -111,7 +111,7 @@ type end_t = {
 
 type ('tuple_t, 'mapped_t) operand_elem =
   | OTriple of ('tuple_t, 'mapped_t) Either.t
-  | ODefExp of PatternExpression.t
+  | ODefExp of ContextExpression.t
 
 type operand_ptr_elem = (TuplePtr.t, SubtablePtr.t) operand_elem
 
@@ -120,7 +120,7 @@ type ('tuple_t, 'mapped_t) operand_poly_t = {
   id : Int32.t;
   scopeid : Int32.t;
   operand_value : ('tuple_t, 'mapped_t) operand_elem;
-  localexp : PatternExpression.t;
+  localexp : OperandValue.t;
   flags : Int32.t;
   hand : Int32.t;
   reloffset : Int32.t;

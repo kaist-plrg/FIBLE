@@ -120,18 +120,23 @@ let rec resolve (s : t) (st : SubtableSymbol.t) (walker : ParserWalker.t) :
   [%log info "Resolving subtable %s" st.name];
   let* v = DecisionNode.resolve st.decisiontree walker in
   List.iter (fun c -> [%log info "Context: %a" ContextChange.pp c]) v.context;
+  let* nwalker =
+    ResultExt.fold_left_M
+      (fun walker (c : ContextChange.t) -> ContextChange.apply c walker)
+      walker v.context
+  in
   let* op_resolved, _ =
     ResultExt.fold_left_M
       (fun (ops, offsetList) (op : OperandSymbol.t) ->
         let* ob =
           if op.offsetbase = -1l then
-            ParserWalker.get_offset walker |> Result.ok
+            ParserWalker.get_offset nwalker |> Result.ok
           else
             List.nth_opt (List.rev offsetList) (Int32.to_int op.offsetbase)
             |> Option.to_result ~none:"Offset not found"
         in
         let off = Int32.add ob op.reloffset in
-        let nwalker = ParserWalker.replace_offset walker off in
+        let nwalker = ParserWalker.replace_offset nwalker off in
         [%log info "Resolving operand at %d" (List.length ops)];
         let* nresolved = resolve_op s op nwalker in
         (nresolved :: ops, off :: offsetList) |> Result.ok)
