@@ -17,13 +17,16 @@ let of_list (l : 'a Constructor.poly_t List.t) (id : Int32.t) : 'a poly_t =
 
 let get_constructor (v : 'a poly_t) (ptr : ConstructorPtr.t) :
     ('a Constructor.poly_t, String.t) Result.t =
-  if v.id == ConstructorPtr.get_table_id ptr then
+  if Int32.equal v.id (ConstructorPtr.get_table_id ptr) then
     Int32Map.find_opt (ConstructorPtr.get_offset ptr) v.map
     |> Option.to_result
          ~none:
            (Format.sprintf "Not found constructor at %ld"
               (ConstructorPtr.get_offset ptr))
-  else "table id and ptr id not matched" |> Result.error
+  else
+    Format.sprintf "table id %ld and ptr id %ld not matched" v.id
+      (ConstructorPtr.get_table_id ptr)
+    |> Result.error
 
 let find_offset (v : 'a poly_t) (offset : Int32.t) :
     ('a Constructor.poly_t, String.t) Result.t =

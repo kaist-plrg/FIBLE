@@ -26,8 +26,7 @@ let pp (fmt : Format.formatter) (pattern : t) : unit =
   | Instruction v -> InstructionPattern.pp fmt v
   | Combine v -> CombinePattern.pp fmt v
 
-let match_pattern (pattern : t) (walker : ParserWalker.t) : Bool.t = true
-(*
+let match_pattern (pattern : t) (walker : ParserWalker.t) : Bool.t =
   match pattern with
   | Context { pattern } -> PatternBlock.isContextMatch pattern walker
   | Instruction { pattern } -> PatternBlock.isInstructionMatch pattern walker
@@ -35,4 +34,3 @@ let match_pattern (pattern : t) (walker : ParserWalker.t) : Bool.t = true
     ->
       PatternBlock.isContextMatch cpattern walker
       && PatternBlock.isInstructionMatch ipattern walker
-*)

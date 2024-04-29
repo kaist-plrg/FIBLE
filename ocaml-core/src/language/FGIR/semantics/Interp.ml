@@ -20,7 +20,7 @@ let step_call_internal (s : State.t) (p : Prog.t)
 let step_ret (s : State.t) (p : Prog.t) ({ attr } : SRet.t) (calln, retn') :
     (Store.t, StopEvent.t) Result.t =
   let* attr = Value.try_loc attr |> StopEvent.of_str_res in
-  if Loc.compare attr retn' != 0 then
+  if Loc.compare attr retn' <> 0 then
     StopEvent.FailStop "Retaddr not matched" |> Result.error
   else Ok s.sto
 

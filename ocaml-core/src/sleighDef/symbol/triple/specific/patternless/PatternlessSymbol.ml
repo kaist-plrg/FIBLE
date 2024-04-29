@@ -33,3 +33,9 @@ let get_scopeid (symbol : t) : Int32.t =
   match symbol with
   | Epsilon v -> EpsilonSymbol.get_scopeid v
   | VarNode v -> VarNodeSymbol.get_scopeid v
+
+let print (symbol : t) (walker : ParserWalker.t) : (String.t, String.t) Result.t
+    =
+  match symbol with
+  | Epsilon v -> EpsilonSymbol.print v walker
+  | VarNode v -> VarNodeSymbol.print v walker

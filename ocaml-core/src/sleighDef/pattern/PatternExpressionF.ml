@@ -9,6 +9,7 @@ module Make (Value : sig
   val of_start : Unit.t -> t
   val of_end : Unit.t -> t
   val of_next2 : Unit.t -> t
+  val pp : Format.formatter -> t -> Unit.t
 end) =
 struct
   type t = V of Value.t | Binary of Bop.t * t * t | Unary of Uop.t * t
@@ -69,5 +70,13 @@ struct
     match v with V v -> v |> Option.some | _ -> None
 
   let pp (fmt : Format.formatter) (v : t) : Unit.t =
-    Format.fprintf fmt "patternexp"
+    let rec pp' fmt v =
+      match v with
+      | V v -> Value.pp fmt v
+      | Binary (bop, left, right) ->
+          Format.fprintf fmt "@[(%a %a %a)@]" pp' left Bop.pp bop pp' right
+      | Unary (uop, child) ->
+          Format.fprintf fmt "@[(%a %a)@]" Uop.pp uop pp' child
+    in
+    pp' fmt v
 end

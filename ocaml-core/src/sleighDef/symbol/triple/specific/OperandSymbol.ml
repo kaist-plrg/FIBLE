@@ -24,7 +24,7 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
     match XmlExt.children xml with
     | [ localexp; defexp ] ->
         let* localexp = OperandValue.decode localexp sleighInit in
-        let* defexp = ContextExpression.decode defexp sleighInit in
+        let* defexp = OperandExpression.decode defexp sleighInit in
         Ok (localexp, Some defexp)
     | [ localexp ] ->
         let* localexp = OperandValue.decode localexp sleighInit in

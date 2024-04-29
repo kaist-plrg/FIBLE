@@ -115,14 +115,51 @@ let deref_triple (v : t) (tp : SubtablePtr.t) :
     (SubtableSymbol.t, String.t) Result.t =
   SymTable.get_subtable v.symbol_table tp
 
+let rec translate_ov (s : t) (ov : OperandValue.t) :
+    (PatternExpression.t, String.t) Result.t =
+  let* stable = SymTable.get_subtable s.symbol_table ov.table in
+  let* constructor = SubtableSymbol.get_constructor stable ov.ctid in
+  let* opsym =
+    List.nth_opt constructor.operandIds (ov.index |> Int32.to_int)
+    |> Option.to_result ~none:"opsym index out of bound"
+  in
+  match opsym.operand_value with
+  | OTriple (Left a) -> (
+      match a with
+      | Specific (Operand a) -> translate_ov s a.localexp
+      | Specific (End v) -> v.patexp |> Result.ok
+      | Specific (Start v) -> v.patexp |> Result.ok
+      | Specific (Next2 v) -> v.patexp |> Result.ok
+      | Specific (Patternless v) ->
+          PatternExpression.V
+            (PatternValue.Constant (ConstantValue.of_int64 0L))
+          |> Result.ok
+      | Family a -> FamilySymbol.get_pattern a |> Result.ok)
+  | OTriple (Right _) -> "no op in op" |> Result.error
+  | ODefExp o -> translate_oe s o
+
+and translate_oe (s : t) (oe : OperandExpression.t) :
+    (PatternExpression.t, String.t) Result.t =
+  match oe with
+  | V (Pat v) -> PatternExpression.V v |> Result.ok
+  | V (Oper v) -> translate_ov s v
+  | Binary (bop, e1, e2) ->
+      let* e1 = translate_oe s e1 in
+      let* e2 = translate_oe s e2 in
+      PatternExpression.Binary (bop, e1, e2) |> Result.ok
+  | Unary (uop, e) ->
+      let* e = translate_oe s e in
+      PatternExpression.Unary (uop, e) |> Result.ok
+
 let rec resolve (s : t) (st : SubtableSymbol.t) (walker : ParserWalker.t) :
     (Constructor.mapped_t, String.t) Result.t =
-  [%log info "Resolving subtable %s" st.name];
+  [%log debug "Resolving subtable %s" st.name];
   let* v = DecisionNode.resolve st.decisiontree walker in
-  List.iter (fun c -> [%log info "Context: %a" ContextChange.pp c]) v.context;
+  List.iter (fun c -> [%log debug "Context: %a" ContextChange.pp c]) v.context;
   let* nwalker =
     ResultExt.fold_left_M
-      (fun walker (c : ContextChange.t) -> ContextChange.apply c walker)
+      (fun walker (c : ContextChange.t) ->
+        ContextChange.apply c (translate_oe s) walker)
       walker v.context
   in
   let* op_resolved, _ =
@@ -137,17 +174,21 @@ let rec resolve (s : t) (st : SubtableSymbol.t) (walker : ParserWalker.t) :
         in
         let off = Int32.add ob op.reloffset in
         let nwalker = ParserWalker.replace_offset nwalker off in
-        [%log info "Resolving operand at %d" (List.length ops)];
+        [%log debug "Resolving operand at %d" (List.length ops)];
         let* nresolved = resolve_op s op nwalker in
         (nresolved :: ops, off :: offsetList) |> Result.ok)
       ([], []) v.operandIds
   in
   let op_resolved = List.rev op_resolved in
-  TypeDef.C { v with operandIds = op_resolved } |> Result.ok
+  {
+    TypeDef.offset = nwalker.point.offset;
+    TypeDef.mapped = { v with operandIds = op_resolved };
+  }
+  |> Result.ok
 
 and resolve_op (v : t) (op : OperandSymbol.t) (walker : ParserWalker.t) :
     (OperandSymbol.mapped_t, String.t) Result.t =
-  [%log info "Resolving operand %s" op.name];
+  [%log debug "Resolving operand %s" op.name];
   let opv = op.operand_value in
   let* (nop :
          ( Constructor.mapped_t TypeDef.tuple_t,
@@ -157,13 +198,24 @@ and resolve_op (v : t) (op : OperandSymbol.t) (walker : ParserWalker.t) :
     | OTriple (Right x) ->
         let* subtable = deref_triple v x in
         [%log
-          info "Resolving triple %s; walker offset: %ld" op.name
+          debug "Resolving triple %s; walker offset: %ld" op.name
             (ParserWalker.get_offset walker)];
         let* c = resolve v subtable walker in
         TypeDef.OTriple (Right c) |> Result.ok
-    | OTriple (Left x) -> (
-        match x with
-        | Family t -> TypeDef.OTriple (Left (TypeDef.Family t)) |> Result.ok)
+    | OTriple (Left x) ->
+        let* v =
+          match x with
+          | Specific (Operand a) ->
+              let* a = resolve_op v a walker in
+              TypeDef.Specific (Operand a) |> Result.ok
+          | Specific (End v) -> TypeDef.Specific (End v) |> Result.ok
+          | Specific (Start v) -> TypeDef.Specific (Start v) |> Result.ok
+          | Specific (Next2 v) -> TypeDef.Specific (Next2 v) |> Result.ok
+          | Specific (Patternless v) ->
+              TypeDef.Specific (Patternless v) |> Result.ok
+          | Family t -> TypeDef.Family t |> Result.ok
+        in
+        TypeDef.OTriple (Left v) |> Result.ok
     | ODefExp x -> TypeDef.ODefExp x |> Result.ok
   in
   let op = { op with operand_value = nop } in

@@ -46,3 +46,20 @@ let get_scopeid (symbol : 'varnode_t poly_t) : Int32.t =
   | Name v -> NameSymbol.get_scopeid v
   | ValueMap v -> ValueMapSymbol.get_scopeid v
   | VarNodeList v -> VarNodeListSymbol.get_scopeid v
+
+let get_pattern (symbol : 'varnode_t poly_t) : PatternExpression.t =
+  match symbol with
+  | PureValue v -> PureValueSymbol.get_pattern v
+  | Context v -> ContextSymbol.get_pattern v
+  | Name v -> NameSymbol.get_pattern v
+  | ValueMap v -> ValueMapSymbol.get_pattern v
+  | VarNodeList v -> VarNodeListSymbol.get_pattern v
+
+let print (symbol : 'varnode_t poly_t) (walker : ParserWalker.t) :
+    (String.t, String.t) Result.t =
+  match symbol with
+  | PureValue v -> PureValueSymbol.print v walker
+  | Context v -> ContextSymbol.print v walker
+  | Name v -> NameSymbol.print v walker
+  | ValueMap v -> ValueMapSymbol.print v walker
+  | VarNodeList v -> VarNodeListSymbol.print v walker

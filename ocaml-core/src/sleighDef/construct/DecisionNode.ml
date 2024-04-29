@@ -46,6 +46,7 @@ let rec resolve (v : 'a poly_t) (walker : ParserWalker.t) :
       let m =
         List.filter_map
           (fun (p, c) ->
+            [%log debug "Matching pattern %a" DisjointPattern.pp p];
             if DisjointPattern.match_pattern p walker then Some (p, c) else None)
           patterns
       in

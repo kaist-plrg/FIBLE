@@ -30,11 +30,9 @@ let do_a (s : SleighDef.Sla.t) : Unit.t =
     [%log
       debug "instruction constructor length: %d"
         (ConstructorMap.cardinal s.root.construct)];
-    [%log info "a"];
-    let* v = Sla.resolve s s.root (ParserWalker.of_mock "\x89\xe5") in
-    [%log info "resolve"];
+    let* v = Sla.resolve s s.root (ParserWalker.of_mock "\x48\x89\xe5") in
     let* s =
-      SymbolPrinter.print_constructor v s (ParserWalker.of_mock "\x89\xe5")
+      SymbolPrinter.print_constructor v s (ParserWalker.of_mock "\x48\x89\xe5")
     in
     [%log info "resolve: %s" s] |> Result.ok
   in

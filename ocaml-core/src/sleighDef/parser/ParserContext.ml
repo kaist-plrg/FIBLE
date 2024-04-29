@@ -23,12 +23,17 @@ let getInstructionBits (v : t) (startbit : Int32.t) (size : Int32.t)
       return res;
     }
 *)
+  [%log debug "getInstructionBits startbit: %ld" startbit];
+  [%log debug "getInstructionBits size: %ld" size];
+  [%log debug "getInstructionBits off: %ld" off];
   let off = Int32.add off (Int32.div startbit 8l) in
   if Int32.compare off 16l >= 0 then
     "Instruction is using more than 16 bytes" |> Result.error
   else
     let startbit = Int32.rem startbit 8l in
-    let bytesize = Int32.add (Int32.div (Int32.add startbit size) 8l) 1l in
+    let bytesize =
+      Int32.add (Int32.div (Int32.pred (Int32.add startbit size)) 8l) 1l
+    in
     let res = 0l in
     let res =
       List.fold_left
@@ -44,10 +49,12 @@ let getInstructionBits (v : t) (startbit : Int32.t) (size : Int32.t)
         (Int32.to_int
            (Int32.add (Int32.mul 8l (Int32.sub 4l bytesize)) startbit))
     in
+    [%log debug "getInstructionBits res: %lx" res];
     let res =
       Int32.shift_right_logical res
         (Int32.to_int (Int32.sub (Int32.mul 8l 4l) size))
     in
+    [%log debug "getInstructionBits res: %lx" res];
     res |> Result.ok
 
 let getInstructionBytes (v : t) (offset : Int32.t) (size : Int32.t)
@@ -108,6 +115,27 @@ let getContextBytes (v : t) (offset : Int32.t) (size : Int32.t) :
     (Int32.t, String.t) Result.t =
   getContextBits v (Int32.mul offset 8l) (Int32.mul size 8l)
 
+(*   void setContextWord(int4 i,uintm val,uintm mask) { context[i] = (context[i]&(~mask))|(mask&val); } *)
+let setContextWord (v : t) (i : Int32.t) (vb : Int32.t) (mask : Int32.t) :
+    (t, String.t) Result.t =
+  let* context =
+    List.nth_opt v.context (Int32.to_int i)
+    |> Option.to_result ~none:"context index out of bound"
+  in
+  [%log debug "setContextWord i: %ld" i];
+  [%log debug "setContextWord vb: %lx" vb];
+  [%log debug "setContextWord mask: %lx" mask];
+  [%log debug "setContextWord before: %lx" context];
+  let context =
+    Int32.logand context (Int32.lognot mask)
+    |> Int32.logor (Int32.logand mask vb)
+  in
+  [%log debug "setContextWord after: %lx" context];
+  let context =
+    List.mapi (fun i' c -> if Int32.to_int i = i' then context else c) v.context
+  in
+  { v with context } |> Result.ok
+
 let of_mock (s : String.t) : t =
   {
     instb =
@@ -115,5 +143,5 @@ let of_mock (s : String.t) : t =
         (String.cat s
            "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
         0 16;
-    context = [ 0x89000000l ];
+    context = [ 0x89000000l; 0x0l ];
   }

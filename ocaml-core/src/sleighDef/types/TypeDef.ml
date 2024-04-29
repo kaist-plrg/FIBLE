@@ -111,7 +111,7 @@ type end_t = {
 
 type ('tuple_t, 'mapped_t) operand_elem =
   | OTriple of ('tuple_t, 'mapped_t) Either.t
-  | ODefExp of ContextExpression.t
+  | ODefExp of OperandExpression.t
 
 type operand_ptr_elem = (TuplePtr.t, SubtablePtr.t) operand_elem
 
@@ -254,7 +254,12 @@ and 'mapped_t tuple_t =
   | Specific of ('mapped_t tuple_t, 'mapped_t) specific_poly_t
 
 type constructor_unmapped = SubtablePtr.t constructor_t
-type constructor_mapped = C of constructor_mapped constructor_t
+
+type constructor_mapped = {
+  offset : Int32.t;
+  mapped : constructor_mapped constructor_t;
+}
+
 type operand_unmapped = SubtablePtr.t operand_t
 type operand_mapped = constructor_mapped operand_t
 type tuple_unmapped = SubtablePtr.t tuple_t

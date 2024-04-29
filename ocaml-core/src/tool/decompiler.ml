@@ -73,7 +73,7 @@ let dump_cfa (cfa_res : (String.t * Addr.t * ILIR.Shallow_CFA.t) list)
       let ofmt = Format.formatter_of_out_channel oc in
       let sorted_fboundary =
         LocSetD.to_seq contained_addrs
-        |> Seq.filter (fun x -> snd x == 0)
+        |> Seq.filter (fun x -> snd x = 0)
         |> Seq.map (fun x -> fst x)
         |> List.of_seq |> List.sort compare
       in

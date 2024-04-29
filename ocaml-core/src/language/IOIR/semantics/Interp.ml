@@ -123,7 +123,7 @@ let step_ret (s : State.t) (p : Prog.t) ({ attr } : SRet.t)
         let* rf = x in
         match v with
         | Value.NonNum (Reg r) ->
-            if RegId.compare o r != 0 then Error "Unmatched reg"
+            if RegId.compare o r <> 0 then Error "Unmatched reg"
             else rf |> Result.ok
         | _ ->
             RegFile.add_reg rf { id = o; offset = 0l; width = 8l } v

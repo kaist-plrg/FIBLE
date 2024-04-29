@@ -34,7 +34,7 @@ let add_scopes (scopes : Xml.xml List.t) :
       let* () = XmlExt.check_tag smap "scope"
       and* id = XmlExt.attrib_int smap "id"
       and* parent = XmlExt.attrib_int smap "parent" in
-      let parscope = if parent == id then None else Some parent in
+      let parscope = if Int32.equal parent id then None else Some parent in
       let scope = Scope.symbol_scope parscope id in
       Int32Map.add id scope acc |> Result.ok)
     Int32Map.empty scopes

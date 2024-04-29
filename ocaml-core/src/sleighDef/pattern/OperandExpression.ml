@@ -21,7 +21,6 @@ module Inner = struct
 
   let of_start (() : Unit.t) : t = Pat (PatternValue.of_start ())
   let of_end (() : Unit.t) : t = Pat (PatternValue.of_end ())
-  let of_start2 (() : Unit.t) : t = Pat (PatternValue.of_start2 ())
   let of_next2 (() : Unit.t) : t = Pat (PatternValue.of_next2 ())
 end
 

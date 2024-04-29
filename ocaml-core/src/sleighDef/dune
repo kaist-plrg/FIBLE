@@ -13,6 +13,20 @@
   ConstructState
   ParserContext
   ParserWalker
+  PatternBlock
+  OperandValue
+  TokenField
+  ContextField
+  ConstantValue
+  StartInstructionValue
+  EndInstructionValue
+  Next2InstructionValue
+  PatternValue
+  Bop
+  Uop
+  PatternExpressionF
+  PatternExpression
+  OperandExpression
   Scope
   SymbolTag
   UserOpSymbol
@@ -71,19 +85,11 @@
   ContextChange
   Constructor
   ConstructorMap
-  PatternBlock
   ContextPattern
   InstructionPattern
   CombinePattern
   DisjointPattern
   DecisionNode
-  OperandValue
-  PatternValue
-  Bop
-  Uop
-  PatternExpressionF
-  PatternExpression
-  ContextExpression
   SymTable
   PtrBuilder
   Sla

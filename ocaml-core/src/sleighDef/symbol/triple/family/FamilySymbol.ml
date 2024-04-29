@@ -40,6 +40,13 @@ let get_id (v : 'varnode_t poly_t) : Int32.t =
 let get_scopeid (v : 'varnode_t poly_t) : Int32.t =
   match v with Value v -> ValueSymbol.get_scopeid v
 
+let get_pattern (v : 'varnode_t poly_t) : PatternExpression.t =
+  match v with Value v -> ValueSymbol.get_pattern v
+
 let pp_walker (walker : ParserWalker.t) (fmt : Format.formatter)
     (symbol : 'varnode_t poly_t) : Unit.t =
   Format.fprintf fmt "family"
+
+let print (symbol : 'varnode_t poly_t) (walker : ParserWalker.t) :
+    (String.t, String.t) Result.t =
+  match symbol with Value v -> ValueSymbol.print v walker

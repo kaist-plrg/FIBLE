@@ -32,3 +32,14 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
 let get_name (symbol : 'varnode_t poly_t) : String.t = symbol.name
 let get_id (symbol : 'varnode_t poly_t) : Int32.t = symbol.id
 let get_scopeid (symbol : 'varnode_t poly_t) : Int32.t = symbol.scopeid
+let get_pattern (symbol : t) : PatternExpression.t = symbol.pattern
+
+let print (v : t) (walker : ParserWalker.t) : (String.t, String.t) Result.t =
+  let* a = PatternExpression.get_value v.pattern walker in
+  let a = a |> Int64.to_int in
+  let* varnode =
+    a |> List.nth_opt v.varNodeIds
+    |> Option.to_result ~none:"index out of bounds"
+  in
+  let* varnode = varnode |> Option.to_result ~none:"varnode not found" in
+  VarNodeSymbol.get_name varnode |> Result.ok

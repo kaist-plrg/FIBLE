@@ -9,6 +9,11 @@ let getContextBytes (v : t) (startbyte : Int32.t) (bytesize : Int32.t) =
 let getContextBits (v : t) (startbit : Int32.t) (bitsize : Int32.t) =
   ParserContext.getContextBits v.const_context startbit bitsize
 
+let setContextWord (v : t) (i : Int32.t) (vb : Int32.t) (mask : Int32.t) :
+    (t, String.t) Result.t =
+  let* const_context = ParserContext.setContextWord v.const_context i vb mask in
+  { v with const_context } |> Result.ok
+
 let getInstructionBits (v : t) (startbit : Int32.t) (bitsize : Int32.t) =
   ParserContext.getInstructionBits v.const_context startbit bitsize
     v.point.offset
