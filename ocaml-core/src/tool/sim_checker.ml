@@ -5,7 +5,6 @@ open Value_domain
 open World
 
 let usage_msg = "sim_checker -i <ifile>"
-let ghidra_path = ref ""
 let ifile = ref ""
 let func_path = ref ""
 let cwd = ref ""

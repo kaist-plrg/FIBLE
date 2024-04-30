@@ -1,0 +1,18 @@
+(executable
+ (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
+ (flags -w -20-33-3)
+ (preprocess
+  (pps ppx_log ppx_cwd))
+ (name DisassemblyTest1)
+ (libraries stdlibExt sleighDef world)
+ (modules DisassemblyTest1))
+
+(rule
+ (with-stdout-to
+  DisassemblyTest1.output
+  (run ./DisassemblyTest1.exe)))
+
+(rule
+ (alias runtest)
+ (action
+  (diff DisassemblyTest1.expected DisassemblyTest1.output)))
