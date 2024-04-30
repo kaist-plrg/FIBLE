@@ -130,7 +130,9 @@ let get (x : t) (offset : Int32.t) (size : Int32.t) : t =
 
 let set (orig : t) (inserted : t) (offset : Int32.t) =
   if List.length orig < Int32.to_int offset + List.length inserted then
-    [%log error "NumericValue.set: out of range"]
+    [%log
+      error "NumericValue.set %a %a %ld: out of range" pp orig pp inserted
+        offset]
   else
     let left = sublist orig 0 (Int32.to_int offset) in
     let right =
