@@ -1,0 +1,36 @@
+(rule
+ (target main.bin)
+ (enabled_if
+  (and
+   (= %{ocaml-config:architecture} amd64)
+   (= %{ocaml-config:system} linux)))
+ (deps main.c)
+ (action
+  (run clang -o %{target} -O0 %{deps})))
+
+(rule
+ (target main.output)
+ (enabled_if
+  (and
+   (= %{ocaml-config:architecture} amd64)
+   (= %{ocaml-config:system} linux)))
+ (deps main.bin)
+ (action
+  (with-stdout-to
+   %{target}
+   (run
+    ../../../src/tool/sim_checker.exe
+    -i
+    %{deps}
+    -project-cwd
+    ../../../../../../))))
+
+(rule
+ (alias runtest)
+ (enabled_if
+  (and
+   (= %{ocaml-config:architecture} amd64)
+   (= %{ocaml-config:system} linux)))
+ (deps ../all.expected main.output)
+ (action
+  (diff ../all.expected main.output)))
