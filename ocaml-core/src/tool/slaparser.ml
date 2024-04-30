@@ -6,6 +6,7 @@ open Notation
 let usage_msg = "slaparser -i <ifile>"
 let ifile = ref ""
 let test_dir = ref ""
+let inputs : String.t List.t ref = ref []
 
 let speclist =
   [
@@ -23,32 +24,31 @@ let print_attribs (xml : Xml.xml) : Unit.t =
 
 module StringSet = Set.Make (String)
 
-let do_a (s : SleighDef.Sla.t) : Unit.t =
+let do_a (s : SleighDef.Sla.t) (input : String.t) : Unit.t =
   let res =
     [%log debug "scopes: %d" (Int32Map.cardinal s.symbol_table.scopeMap)];
     [%log debug "symbols: %d" (Int32Map.cardinal s.symbol_table.symbolMap)];
     [%log
       debug "instruction constructor length: %d"
         (ConstructorMap.cardinal s.root.construct)];
-    let* v = Sla.resolve s s.root (ParserWalker.of_mock "\x48\x89\xe5") in
-    let* s =
-      SymbolPrinter.print_constructor v s (ParserWalker.of_mock "\x48\x89\xe5")
-    in
+    let pw = ParserWalker.of_mock input in
+    let* v = Sla.resolve s s.root pw in
+    let* s = SymbolPrinter.print_constructor v s pw in
     [%log info "resolve: %s" s] |> Result.ok
   in
   match res with Ok () -> () | Error s -> [%log info "%s" s]
 
-let do_single_file (fname : String.t) : Unit.t =
-  if !ifile = "" then raise (Arg.Bad "No input file")
-  else
-    let s =
-      let* xmlf =
-        try Xml.parse_file !ifile |> Result.ok
-        with Xml_light_errors.Xml_error s -> Xml.error s |> Result.error
-      in
-      Sla.decode xmlf
-    in
-    match s with Ok s -> do_a s | Error s -> [%log info "%s" s]
+let do_single_file (fname : String.t) (inputs : String.t List.t) : Unit.t =
+  inputs
+  |> List.iter (fun input ->
+         let s =
+           let* xmlf =
+             try Xml.parse_file fname |> Result.ok
+             with Xml_light_errors.Xml_error s -> Xml.error s |> Result.error
+           in
+           Sla.decode xmlf
+         in
+         match s with Ok s -> do_a s input | Error s -> [%log info "%s" s])
 
 let do_test_dir (dname : String.t) : Unit.t =
   let processor_dir = dname ^ "/Ghidra/Processors" in
@@ -81,13 +81,27 @@ let do_test_dir (dname : String.t) : Unit.t =
       | Error s -> [%log info "failed to load %s" f])
     testspecs
 
+let hex2str (v : String.t) : String.t =
+  let len = String.length v in
+  let buf = Buffer.create (len / 2) in
+  for i = 0 to (len / 2) - 1 do
+    let c =
+      Char.chr (Scanf.sscanf (String.sub v (i * 2) 2) "%x" (fun x -> x))
+    in
+    Buffer.add_char buf c
+  done;
+  Buffer.contents buf
+
 let main () =
-  Arg.parse speclist
-    (fun x -> raise (Arg.Bad ("Bad argument : " ^ x)))
-    usage_msg;
+  let ghidra_path = [%pwd] ^ "/ghidra_11.0.3_PUBLIC" in
+  let processor =
+    ghidra_path ^ "/Ghidra/Processors/x86/data/languages/x86-64.sla"
+  in
+  Arg.parse speclist (fun x -> inputs := hex2str x :: !inputs) usage_msg;
+  inputs := List.rev !inputs;
   match (!ifile, !test_dir) with
-  | "", "" -> raise (Arg.Bad "No input file")
-  | fname, "" -> do_single_file fname
+  | "", "" -> do_single_file processor !inputs
+  | fname, "" -> do_single_file fname !inputs
   | "", dname -> do_test_dir dname
   | _ -> raise (Arg.Bad "Cannot specify both input file and test directory")
 
