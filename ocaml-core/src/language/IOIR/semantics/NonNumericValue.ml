@@ -85,6 +85,22 @@ let eval_bop (b : Bop.t)
       else Left (NumericValue.of_int64 1L 1l)
   | Bop.Bint_notequal, Second _ | Bop.Bint_notequal, Third _ ->
       Left (NumericValue.of_int64 1L 1l)
+  | Bop.Bint_sless, First (SP o1, SP o2) ->
+      if
+        (o1.timestamp, o1.func, o1.multiplier)
+        = (o2.timestamp, o2.func, o2.multiplier)
+      then
+        Left
+          (NumericValue.of_int64 (if o1.offset < o2.offset then 1L else 0L) 8l)
+      else Right (Undef outwidth)
+  | Bop.Bint_less, First (SP o1, SP o2) ->
+      if
+        (o1.timestamp, o1.func, o1.multiplier)
+        = (o2.timestamp, o2.func, o2.multiplier)
+      then
+        Left
+          (NumericValue.of_int64 (if o1.offset < o2.offset then 1L else 0L) 8l)
+      else Right (Undef outwidth)
   | _ -> Right (Undef outwidth)
 
 let width (v : t) : Int32.t = match v with Undef width -> width | _ -> 8l
