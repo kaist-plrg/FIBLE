@@ -43,11 +43,12 @@ let pp (fmt : Format.formatter) (v : t) : Unit.t =
   | End x -> EndInstructionValue.pp fmt x
   | Next2 x -> Next2InstructionValue.pp fmt x
 
-let get_value (v : t) (walker : ParserWalker.t) : (Int64.t, String.t) Result.t =
+let get_value (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (Int64.t, String.t) Result.t =
   match v with
   | Token x -> TokenField.get_value x walker
   | Context x -> ContextField.get_value x walker
   | Constant x -> ConstantValue.get_value x walker
-  | Start x -> StartInstructionValue.get_value x walker
-  | End x -> EndInstructionValue.get_value x walker
-  | Next2 x -> Next2InstructionValue.get_value x walker
+  | Start x -> StartInstructionValue.get_value x walker pinfo
+  | End x -> EndInstructionValue.get_value x walker pinfo
+  | Next2 x -> Next2InstructionValue.get_value x walker pinfo

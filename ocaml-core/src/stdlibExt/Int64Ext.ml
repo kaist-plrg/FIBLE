@@ -2,6 +2,17 @@ include Int64
 
 let ( let* ) = Result.bind
 
+let rev_bytes (v : t) (width : int32) : t =
+  let rec aux acc v i =
+    if i = width then acc
+    else
+      let byte = Int64.logand v 0xffL in
+      let v = Int64.shift_right_logical v 8 in
+      let acc = Int64.logor (Int64.shift_left acc 8) byte in
+      aux acc v (Int32.add i 1l)
+  in
+  aux 0L v 0l
+
 let cut_width (v : t) (width : int32) : int64 =
   if width > 7l then v
   else

@@ -23,8 +23,9 @@ let pp (fmt : Format.formatter) (t : t) : unit =
 
 let apply (v : t)
     (resolver : OperandExpression.t -> (PatternExpression.t, String.t) Result.t)
-    (walker : ParserWalker.t) : (ParserWalker.t, String.t) Result.t =
+    (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (ParserWalker.t, String.t) Result.t =
   let* pe = resolver v.patexp in
-  let* ov = PatternExpression.get_value pe walker in
+  let* ov = PatternExpression.get_value pe walker pinfo in
   let ov = Int32.shift_left (Int64.to_int32 ov) (Int32.to_int v.shift) in
   ParserWalker.setContextWord walker v.num ov v.mask

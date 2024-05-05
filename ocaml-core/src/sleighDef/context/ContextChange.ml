@@ -17,7 +17,8 @@ let pp (fmt : Format.formatter) (x : t) : unit =
 
 let apply (v : t)
     (resolver : OperandExpression.t -> (PatternExpression.t, String.t) Result.t)
-    (walker : ParserWalker.t) : (ParserWalker.t, String.t) Result.t =
+    (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (ParserWalker.t, String.t) Result.t =
   match v with
   | Commit v -> ContextCommit.apply v walker
-  | Op v -> ContextOp.apply v resolver walker
+  | Op v -> ContextOp.apply v resolver walker pinfo

@@ -6,5 +6,5 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
 
 let pp (fmt : Format.formatter) (t : t) : unit = Format.fprintf fmt "[next2]"
 
-let get_value (v : t) (walker : ParserWalker.t) : (Int64.t, String.t) Result.t =
-  "not impl: next2 get_value" |> Result.error
+let get_value (v : t) (walker : ParserWalker.t) (pinfo: PatternInfo.t): (Int64.t, String.t) Result.t =
+  pinfo.n2addr |> Option.to_result ~none:"n2addr not calculated"

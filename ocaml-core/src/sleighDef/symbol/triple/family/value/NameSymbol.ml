@@ -30,7 +30,8 @@ let get_id (symbol : t) : Int32.t = symbol.id
 let get_scopeid (symbol : t) : Int32.t = symbol.scopeid
 let get_pattern (symbol : t) : PatternExpression.t = symbol.pattern
 
-let print (v : t) (walker : ParserWalker.t) : (String.t, String.t) Result.t =
-  let* a = PatternExpression.get_value v.pattern walker in
+let print (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (String.t, String.t) Result.t =
+  let* a = PatternExpression.get_value v.pattern walker pinfo in
   let a = a |> Int64.to_int in
   a |> List.nth_opt v.names |> Option.to_result ~none:"index out of bounds"

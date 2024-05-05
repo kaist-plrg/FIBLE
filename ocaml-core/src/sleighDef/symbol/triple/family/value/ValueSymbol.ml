@@ -55,11 +55,11 @@ let get_pattern (symbol : 'varnode_t poly_t) : PatternExpression.t =
   | ValueMap v -> ValueMapSymbol.get_pattern v
   | VarNodeList v -> VarNodeListSymbol.get_pattern v
 
-let print (symbol : 'varnode_t poly_t) (walker : ParserWalker.t) :
-    (String.t, String.t) Result.t =
+let print (symbol : 'varnode_t poly_t) (walker : ParserWalker.t)
+    (pinfo : PatternInfo.t) : (String.t, String.t) Result.t =
   match symbol with
-  | PureValue v -> PureValueSymbol.print v walker
-  | Context v -> ContextSymbol.print v walker
-  | Name v -> NameSymbol.print v walker
-  | ValueMap v -> ValueMapSymbol.print v walker
-  | VarNodeList v -> VarNodeListSymbol.print v walker
+  | PureValue v -> PureValueSymbol.print v walker pinfo
+  | Context v -> ContextSymbol.print v walker pinfo
+  | Name v -> NameSymbol.print v walker pinfo
+  | ValueMap v -> ValueMapSymbol.print v walker pinfo
+  | VarNodeList v -> VarNodeListSymbol.print v walker pinfo

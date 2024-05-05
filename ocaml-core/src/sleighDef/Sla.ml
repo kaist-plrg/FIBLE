@@ -159,7 +159,8 @@ let rec resolve (s : t) (st : SubtableSymbol.t) (walker : ParserWalker.t) :
   let* nwalker =
     ResultExt.fold_left_M
       (fun walker (c : ContextChange.t) ->
-        ContextChange.apply c (translate_oe s) walker)
+        ContextChange.apply c (translate_oe s) walker
+          { PatternInfo.addr = 0L; naddr = 0L; n2addr = None })
       walker v.context
   in
   let* op_resolved =

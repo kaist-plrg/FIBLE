@@ -39,11 +39,19 @@ let do_a (s : SleighDef.Sla.t) (input : String.t) : Unit.t =
         String.sub input (Int32.to_int offset)
           (String.length input - Int32.to_int offset)
       in
-      let pw = ParserWalker.of_mock subinput in
+      let pc = ParserContext.of_mock subinput in
+      let pw = ParserWalker.from_context pc in
       let res =
         let* v = Sla.resolve s s.root pw in
         let offset2 = Constructor.calc_length v 0l in
-        let* s = SymbolPrinter.print_constructor v s pw in
+        let pinfo =
+          {
+            PatternInfo.addr = 0L;
+            naddr = Int64.of_int32 offset2;
+            n2addr = None;
+          }
+        in
+        let* s = SymbolPrinter.print_constructor v s pw pinfo in
         Format.printf "%s\n%!" s;
         offset2 |> Result.ok
       in

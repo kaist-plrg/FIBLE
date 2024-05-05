@@ -16,5 +16,6 @@ let get_id (symbol : t) : Int32.t = symbol.id
 let get_scopeid (symbol : t) : Int32.t = symbol.scopeid
 let get_pattern (symbol : t) : PatternExpression.t = symbol.pattern
 
-let print (v : t) (walker : ParserWalker.t) : (String.t, String.t) Result.t =
-  PatternExpression.get_value_string v.pattern walker
+let print (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (String.t, String.t) Result.t =
+  PatternExpression.get_value_string v.pattern walker pinfo

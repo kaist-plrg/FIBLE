@@ -27,6 +27,12 @@ let get_offset (v : t) = v.point.offset
 let replace_offset (v : t) (offset : Int32.t) =
   { v with point = { v.point with offset } }
 
+let from_context (pc : ParserContext.t) : t =
+  let point : ConstructState.t =
+    { offset = 0l; ct = ConstructorPtr.make (-1l) 0l }
+  in
+  { const_context = pc; point }
+
 let of_mock (s : String.t) : t =
   let const_context = ParserContext.of_mock s in
   let point : ConstructState.t =

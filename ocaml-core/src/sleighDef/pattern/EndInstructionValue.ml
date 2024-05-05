@@ -6,5 +6,5 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
 
 let pp (fmt : Format.formatter) (t : t) : unit = Format.fprintf fmt "[end]"
 
-let get_value (v : t) (walker : ParserWalker.t) : (Int64.t, String.t) Result.t =
-  "not impl: end get_value" |> Result.error
+let get_value (v : t) (walker : ParserWalker.t) (pinfo: PatternInfo.t) : (Int64.t, String.t) Result.t =
+  pinfo.naddr |> Result.ok

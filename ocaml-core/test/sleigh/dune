@@ -31,3 +31,13 @@
  (alias runtest)
  (action
   (diff DisassemblyTest2.expected DisassemblyTest2.output)))
+
+(rule
+ (with-stdout-to
+  DisassemblyTest3.output
+  (run ../../src/tool/slaparser.exe "e930000000")))
+
+(rule
+ (alias runtest)
+ (action
+  (diff DisassemblyTest3.expected DisassemblyTest3.output)))

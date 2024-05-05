@@ -21,5 +21,6 @@ let get_name (symbol : t) : String.t = symbol.name
 let get_id (symbol : t) : Int32.t = symbol.id
 let get_scopeid (symbol : t) : Int32.t = symbol.scopeid
 
-let print (v : t) (walker : ParserWalker.t) : (String.t, String.t) Result.t =
+let print (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (String.t, String.t) Result.t =
   "start" |> Result.ok

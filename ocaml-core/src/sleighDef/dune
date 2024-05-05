@@ -9,6 +9,7 @@
  (libraries xml-light stdlibExt)
  (modules
   XmlExt
+  PatternInfo
   ConstructorPtr
   ConstructState
   ParserContext
