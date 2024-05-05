@@ -27,19 +27,31 @@ let print_attribs (xml : Xml.xml) : Unit.t =
 module StringSet = Set.Make (String)
 
 let do_a (s : SleighDef.Sla.t) (input : String.t) : Unit.t =
-  let res =
-    [%log debug "scopes: %d" (Int32Map.cardinal s.symbol_table.scopeMap)];
-    [%log debug "symbols: %d" (Int32Map.cardinal s.symbol_table.symbolMap)];
-    [%log
-      debug "instruction constructor length: %d"
-        (ConstructorMap.cardinal s.root.construct)];
-    let pw = ParserWalker.of_mock input in
-    let* v = Sla.resolve s s.root pw in
-    let* s = SymbolPrinter.print_constructor v s pw in
-    Format.printf "%s\n%!" s;
-    () |> Result.ok
+  [%log debug "scopes: %d" (Int32Map.cardinal s.symbol_table.scopeMap)];
+  [%log debug "symbols: %d" (Int32Map.cardinal s.symbol_table.symbolMap)];
+  [%log
+    debug "instruction constructor length: %d"
+      (ConstructorMap.cardinal s.root.construct)];
+  let rec aux (offset : Int32.t) : Unit.t =
+    if String.length input <= Int32.to_int offset then ()
+    else
+      let subinput =
+        String.sub input (Int32.to_int offset)
+          (String.length input - Int32.to_int offset)
+      in
+      let pw = ParserWalker.of_mock subinput in
+      let res =
+        let* v = Sla.resolve s s.root pw in
+        let offset2 = Constructor.calc_length v 0l in
+        let* s = SymbolPrinter.print_constructor v s pw in
+        Format.printf "%s\n%!" s;
+        offset2 |> Result.ok
+      in
+      match res with
+      | Ok offset2 -> aux (Int32.add offset offset2)
+      | Error s -> [%log info "%s" s]
   in
-  match res with Ok () -> () | Error s -> [%log info "%s" s]
+  aux 0l
 
 let do_single_file (fname : String.t) (inputs : String.t List.t) : Unit.t =
   let s =

@@ -139,9 +139,7 @@ let setContextWord (v : t) (i : Int32.t) (vb : Int32.t) (mask : Int32.t) :
 let of_mock (s : String.t) : t =
   {
     instb =
-      String.sub
-        (String.cat s
-           "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-        0 16;
+      String.cat s
+        "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
     context = [ 0x89000000l; 0x0l ];
   }

@@ -169,7 +169,6 @@ let rec resolve (s : t) (st : SubtableSymbol.t) (walker : ParserWalker.t) :
           if op.offsetbase = -1l then
             ParserWalker.get_offset nwalker |> Result.ok
           else
-            (* TODO : implement setCurrentLength, calcCurrentLength *)
             let* (resolved_op : OperandSymbol.mapped_t) =
               ([%log debug "Offsetbase: %ld" op.offsetbase];
                List.nth_opt (List.rev ops) (Int32.to_int op.offsetbase))
