@@ -1,8 +1,11 @@
 PUSH RBP
 MOV RBP,RSP
 SUB RSP,0x10
+MOV dword ptr [RBP + -0x4],0x0
+ADD dword ptr [RBP + -0x4],0x1
 MOV EAX,dword ptr [RBP + -0x4]
 MOV ESI,EAX
+MOV EAX,0x0
 NOP
 LEAVE
 RET

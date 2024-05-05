@@ -1,16 +1,19 @@
-(executable
- (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
- (flags -w -20-33-3)
- (preprocess
-  (pps ppx_log ppx_cwd))
- (name DisassemblyTest1)
- (libraries stdlibExt sleighDef world)
- (modules DisassemblyTest1))
-
 (rule
  (with-stdout-to
   DisassemblyTest1.output
-  (run ./DisassemblyTest1.exe)))
+  (run
+   ../../src/tool/slaparser.exe
+   "55"
+   "4889e5"
+   "4883ec10"
+   "c745fc00000000"
+   "8345fc01"
+   "8b45fc"
+   "89c6"
+   "b800000000"
+   "90"
+   "c9"
+   "c3")))
 
 (rule
  (alias runtest)

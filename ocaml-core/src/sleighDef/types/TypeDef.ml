@@ -246,22 +246,25 @@ type sym_ptr_t =
   sym_poly_t
 
 (* resolve recursion *)
-type 'mapped_t constructor_t = 'mapped_t operand_t constructor_poly_t
-and 'mapped_t operand_t = ('mapped_t tuple_t, 'mapped_t) operand_poly_t
+type 'mapped_t operand_t = ('mapped_t tuple_t, 'mapped_t) operand_poly_t
 
 and 'mapped_t tuple_t =
   | Family of varnode_t family_poly_t
   | Specific of ('mapped_t tuple_t, 'mapped_t) specific_poly_t
 
-type constructor_unmapped = SubtablePtr.t constructor_t
+type 'mapped_t constructor_t = 'mapped_t operand_t constructor_poly_t
+type operand_unmapped = SubtablePtr.t operand_t
+type constructor_unmapped = SubtablePtr.t operand_t constructor_poly_t
 
-type constructor_mapped = {
+(* also recursion for matching *)
+type operand_mapped = {
   offset : Int32.t;
-  mapped : constructor_mapped constructor_t;
+  length : Int32.t;
+  mapped : constructor_mapped operand_t;
 }
 
-type operand_unmapped = SubtablePtr.t operand_t
-type operand_mapped = constructor_mapped operand_t
+and constructor_mapped = C of operand_mapped constructor_poly_t
+
 type tuple_unmapped = SubtablePtr.t tuple_t
 type tuple_mapped = constructor_mapped tuple_t
 type 'mapped_t constructor_map_t = 'mapped_t operand_t constructor_map_poly_t

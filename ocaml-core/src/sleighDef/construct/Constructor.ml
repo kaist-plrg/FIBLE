@@ -92,3 +92,15 @@ let pp_printpiece (fmt : Format.formatter) (v : 'a poly_t) : Unit.t =
   Format.pp_print_list
     ~pp_sep:(fun fmt () -> Format.fprintf fmt " ")
     pp_printpiece fmt v.printpieces
+
+let calc_length (C v : mapped_t) (baseOff : Int32.t) : Int32.t =
+  let right_ends =
+    Int32.add v.minimumlength baseOff
+    :: (v.operandIds
+       |> List.map (fun (op : OperandSymbol.mapped_t) ->
+              Int32.add op.offset op.length))
+  in
+  let res = List.fold_left Int32.max baseOff right_ends in
+  let res = Int32.sub res baseOff in
+  [%log debug "length of %a: %ld" pp_printpiece v res];
+  res

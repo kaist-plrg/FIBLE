@@ -162,38 +162,42 @@ let rec resolve (s : t) (st : SubtableSymbol.t) (walker : ParserWalker.t) :
         ContextChange.apply c (translate_oe s) walker)
       walker v.context
   in
-  let* op_resolved, _ =
+  let* op_resolved =
     ResultExt.fold_left_M
-      (fun (ops, offsetList) (op : OperandSymbol.t) ->
+      (fun ops (op : OperandSymbol.t) ->
         let* ob =
           if op.offsetbase = -1l then
             ParserWalker.get_offset nwalker |> Result.ok
           else
-            List.nth_opt (List.rev offsetList) (Int32.to_int op.offsetbase)
-            |> Option.to_result ~none:"Offset not found"
+            (* TODO : implement setCurrentLength, calcCurrentLength *)
+            let* (resolved_op : OperandSymbol.mapped_t) =
+              ([%log debug "Offsetbase: %ld" op.offsetbase];
+               List.nth_opt (List.rev ops) (Int32.to_int op.offsetbase))
+              |> Option.to_result ~none:"Offset not found"
+            in
+            Int32.add resolved_op.length resolved_op.offset |> Result.ok
         in
         let off = Int32.add ob op.reloffset in
         let nwalker = ParserWalker.replace_offset nwalker off in
+        [%log debug "Current constructor: %a" Constructor.pp_printpiece v];
         [%log debug "Resolving operand at %d" (List.length ops)];
         let* nresolved = resolve_op s op nwalker in
-        (nresolved :: ops, off :: offsetList) |> Result.ok)
-      ([], []) v.operandIds
+        nresolved :: ops |> Result.ok)
+      [] v.operandIds
   in
   let op_resolved = List.rev op_resolved in
-  {
-    TypeDef.offset = nwalker.point.offset;
-    TypeDef.mapped = { v with operandIds = op_resolved };
-  }
-  |> Result.ok
+  TypeDef.C { v with operandIds = op_resolved } |> Result.ok
 
 and resolve_op (v : t) (op : OperandSymbol.t) (walker : ParserWalker.t) :
     (OperandSymbol.mapped_t, String.t) Result.t =
   [%log debug "Resolving operand %s" op.name];
+  [%log debug "Current walker offset: %ld" (ParserWalker.get_offset walker)];
   let opv = op.operand_value in
-  let* (nop :
+  let* (nop, length) :
          ( Constructor.mapped_t TypeDef.tuple_t,
            Constructor.mapped_t )
-         TypeDef.operand_elem) =
+         TypeDef.operand_elem
+         * Int32.t =
     match opv with
     | OTriple (Right x) ->
         let* subtable = deref_triple v x in
@@ -201,22 +205,28 @@ and resolve_op (v : t) (op : OperandSymbol.t) (walker : ParserWalker.t) :
           debug "Resolving triple %s; walker offset: %ld" op.name
             (ParserWalker.get_offset walker)];
         let* c = resolve v subtable walker in
-        TypeDef.OTriple (Right c) |> Result.ok
+        ( TypeDef.OTriple (Right c),
+          Constructor.calc_length c (ParserWalker.get_offset walker) )
+        |> Result.ok
     | OTriple (Left x) ->
-        let* v =
+        let* v, length =
           match x with
           | Specific (Operand a) ->
               let* a = resolve_op v a walker in
-              TypeDef.Specific (Operand a) |> Result.ok
-          | Specific (End v) -> TypeDef.Specific (End v) |> Result.ok
-          | Specific (Start v) -> TypeDef.Specific (Start v) |> Result.ok
-          | Specific (Next2 v) -> TypeDef.Specific (Next2 v) |> Result.ok
+              (TypeDef.Specific (Operand a.mapped), a.length) |> Result.ok
+          | Specific (End v) ->
+              (TypeDef.Specific (End v), op.minimumlength) |> Result.ok
+          | Specific (Start v) ->
+              (TypeDef.Specific (Start v), op.minimumlength) |> Result.ok
+          | Specific (Next2 v) ->
+              (TypeDef.Specific (Next2 v), op.minimumlength) |> Result.ok
           | Specific (Patternless v) ->
-              TypeDef.Specific (Patternless v) |> Result.ok
-          | Family t -> TypeDef.Family t |> Result.ok
+              (TypeDef.Specific (Patternless v), op.minimumlength) |> Result.ok
+          | Family t -> (TypeDef.Family t, op.minimumlength) |> Result.ok
         in
-        TypeDef.OTriple (Left v) |> Result.ok
-    | ODefExp x -> TypeDef.ODefExp x |> Result.ok
+        (TypeDef.OTriple (Left v), length) |> Result.ok
+    | ODefExp x -> (TypeDef.ODefExp x, op.minimumlength) |> Result.ok
   in
   let op = { op with operand_value = nop } in
-  Result.ok op
+  Result.ok
+    { TypeDef.offset = ParserWalker.get_offset walker; mapped = op; length }
