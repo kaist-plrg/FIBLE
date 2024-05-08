@@ -27,3 +27,7 @@ let get_scopeid (symbol : t) : Int32.t = symbol.scopeid
 
 let print (v : t) (walker : ParserWalker.t) : (String.t, String.t) Result.t =
   v.name |> Result.ok
+
+let getFixedHandle (v : t) (walker : ParserWalker.t) :
+    (FixedHandle.t, String.t) Result.t =
+  FixedHandle.of_varnode v.space v.offset v.size |> Result.ok

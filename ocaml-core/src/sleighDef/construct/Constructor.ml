@@ -4,6 +4,7 @@ open Notation
 type 'operand_t poly_t = 'operand_t TypeDef.constructor_poly_t
 type t = TypeDef.constructor_unmapped
 type mapped_t = TypeDef.constructor_mapped
+type handle_t = TypeDef.constructor_handle
 type ptr_t = TypeDef.constructor_ptr_t
 
 let split (childs : Xml.xml List.t) :

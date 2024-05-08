@@ -6,5 +6,6 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
 
 let pp (fmt : Format.formatter) (t : t) : unit = Format.fprintf fmt "[start]"
 
-let get_value (v : t) (walker : ParserWalker.t) (pinfo: PatternInfo.t): (Int64.t, String.t) Result.t =
+let get_value (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (Int64.t, String.t) Result.t =
   pinfo.addr |> Result.ok

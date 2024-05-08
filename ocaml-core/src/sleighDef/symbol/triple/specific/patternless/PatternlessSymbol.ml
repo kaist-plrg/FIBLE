@@ -39,3 +39,9 @@ let print (symbol : t) (walker : ParserWalker.t) : (String.t, String.t) Result.t
   match symbol with
   | Epsilon v -> EpsilonSymbol.print v walker
   | VarNode v -> VarNodeSymbol.print v walker
+
+let getFixedHandle (symbol : t) (walker : ParserWalker.t) :
+    (FixedHandle.t, String.t) Result.t =
+  match symbol with
+  | Epsilon v -> EpsilonSymbol.getFixedHandle v walker
+  | VarNode v -> VarNodeSymbol.getFixedHandle v walker

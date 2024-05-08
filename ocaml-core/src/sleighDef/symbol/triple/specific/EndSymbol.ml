@@ -23,4 +23,10 @@ let get_scopeid (symbol : t) : Int32.t = symbol.scopeid
 
 let print (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (String.t, String.t) Result.t =
-  "end" |> Result.ok
+  let v = Common.Addr.get_offset pinfo.naddr in
+  Format.sprintf "0x%Lx" v |> Result.ok
+
+let getFixedHandle (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (FixedHandle.t, String.t) Result.t =
+  let v = Common.Addr.get_offset pinfo.naddr in
+  FixedHandle.of_constant v |> Result.ok

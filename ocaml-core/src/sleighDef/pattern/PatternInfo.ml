@@ -1,1 +1,3 @@
-type t = { addr : Int64.t; naddr : Int64.t; n2addr : Int64.t Option.t }
+open Common
+
+type t = { addr : Addr.t; naddr : Addr.t; n2addr : Addr.t Option.t }

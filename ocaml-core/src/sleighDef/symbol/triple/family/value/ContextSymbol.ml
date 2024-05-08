@@ -33,3 +33,8 @@ let get_pattern (symbol : t) : PatternExpression.t = symbol.pattern
 let print (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (String.t, String.t) Result.t =
   PatternExpression.get_value_string v.pattern walker pinfo
+
+let getFixedHandle (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (FixedHandle.t, String.t) Result.t =
+  let* v = PatternExpression.get_value v.pattern walker pinfo in
+  FixedHandle.of_constant v |> Result.ok

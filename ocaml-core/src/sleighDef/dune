@@ -6,7 +6,7 @@
   (pps ppx_log ppx_cwd))
  (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
  (flags -w -20-33-3)
- (libraries xml-light stdlibExt)
+ (libraries xml-light stdlibExt common)
  (modules
   XmlExt
   PatternInfo
@@ -70,6 +70,7 @@
   TriplePtr
   Symbol
   SymbolPtr
+  FixedHandle
   TypeDef
   SymbolHeader
   AddrSpace

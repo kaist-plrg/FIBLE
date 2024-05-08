@@ -265,6 +265,15 @@ type operand_mapped = {
 
 and constructor_mapped = C of operand_mapped constructor_poly_t
 
+type operand_handle = {
+  offset : Int32.t;
+  length : Int32.t;
+  mapped : constructor_handle operand_t;
+  handle : FixedHandle.t;
+}
+
+and constructor_handle = CH of operand_handle constructor_poly_t
+
 type tuple_unmapped = SubtablePtr.t tuple_t
 type tuple_mapped = constructor_mapped tuple_t
 type 'mapped_t constructor_map_t = 'mapped_t operand_t constructor_map_poly_t

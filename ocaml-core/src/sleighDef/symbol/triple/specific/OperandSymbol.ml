@@ -6,6 +6,7 @@ type ('triple_t, 'mapped_t) poly_t =
 
 type t = TypeDef.operand_unmapped
 type mapped_t = TypeDef.operand_mapped
+type handle_t = TypeDef.operand_handle
 type ptr_t = TypeDef.operand_ptr_t
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)

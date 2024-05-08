@@ -63,3 +63,12 @@ let print (symbol : 'varnode_t poly_t) (walker : ParserWalker.t)
   | Name v -> NameSymbol.print v walker pinfo
   | ValueMap v -> ValueMapSymbol.print v walker pinfo
   | VarNodeList v -> VarNodeListSymbol.print v walker pinfo
+
+let getFixedHandle (symbol : 'varnode_t poly_t) (walker : ParserWalker.t)
+    (pinfo : PatternInfo.t) : (FixedHandle.t, String.t) Result.t =
+  match symbol with
+  | PureValue v -> PureValueSymbol.getFixedHandle v walker pinfo
+  | Context v -> ContextSymbol.getFixedHandle v walker pinfo
+  | Name v -> NameSymbol.getFixedHandle v walker pinfo
+  | ValueMap v -> ValueMapSymbol.getFixedHandle v walker pinfo
+  | VarNodeList v -> VarNodeListSymbol.getFixedHandle v walker pinfo

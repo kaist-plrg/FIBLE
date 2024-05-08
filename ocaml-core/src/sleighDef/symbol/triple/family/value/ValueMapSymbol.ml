@@ -39,3 +39,12 @@ let print (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
   in
   if Int32.compare a Int32.zero >= 0 then Printf.sprintf "0x%lx" a |> Result.ok
   else Printf.sprintf "-0x%lx" (Int32.neg a) |> Result.ok
+
+let getFixedHandle (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (FixedHandle.t, String.t) Result.t =
+  let* a = PatternExpression.get_value v.pattern walker pinfo in
+  let* a =
+    List.nth_opt v.values (Int64.to_int a)
+    |> Option.to_result ~none:"Invalid index"
+  in
+  FixedHandle.of_constant (Int64.of_int32 a) |> Result.ok

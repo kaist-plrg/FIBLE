@@ -46,11 +46,7 @@ let get_value (v : t) (walker : ParserWalker.t) : (Int64.t, String.t) Result.t =
       ParserWalker.getInstructionBytes walker v.bytestart size
       |> Result.map Int64.of_int32
   in
-  let res =
-    if v.bigendian then
-      res
-    else Int64Ext.rev_bytes res size
-  in
+  let res = if v.bigendian then res else Int64Ext.rev_bytes res size in
   let res = Int64.shift_right_logical res (Int32.to_int v.shift) in
   [%log debug "res: %Lx" res];
   let* v =

@@ -50,3 +50,7 @@ let pp_walker (walker : ParserWalker.t) (fmt : Format.formatter)
 let print (symbol : 'varnode_t poly_t) (walker : ParserWalker.t)
     (pinfo : PatternInfo.t) : (String.t, String.t) Result.t =
   match symbol with Value v -> ValueSymbol.print v walker pinfo
+
+let getFixedHandle (symbol : 'varnode_t poly_t) (walker : ParserWalker.t)
+    (pinfo : PatternInfo.t) : (FixedHandle.t, String.t) Result.t =
+  match symbol with Value v -> ValueSymbol.getFixedHandle v walker pinfo

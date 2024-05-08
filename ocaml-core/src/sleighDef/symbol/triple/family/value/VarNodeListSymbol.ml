@@ -44,3 +44,14 @@ let print (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
   in
   let* varnode = varnode |> Option.to_result ~none:"varnode not found" in
   VarNodeSymbol.get_name varnode |> Result.ok
+
+let getFixedHandle (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (FixedHandle.t, String.t) Result.t =
+  let* a = PatternExpression.get_value v.pattern walker pinfo in
+  let a = a |> Int64.to_int in
+  let* varnode =
+    a |> List.nth_opt v.varNodeIds
+    |> Option.to_result ~none:"index out of bounds"
+  in
+  let* varnode = varnode |> Option.to_result ~none:"varnode not found" in
+  VarNodeSymbol.getFixedHandle varnode walker

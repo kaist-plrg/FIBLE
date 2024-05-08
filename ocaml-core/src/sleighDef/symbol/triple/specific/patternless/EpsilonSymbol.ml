@@ -16,3 +16,7 @@ let get_scopeid (symbol : t) : Int32.t = symbol.scopeid
 
 let print (v : t) (walker : ParserWalker.t) : (String.t, String.t) Result.t =
   "0" |> Result.ok
+
+let getFixedHandle (v : t) (walker : ParserWalker.t) :
+    (FixedHandle.t, String.t) Result.t =
+  FixedHandle.of_constant 0L |> Result.ok
