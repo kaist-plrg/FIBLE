@@ -6,6 +6,7 @@ open Notation
 let usage_msg = "slaparser -i <ifile>"
 let ifile = ref ""
 let debug = ref false
+let disass_only = ref false
 let test_dir = ref ""
 let inputs : String.t List.t ref = ref []
 
@@ -13,6 +14,7 @@ let speclist =
   [
     ("-i", Arg.Set_string ifile, ": input file");
     ("-t", Arg.Set_string test_dir, ": test spec directory");
+    ("-dasm", Arg.Set disass_only, ": disassemble only");
     ("-d", Arg.Set debug, ": debug");
   ]
 
@@ -26,7 +28,8 @@ let print_attribs (xml : Xml.xml) : Unit.t =
 
 module StringSet = Set.Make (String)
 
-let do_a (s : SleighDef.Sla.t) (input : String.t) : Unit.t =
+let do_parse (s : SleighDef.Sla.t) (input : String.t) (disass_only : Bool.t) :
+    Unit.t =
   [%log debug "scopes: %d" (Int32Map.cardinal s.symbol_table.scopeMap)];
   [%log debug "symbols: %d" (Int32Map.cardinal s.symbol_table.symbolMap)];
   [%log
@@ -51,9 +54,14 @@ let do_a (s : SleighDef.Sla.t) (input : String.t) : Unit.t =
             n2addr = None;
           }
         in
-        let* s = SymbolPrinter.print_constructor v s pw pinfo in
-        Format.printf "%s\n%!" s;
-        offset2 |> Result.ok
+        if disass_only then (
+          let* s = SymbolPrinter.print_constructor v s pw pinfo in
+          Format.printf "%s\n%!" s;
+          offset2 |> Result.ok)
+        else
+          let* v2, _ = Sla.resolve_handle s v pw pinfo in
+          let* s = PCodeBuilder.build v2 (-1l) in
+          offset2 |> Result.ok
       in
       match res with
       | Ok offset2 -> aux (Int32.add offset offset2)
@@ -61,7 +69,8 @@ let do_a (s : SleighDef.Sla.t) (input : String.t) : Unit.t =
   in
   aux 0l
 
-let do_single_file (fname : String.t) (inputs : String.t List.t) : Unit.t =
+let do_single_file (fname : String.t) (inputs : String.t List.t)
+    (disass_only : Bool.t) : Unit.t =
   let s =
     let* xmlf =
       try Xml.parse_file fname |> Result.ok
@@ -71,7 +80,9 @@ let do_single_file (fname : String.t) (inputs : String.t List.t) : Unit.t =
   in
   inputs
   |> List.iter (fun input ->
-         match s with Ok s -> do_a s input | Error s -> [%log info "%s" s])
+         match s with
+         | Ok s -> do_parse s input disass_only
+         | Error s -> [%log info "%s" s])
 
 let do_test_dir (dname : String.t) : Unit.t =
   let processor_dir = dname ^ "/Ghidra/Processors" in
@@ -124,8 +135,8 @@ let main () =
   inputs := List.rev !inputs;
   if !debug then Logger.set_level Logger.Debug;
   match (!ifile, !test_dir) with
-  | "", "" -> do_single_file processor !inputs
-  | fname, "" -> do_single_file fname !inputs
+  | "", "" -> do_single_file processor !inputs !disass_only
+  | fname, "" -> do_single_file fname !inputs !disass_only
   | "", dname -> do_test_dir dname
   | _ -> raise (Arg.Bad "Cannot specify both input file and test directory")
 

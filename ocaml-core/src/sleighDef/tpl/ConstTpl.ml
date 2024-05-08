@@ -97,3 +97,6 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
   | "flowdest" -> FlowDest |> Result.ok
   | "flowdest_size" -> FlowDestSize |> Result.ok
   | _ -> Format.asprintf "Unknown handle type %s" tp |> Result.error
+
+let try_real (h : t) : Int64.t option =
+  match h with Real value -> Some value | _ -> None

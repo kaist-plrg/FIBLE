@@ -7,3 +7,6 @@ let take (n : int) (xs : 'a list) : 'a list =
     | _, x :: xs -> aux (n - 1) xs (x :: acc)
   in
   aux n xs []
+
+let hd_opt (xs : 'a list) : 'a option =
+  match xs with [] -> None | x :: _ -> Some x

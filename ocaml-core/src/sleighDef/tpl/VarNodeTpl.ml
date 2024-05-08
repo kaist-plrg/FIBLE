@@ -15,3 +15,5 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
   let* offset = ConstTpl.decode offsetxml sleighInit in
   let* size = ConstTpl.decode sizexml sleighInit in
   { space; offset; size } |> Result.ok
+
+let get_offset (v : t) : ConstTpl.t = v.offset
