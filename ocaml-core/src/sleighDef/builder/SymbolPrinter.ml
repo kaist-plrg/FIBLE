@@ -4,7 +4,7 @@ open Notation
 let rec drop (n : int) (l : 'a list) : 'a list =
   if n <= 0 then l else match l with [] -> [] | _ :: t -> drop (n - 1) t
 
-let rec print_oper (o : OperandSymbol.mapped_t) (sla : Sla.t)
+let rec print_oper (o : OperandSymbol.disas_t) (sla : Sla.t)
     (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (String.t, String.t) Result.t =
   let nwalker = ParserWalker.replace_offset walker o.offset in
@@ -22,7 +22,7 @@ let rec print_oper (o : OperandSymbol.mapped_t) (sla : Sla.t)
       let* pexp = Sla.translate_oe sla p in
       PatternExpression.get_value_string pexp nwalker pinfo
 
-and print_constructor (C c : Constructor.mapped_t) (sla : Sla.t)
+and print_constructor (C c : Constructor.disas_t) (sla : Sla.t)
     (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (String.t, String.t) Result.t =
   let* op_list =
@@ -41,7 +41,7 @@ and print_constructor (C c : Constructor.mapped_t) (sla : Sla.t)
   in
   Ok (String.concat "" op_list)
 
-let print_body (C s : Constructor.mapped_t) (sla : Sla.t)
+let print_body (C s : Constructor.disas_t) (sla : Sla.t)
     (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (String.t, String.t) Result.t =
   match s.flowthruIndex with

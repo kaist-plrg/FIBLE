@@ -15,17 +15,17 @@ let rec append_build (opreands : OperandSymbol.handle_t List.t)
     List.nth_opt opreands index |> Option.to_result ~none:"No operand at index"
   in
   match operand.mapped.operand_value with
-  | OTriple (Right (CH c)) ->
+  | OTriple (Right (C c)) ->
       if Int32.compare secnum 0l >= 0 then
         let cst = Int32Map.find_opt secnum c.namedtmpl in
         match cst with
-        | Some ctpl -> build_nonempty (TypeDef.CH c) ctpl secnum
-        | None -> build_empty (TypeDef.CH c) secnum
+        | Some ctpl -> build_nonempty (TypeDef.C c) ctpl secnum
+        | None -> build_empty (TypeDef.C c) secnum
       else
         let* ctpl =
           c.tmpl |> Option.to_result ~none:"No template for constructor"
         in
-        build_nonempty (TypeDef.CH c) ctpl (-1l)
+        build_nonempty (TypeDef.C c) ctpl (-1l)
   | _ -> "Build but not subtable" |> Result.error
 
 and delay_slot (optpl : OpTpl.t) : ('a, String.t) Result.t =
@@ -46,7 +46,7 @@ and dump (optpl : OpTpl.t) : (Unit.t, String.t) Result.t =
   in
   () |> Result.ok
 
-and build_nonempty (CH c : Constructor.handle_t) (ctpl : ConstructTpl.t)
+and build_nonempty (C c : Constructor.handle_t) (ctpl : ConstructTpl.t)
     (secnum : Int32.t) : (Unit.t, String.t) Result.t =
   ResultExt.fold_left_M
     (fun () (optpl : OpTpl.t) ->
@@ -59,11 +59,11 @@ and build_nonempty (CH c : Constructor.handle_t) (ctpl : ConstructTpl.t)
       | _ -> dump optpl)
     () ctpl.opTpls
 
-and build_empty (CH c : Constructor.handle_t) (secnum : Int32.t) :
+and build_empty (C c : Constructor.handle_t) (secnum : Int32.t) :
     (Unit.t, String.t) Result.t =
   "build_empty" |> Result.error
 
-let build (CH c : Constructor.handle_t) (secnum : Int32.t) :
+let build (C c : Constructor.handle_t) (secnum : Int32.t) :
     (Unit.t, String.t) Result.t =
   let* ctpl = c.tmpl |> Option.to_result ~none:"No template for constructor" in
-  build_nonempty (CH c) ctpl secnum
+  build_nonempty (C c) ctpl secnum

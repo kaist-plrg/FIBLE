@@ -5,7 +5,7 @@ type ('triple_t, 'mapped_t) poly_t =
   ('triple_t, 'mapped_t) TypeDef.operand_poly_t
 
 type t = TypeDef.operand_unmapped
-type mapped_t = TypeDef.operand_mapped
+type disas_t = TypeDef.operand_disas
 type handle_t = TypeDef.operand_handle
 type ptr_t = TypeDef.operand_ptr_t
 

@@ -3,7 +3,7 @@ open Notation
 
 type 'operand_t poly_t = 'operand_t TypeDef.constructor_poly_t
 type t = TypeDef.constructor_unmapped
-type mapped_t = TypeDef.constructor_mapped
+type disas_t = TypeDef.constructor_disas
 type handle_t = TypeDef.constructor_handle
 type ptr_t = TypeDef.constructor_ptr_t
 
@@ -94,11 +94,11 @@ let pp_printpiece (fmt : Format.formatter) (v : 'a poly_t) : Unit.t =
     ~pp_sep:(fun fmt () -> Format.fprintf fmt " ")
     pp_printpiece fmt v.printpieces
 
-let calc_length (C v : mapped_t) (baseOff : Int32.t) : Int32.t =
+let calc_length (C v : disas_t) (baseOff : Int32.t) : Int32.t =
   let right_ends =
     Int32.add v.minimumlength baseOff
     :: (v.operandIds
-       |> List.map (fun (op : OperandSymbol.mapped_t) ->
+       |> List.map (fun (op : OperandSymbol.disas_t) ->
               Int32.add op.offset op.length))
   in
   let res = List.fold_left Int32.max baseOff right_ends in

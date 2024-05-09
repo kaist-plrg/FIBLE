@@ -152,7 +152,7 @@ and translate_oe (s : t) (oe : OperandExpression.t) :
       PatternExpression.Unary (uop, e) |> Result.ok
 
 let rec resolve (s : t) (st : SubtableSymbol.t) (walker : ParserWalker.t) :
-    (Constructor.mapped_t, String.t) Result.t =
+    (Constructor.disas_t, String.t) Result.t =
   [%log debug "Resolving subtable %s" st.name];
   let* v = DecisionNode.resolve st.decisiontree walker in
   List.iter (fun c -> [%log debug "Context: %a" ContextChange.pp c]) v.context;
@@ -170,7 +170,7 @@ let rec resolve (s : t) (st : SubtableSymbol.t) (walker : ParserWalker.t) :
           if op.offsetbase = -1l then
             ParserWalker.get_offset nwalker |> Result.ok
           else
-            let* (resolved_op : OperandSymbol.mapped_t) =
+            let* (resolved_op : OperandSymbol.disas_t) =
               ([%log debug "Offsetbase: %ld" op.offsetbase];
                List.nth_opt (List.rev ops) (Int32.to_int op.offsetbase))
               |> Option.to_result ~none:"Offset not found"
@@ -189,13 +189,13 @@ let rec resolve (s : t) (st : SubtableSymbol.t) (walker : ParserWalker.t) :
   TypeDef.C { v with operandIds = op_resolved } |> Result.ok
 
 and resolve_op (v : t) (op : OperandSymbol.t) (walker : ParserWalker.t) :
-    (OperandSymbol.mapped_t, String.t) Result.t =
+    (OperandSymbol.disas_t, String.t) Result.t =
   [%log debug "Resolving operand %s" op.name];
   [%log debug "Current walker offset: %ld" (ParserWalker.get_offset walker)];
   let opv = op.operand_value in
   let* (nop, length) :
-         ( Constructor.mapped_t TypeDef.tuple_t,
-           Constructor.mapped_t )
+         ( Constructor.disas_t TypeDef.tuple_t,
+           Constructor.disas_t )
          TypeDef.operand_elem
          * Int32.t =
     match opv with
@@ -231,12 +231,12 @@ and resolve_op (v : t) (op : OperandSymbol.t) (walker : ParserWalker.t) :
   Result.ok
     { TypeDef.offset = ParserWalker.get_offset walker; mapped = op; length }
 
-let rec resolve_handle (s : t) (C st : Constructor.mapped_t)
+let rec resolve_handle (s : t) (C st : Constructor.disas_t)
     (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (Constructor.handle_t * FixedHandle.t, String.t) Result.t =
   let* op_resolved =
     ResultExt.fold_left_M
-      (fun ops (op : OperandSymbol.mapped_t) ->
+      (fun ops (op : OperandSymbol.disas_t) ->
         let* ob =
           if op.mapped.offsetbase = -1l then
             ParserWalker.get_offset walker |> Result.ok
@@ -258,9 +258,9 @@ let rec resolve_handle (s : t) (C st : Constructor.mapped_t)
   in
   let op_resolved = List.rev op_resolved in
   (* TODO: HandleTpl to FixedHandle *)
-  (TypeDef.CH { st with operandIds = op_resolved }, ()) |> Result.ok
+  (TypeDef.C { st with operandIds = op_resolved }, ()) |> Result.ok
 
-and resolve_handle_op (v : t) (op : OperandSymbol.mapped_t)
+and resolve_handle_op (v : t) (op : OperandSymbol.disas_t)
     (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (OperandSymbol.handle_t, String.t) Result.t =
   [%log debug "Resolving operand %s" op.mapped.name];

@@ -255,15 +255,16 @@ and 'mapped_t tuple_t =
 type 'mapped_t constructor_t = 'mapped_t operand_t constructor_poly_t
 type operand_unmapped = SubtablePtr.t operand_t
 type constructor_unmapped = SubtablePtr.t operand_t constructor_poly_t
+type 'mapped_t constructor_mapped = C of 'mapped_t constructor_poly_t
 
 (* also recursion for matching *)
-type operand_mapped = {
+type operand_disas = {
   offset : Int32.t;
   length : Int32.t;
-  mapped : constructor_mapped operand_t;
+  mapped : constructor_disas operand_t;
 }
 
-and constructor_mapped = C of operand_mapped constructor_poly_t
+and constructor_disas = operand_disas constructor_mapped
 
 type operand_handle = {
   offset : Int32.t;
@@ -272,35 +273,35 @@ type operand_handle = {
   handle : FixedHandle.t;
 }
 
-and constructor_handle = CH of operand_handle constructor_poly_t
+and constructor_handle = operand_handle constructor_mapped
 
 type tuple_unmapped = SubtablePtr.t tuple_t
-type tuple_mapped = constructor_mapped tuple_t
+type tuple_disas = constructor_disas tuple_t
 type 'mapped_t constructor_map_t = 'mapped_t operand_t constructor_map_poly_t
 type constructor_map_unmapped = SubtablePtr.t constructor_map_t
-type constructor_map_mapped = constructor_mapped constructor_map_t
+type constructor_map_disas = constructor_disas constructor_map_t
 type varnodelist_t = varnode_t varnodelist_poly_t
 type value_t = varnode_t value_poly_t
 type family_t = varnode_t family_poly_t
 type 'mapped_t decision_t = 'mapped_t constructor_t decision_poly_t
 type decision_unmapped = SubtablePtr.t decision_t
-type decision_mapped = constructor_mapped decision_t
+type decision_disas = constructor_disas decision_t
 
 type 'mapped_t subtable_t =
   ('mapped_t operand_t, 'mapped_t constructor_t) subtable_poly_t
 
 type subtable_unmapped = SubtablePtr.t subtable_t
-type subtable_mapped = constructor_mapped subtable_t
+type subtable_disas = constructor_disas subtable_t
 type 'mapped_t specific_t = ('mapped_t tuple_t, 'mapped_t) specific_poly_t
 type specific_unmapped = SubtablePtr.t specific_t
-type specific_mapped = constructor_mapped specific_t
+type specific_disas = constructor_disas specific_t
 
 type 'mapped_t triple_t =
   | Tuple of 'mapped_t tuple_t
   | Subtable of ('mapped_t operand_t, 'mapped_t constructor_t) subtable_poly_t
 
 type triple_unmapped = SubtablePtr.t triple_t
-type triple_mapped = constructor_mapped triple_t
+type triple_disas = constructor_disas triple_t
 
 type 'mapped_t sym_t =
   ( varnode_t,
@@ -311,4 +312,4 @@ type 'mapped_t sym_t =
   sym_poly_t
 
 type sym_unmapped = SubtablePtr.t sym_t
-type sym_mapped = constructor_mapped sym_t
+type sym_disas = constructor_disas sym_t
