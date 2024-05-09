@@ -1,8 +1,8 @@
 open StdlibExt
 open Notation
 
-type ('triple_t, 'mapped_t) poly_t =
-  ('triple_t, 'mapped_t) TypeDef.operand_poly_t
+type ('triple_t, 'mapped_t, 'oper_artifact) poly_t =
+  ('triple_t, 'mapped_t, 'oper_artifact) TypeDef.operand_poly_t
 
 type t = TypeDef.operand_unmapped
 type disas_t = TypeDef.operand_disas
@@ -51,10 +51,11 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
      reloffset;
      offsetbase;
      minimumlength;
+     mapped = ();
    }
     : ptr_t)
   |> Result.ok
 
-let get_name (symbol : ('a, 'b) poly_t) : String.t = symbol.name
-let get_id (symbol : ('a, 'b) poly_t) : Int32.t = symbol.id
-let get_scopeid (symbol : ('a, 'b) poly_t) : Int32.t = symbol.scopeid
+let get_name (symbol : ('a, 'b, 'c) poly_t) : String.t = symbol.name
+let get_id (symbol : ('a, 'b, 'c) poly_t) : Int32.t = symbol.id
+let get_scopeid (symbol : ('a, 'b, 'c) poly_t) : Int32.t = symbol.scopeid

@@ -14,7 +14,7 @@ let rec append_build (opreands : OperandSymbol.handle_t List.t)
   let* operand =
     List.nth_opt opreands index |> Option.to_result ~none:"No operand at index"
   in
-  match operand.mapped.operand_value with
+  match operand.operand_value with
   | OTriple (Right (C c)) ->
       if Int32.compare secnum 0l >= 0 then
         let cst = Int32Map.find_opt secnum c.namedtmpl in

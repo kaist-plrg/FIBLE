@@ -13,31 +13,34 @@ open Notation
 
    *)
 
-type ('triple_t, 'mapped_t) poly_t =
-  ('triple_t, 'mapped_t) TypeDef.specific_poly_t
+type ('triple_t, 'mapped_t, 'oper_artifact) poly_t =
+  ('triple_t, 'mapped_t, 'oper_artifact) TypeDef.specific_poly_t
 
 type t = TypeDef.specific_unmapped
 type ptr_t = TypeDef.specific_ptr_t
 
-let of_end (v : EndSymbol.t) : ('a, 'b) poly_t = End v
-let of_operand (v : ('a, 'b) OperandSymbol.poly_t) : ('a, 'b) poly_t = Operand v
+let of_end (v : EndSymbol.t) : ('a, 'b, 'c) poly_t = End v
 
-let try_operand (v : ('a, 'b) poly_t) : ('a, 'b) OperandSymbol.poly_t option =
+let of_operand (v : ('a, 'b, 'c) OperandSymbol.poly_t) : ('a, 'b, 'c) poly_t =
+  Operand v
+
+let try_operand (v : ('a, 'b, 'c) poly_t) :
+    ('a, 'b, 'c) OperandSymbol.poly_t option =
   match v with Operand v -> Some v | _ -> None
 
-let of_epsilon (v : EpsilonSymbol.t) : ('a, 'b) poly_t =
+let of_epsilon (v : EpsilonSymbol.t) : ('a, 'b, 'c) poly_t =
   Patternless (PatternlessSymbol.of_epsilon v)
 
-let of_varnode (v : VarNodeSymbol.t) : ('a, 'b) poly_t =
+let of_varnode (v : VarNodeSymbol.t) : ('a, 'b, 'c) poly_t =
   Patternless (PatternlessSymbol.of_varnode v)
 
-let try_varnode (v : ('a, 'b) poly_t) : VarNodeSymbol.t option =
+let try_varnode (v : ('a, 'b, 'c) poly_t) : VarNodeSymbol.t option =
   match v with Patternless v -> PatternlessSymbol.try_varnode v | _ -> None
 
-let of_start (v : StartSymbol.t) : ('a, 'b) poly_t = Start v
-let of_next2 (v : Next2Symbol.t) : ('a, 'b) poly_t = Next2 v
+let of_start (v : StartSymbol.t) : ('a, 'b, 'c) poly_t = Start v
+let of_next2 (v : Next2Symbol.t) : ('a, 'b, 'c) poly_t = Next2 v
 
-let get_name (symbol : ('a, 'b) poly_t) : string =
+let get_name (symbol : ('a, 'b, 'c) poly_t) : string =
   match symbol with
   | End v -> EndSymbol.get_name v
   | Operand v -> OperandSymbol.get_name v
@@ -45,7 +48,7 @@ let get_name (symbol : ('a, 'b) poly_t) : string =
   | Start v -> StartSymbol.get_name v
   | Next2 v -> Next2Symbol.get_name v
 
-let get_id (symbol : ('a, 'b) poly_t) : Int32.t =
+let get_id (symbol : ('a, 'b, 'c) poly_t) : Int32.t =
   match symbol with
   | End v -> EndSymbol.get_id v
   | Operand v -> OperandSymbol.get_id v
@@ -53,7 +56,7 @@ let get_id (symbol : ('a, 'b) poly_t) : Int32.t =
   | Start v -> StartSymbol.get_id v
   | Next2 v -> Next2Symbol.get_id v
 
-let get_scopeid (symbol : ('a, 'b) poly_t) : Int32.t =
+let get_scopeid (symbol : ('a, 'b, 'c) poly_t) : Int32.t =
   match symbol with
   | End v -> EndSymbol.get_scopeid v
   | Operand v -> OperandSymbol.get_scopeid v

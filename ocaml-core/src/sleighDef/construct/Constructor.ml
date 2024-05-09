@@ -99,7 +99,7 @@ let calc_length (C v : disas_t) (baseOff : Int32.t) : Int32.t =
     Int32.add v.minimumlength baseOff
     :: (v.operandIds
        |> List.map (fun (op : OperandSymbol.disas_t) ->
-              Int32.add op.offset op.length))
+              Int32.add op.mapped.offset op.mapped.length))
   in
   let res = List.fold_left Int32.max baseOff right_ends in
   let res = Int32.sub res baseOff in

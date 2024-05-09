@@ -7,8 +7,8 @@ let rec drop (n : int) (l : 'a list) : 'a list =
 let rec print_oper (o : OperandSymbol.disas_t) (sla : Sla.t)
     (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (String.t, String.t) Result.t =
-  let nwalker = ParserWalker.replace_offset walker o.offset in
-  match o.mapped.operand_value with
+  let nwalker = ParserWalker.replace_offset walker o.mapped.offset in
+  match o.operand_value with
   | OTriple (Left a) -> (
       match a with
       | Specific (Operand a) -> print_oper o sla nwalker pinfo
