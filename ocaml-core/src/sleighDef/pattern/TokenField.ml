@@ -27,7 +27,6 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
 let pp (fmt : Format.formatter) (t : t) : unit = Format.fprintf fmt "token"
 
 let get_value (v : t) (walker : ParserWalker.t) : (Int64.t, String.t) Result.t =
-  (* TODO: add bigendian *)
   let size = Int32.succ (Int32.sub v.byteend v.bytestart) in
   let* res =
     if Int32.to_int size > 16 then
@@ -38,14 +37,10 @@ let get_value (v : t) (walker : ParserWalker.t) : (Int64.t, String.t) Result.t =
         ParserWalker.getInstructionBytes walker (Int32.add v.bytestart 8l)
           (Int32.sub size 8l)
       in
-      Int64.of_int32 hbytes
-      |> Fun.flip Int64.shift_left 32
-      |> Int64.logor (Int64.of_int32 lbytes)
-      |> Result.ok
-    else
-      ParserWalker.getInstructionBytes walker v.bytestart size
-      |> Result.map Int64.of_int32
+      hbytes |> Fun.flip Int64.shift_left 32 |> Int64.logor lbytes |> Result.ok
+    else ParserWalker.getInstructionBytes walker v.bytestart size
   in
+
   let res = if v.bigendian then res else Int64Ext.rev_bytes res size in
   let res = Int64.shift_right_logical res (Int32.to_int v.shift) in
   [%log debug "res: %Lx" res];

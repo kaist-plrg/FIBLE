@@ -17,3 +17,10 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
   { space; offset; size } |> Result.ok
 
 let get_offset (v : t) : ConstTpl.t = v.offset
+
+let is_dynamic (v : t) (walker : ParserWalker.t) : Bool.t =
+  match v.offset with
+  | Handle v ->
+      [%log info "dynamic"];
+      true
+  | _ -> false

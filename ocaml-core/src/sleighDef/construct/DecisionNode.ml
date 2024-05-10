@@ -60,7 +60,9 @@ let rec resolve (v : 'a poly_t) (walker : ParserWalker.t) :
       let* index =
         if node.contextdecision then
           ParserWalker.getContextBits walker node.startbit node.bitsize
-        else ParserWalker.getInstructionBits walker node.startbit node.bitsize
+        else
+          ParserWalker.getInstructionBits walker node.startbit node.bitsize
+          |> Result.map Int64.to_int32
       in
       [%log debug "Index: %ld" index];
       let index = Int32.to_int index in

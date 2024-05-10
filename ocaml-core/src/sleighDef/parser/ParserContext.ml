@@ -4,7 +4,7 @@ open Notation
 type t = { instb : String.t; context : Int32.t List.t }
 
 let getInstructionBits (v : t) (startbit : Int32.t) (size : Int32.t)
-    (off : Int32.t) : (Int32.t, String.t) Result.t =
+    (off : Int32.t) : (Int64.t, String.t) Result.t =
   (*
     {
       off += (startbit/8);
@@ -34,31 +34,31 @@ let getInstructionBits (v : t) (startbit : Int32.t) (size : Int32.t)
     let bytesize =
       Int32.add (Int32.div (Int32.pred (Int32.add startbit size)) 8l) 1l
     in
-    let res = 0l in
+    let res = 0L in
     let res =
       List.fold_left
         (fun res i ->
-          Int32.shift_left res 8
-          |> Int32.logor
-               (Int32.of_int (Char.code v.instb.[Int32.to_int off + i])))
+          Int64.shift_left res 8
+          |> Int64.logor
+               (Int64.of_int (Char.code v.instb.[Int32.to_int off + i])))
         res
         (List.init (Int32.to_int bytesize) Fun.id)
     in
     let res =
-      Int32.shift_left res
+      Int64.shift_left res
         (Int32.to_int
-           (Int32.add (Int32.mul 8l (Int32.sub 4l bytesize)) startbit))
+           (Int32.add (Int32.mul 8l (Int32.sub 8l bytesize)) startbit))
     in
-    [%log debug "getInstructionBits res: %lx" res];
+    [%log debug "getInstructionBits res: %Lx" res];
     let res =
-      Int32.shift_right_logical res
-        (Int32.to_int (Int32.sub (Int32.mul 8l 4l) size))
+      Int64.shift_right_logical res
+        (Int32.to_int (Int32.sub (Int32.mul 8l 8l) size))
     in
-    [%log debug "getInstructionBits res: %lx" res];
+    [%log debug "getInstructionBits res: %Lx" res];
     res |> Result.ok
 
 let getInstructionBytes (v : t) (offset : Int32.t) (size : Int32.t)
-    (off : Int32.t) : (Int32.t, String.t) Result.t =
+    (off : Int32.t) : (Int64.t, String.t) Result.t =
   getInstructionBits v (Int32.mul offset 8l) (Int32.mul size 8l) off
 
 let getContextBits (v : t) (startbit : Int32.t) (size : Int32.t) :

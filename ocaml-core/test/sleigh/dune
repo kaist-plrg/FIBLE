@@ -3,6 +3,7 @@
   DisassemblyTest1.output
   (run
    ../../src/tool/slaparser.exe
+   -dasm
    "55"
    "4889e5"
    "4883ec10"
@@ -25,6 +26,7 @@
   DisassemblyTest2.output
   (run
    ../../src/tool/slaparser.exe
+   -dasm
    "554889e54883ec10c745fc000000008345fc018b45fc89c6b80000000090c9c3")))
 
 (rule
@@ -35,9 +37,24 @@
 (rule
  (with-stdout-to
   DisassemblyTest3.output
-  (run ../../src/tool/slaparser.exe "e930000000")))
+  (run ../../src/tool/slaparser.exe -dasm "e930000000")))
 
 (rule
  (alias runtest)
  (action
   (diff DisassemblyTest3.expected DisassemblyTest3.output)))
+
+(rule
+ (with-stdout-to
+  DisassemblyTest4.output
+  (run
+   ../../src/tool/slaparser.exe
+   -dasm
+   "554889e54883ec10bf0100000048be460f400000000000b81f00000089c2c745fc00000000e856f8ffff83f8000f840700000031ffe836f8ffffe900000000bf0100000048be660f400000000000b82500000089c2e826f8ffff83f8000f840700000031ffe806f8ffffe8910000008945f8837df8ff0f8505000000e974000000837df8000f8530000000bf0100000048be8c0f400000000000b82100000089c2e8daf7ffff83f8000f840700000031ffe8baf7ffffe930000000bf0100000048beae0f400000000000b81d00000089c2e8aaf7ffff83f8000f840700000031ffe88af7ffffe900000000e900000000e94affffff31c04883c4105dc3"
+   -entry
+   0x400cd0)))
+
+(rule
+ (alias runtest)
+ (action
+  (diff DisassemblyTest4.expected DisassemblyTest4.output)))

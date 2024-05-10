@@ -62,7 +62,7 @@ let isInstructionMatch (v : t) (walker : ParserWalker.t) : Bool.t =
       match data with
       | None -> false
       | Some data ->
-          if Int32.logand mask data <> value then false
+          if Int32.logand mask (Int64.to_int32 data) <> value then false
           else loop (i + 1) (Int32.add off 4l)
   in
   if Int32.compare v.nonzerosize 0l <= 0 then v.nonzerosize = 0l

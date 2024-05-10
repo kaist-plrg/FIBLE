@@ -3,7 +3,8 @@ open Notation
 open Common
 
 let rec append_build (opreands : OperandSymbol.handle_t List.t)
-    (optpl : OpTpl.t) (secnum : Int32.t) : ('a, String.t) Result.t =
+    (optpl : OpTpl.t) (secnum : Int32.t) (walker : ParserWalker.t) :
+    ('a, String.t) Result.t =
   let* index =
     optpl.ins |> ListExt.hd_opt
     |> Option.map (fun (x : VarNodeTpl.t) -> VarNodeTpl.get_offset x)
@@ -19,13 +20,13 @@ let rec append_build (opreands : OperandSymbol.handle_t List.t)
       if Int32.compare secnum 0l >= 0 then
         let cst = Int32Map.find_opt secnum c.namedtmpl in
         match cst with
-        | Some ctpl -> build_nonempty (TypeDef.C c) ctpl secnum
+        | Some ctpl -> build_nonempty (TypeDef.C c) ctpl secnum walker
         | None -> build_empty (TypeDef.C c) secnum
       else
         let* ctpl =
           c.tmpl |> Option.to_result ~none:"No template for constructor"
         in
-        build_nonempty (TypeDef.C c) ctpl (-1l)
+        build_nonempty (TypeDef.C c) ctpl (-1l) walker
   | _ -> "Build but not subtable" |> Result.error
 
 and delay_slot (optpl : OpTpl.t) : ('a, String.t) Result.t =
@@ -38,32 +39,41 @@ and append_cross_build (optpl : OpTpl.t) (secnum : Int32.t) :
     ('a, String.t) Result.t =
   "append_cross_build" |> Result.error
 
-and dump (optpl : OpTpl.t) : (Unit.t, String.t) Result.t =
-  let* _ =
+and dump (optpl : OpTpl.t) (walker : ParserWalker.t) :
+    (Unit.t, String.t) Result.t =
+  let* pre_insts, inputs =
     ResultExt.fold_left_M
-      (fun () (x : VarNodeTpl.t) -> () |> Result.ok)
-      () (OpTpl.get_ins optpl)
+      (fun (l, i) (x : VarNodeTpl.t) ->
+        let _ = VarNodeTpl.is_dynamic x walker in
+        (l, i) |> Result.ok)
+      ([], []) (OpTpl.get_ins optpl)
+  in
+  let* post_insts, output =
+    OpTpl.get_out optpl
+    |> Option.map (fun (x : VarNodeTpl.t) -> ([], None) |> Result.ok)
+    |> Option.value ~default:(([], None) |> Result.ok)
   in
   () |> Result.ok
 
 and build_nonempty (C c : Constructor.handle_t) (ctpl : ConstructTpl.t)
-    (secnum : Int32.t) : (Unit.t, String.t) Result.t =
+    (secnum : Int32.t) (walker : ParserWalker.t) : (Unit.t, String.t) Result.t =
   ResultExt.fold_left_M
     (fun () (optpl : OpTpl.t) ->
-      [%log info "Building op %a" OpTpl.pp_op optpl.opc];
       match OpTpl.get_opc optpl with
-      | BUILD -> append_build c.operandIds optpl secnum
+      | BUILD -> append_build c.operandIds optpl secnum walker
       | DELAY_SLOT -> delay_slot optpl
       | LABEL -> set_label optpl
       | CROSSBUILD -> append_cross_build optpl secnum
-      | _ -> dump optpl)
+      | _ ->
+          [%log info "Dumping op %a" OpTpl.pp_op optpl.opc];
+          dump optpl walker)
     () ctpl.opTpls
 
 and build_empty (C c : Constructor.handle_t) (secnum : Int32.t) :
     (Unit.t, String.t) Result.t =
   "build_empty" |> Result.error
 
-let build (C c : Constructor.handle_t) (secnum : Int32.t) :
-    (Unit.t, String.t) Result.t =
+let build (C c : Constructor.handle_t) (secnum : Int32.t)
+    (walker : ParserWalker.t) : (Unit.t, String.t) Result.t =
   let* ctpl = c.tmpl |> Option.to_result ~none:"No template for constructor" in
-  build_nonempty (C c) ctpl secnum
+  build_nonempty (C c) ctpl secnum walker

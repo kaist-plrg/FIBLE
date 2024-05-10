@@ -6,6 +6,7 @@ open Notation
 let usage_msg = "slaparser -i <ifile>"
 let ifile = ref ""
 let debug = ref false
+let entry : Int64.t ref = ref 0L
 let disass_only = ref false
 let test_dir = ref ""
 let inputs : String.t List.t ref = ref []
@@ -15,6 +16,7 @@ let speclist =
     ("-i", Arg.Set_string ifile, ": input file");
     ("-t", Arg.Set_string test_dir, ": test spec directory");
     ("-dasm", Arg.Set disass_only, ": disassemble only");
+    ("-entry", Arg.String (fun s -> entry := Int64.of_string s), ": entry point");
     ("-d", Arg.Set debug, ": debug");
   ]
 
@@ -28,8 +30,8 @@ let print_attribs (xml : Xml.xml) : Unit.t =
 
 module StringSet = Set.Make (String)
 
-let do_parse (s : SleighDef.Sla.t) (input : String.t) (disass_only : Bool.t) :
-    Unit.t =
+let do_parse (s : SleighDef.Sla.t) (input : String.t) (disass_only : Bool.t)
+    (entry : Int64.t) : Unit.t =
   [%log debug "scopes: %d" (Int32Map.cardinal s.symbol_table.scopeMap)];
   [%log debug "symbols: %d" (Int32Map.cardinal s.symbol_table.symbolMap)];
   [%log
@@ -49,8 +51,8 @@ let do_parse (s : SleighDef.Sla.t) (input : String.t) (disass_only : Bool.t) :
         let offset2 = Constructor.calc_length v 0l in
         let pinfo =
           {
-            PatternInfo.addr = 0L;
-            naddr = Int64.of_int32 offset2;
+            PatternInfo.addr = Int64.add entry (Int64.of_int32 offset);
+            naddr = Int64.add entry (Int64.of_int32 (Int32.add offset offset2));
             n2addr = None;
           }
         in
@@ -60,7 +62,7 @@ let do_parse (s : SleighDef.Sla.t) (input : String.t) (disass_only : Bool.t) :
           offset2 |> Result.ok)
         else
           let* v2, _ = Sla.resolve_handle s v pw pinfo in
-          let* s = PCodeBuilder.build v2 (-1l) in
+          let* s = PCodeBuilder.build v2 (-1l) pw in
           offset2 |> Result.ok
       in
       match res with
@@ -70,7 +72,7 @@ let do_parse (s : SleighDef.Sla.t) (input : String.t) (disass_only : Bool.t) :
   aux 0l
 
 let do_single_file (fname : String.t) (inputs : String.t List.t)
-    (disass_only : Bool.t) : Unit.t =
+    (disass_only : Bool.t) (entry : Int64.t) : Unit.t =
   let s =
     let* xmlf =
       try Xml.parse_file fname |> Result.ok
@@ -81,7 +83,7 @@ let do_single_file (fname : String.t) (inputs : String.t List.t)
   inputs
   |> List.iter (fun input ->
          match s with
-         | Ok s -> do_parse s input disass_only
+         | Ok s -> do_parse s input disass_only entry
          | Error s -> [%log info "%s" s])
 
 let do_test_dir (dname : String.t) : Unit.t =
@@ -135,8 +137,8 @@ let main () =
   inputs := List.rev !inputs;
   if !debug then Logger.set_level Logger.Debug;
   match (!ifile, !test_dir) with
-  | "", "" -> do_single_file processor !inputs !disass_only
-  | fname, "" -> do_single_file fname !inputs !disass_only
+  | "", "" -> do_single_file processor !inputs !disass_only !entry
+  | fname, "" -> do_single_file fname !inputs !disass_only !entry
   | "", dname -> do_test_dir dname
   | _ -> raise (Arg.Bad "Cannot specify both input file and test directory")
 
