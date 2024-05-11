@@ -63,6 +63,11 @@ let do_parse (s : SleighDef.Sla.t) (input : String.t) (disass_only : Bool.t)
         else
           let* v2, _ = Sla.resolve_handle s v pw pinfo in
           let* s = PCodeBuilder.build v2 (-1l) pw in
+          Format.printf "%a\n%!"
+            (Format.pp_print_list
+               ~pp_sep:(fun fmt () -> Format.fprintf fmt "\n")
+               PCode.pp)
+            s;
           offset2 |> Result.ok
       in
       match res with

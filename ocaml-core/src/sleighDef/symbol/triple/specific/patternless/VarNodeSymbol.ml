@@ -30,4 +30,4 @@ let print (v : t) (walker : ParserWalker.t) : (String.t, String.t) Result.t =
 
 let getFixedHandle (v : t) (walker : ParserWalker.t) :
     (FixedHandle.t, String.t) Result.t =
-  FixedHandle.of_varnode v.space v.offset v.size |> Result.ok
+  FixedHandle.of_varnode v.space (Int64.of_int32 v.offset) v.size |> Result.ok

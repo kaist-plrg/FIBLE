@@ -75,6 +75,8 @@
   SymbolHeader
   AddrSpace
   Spaces
+  VarNode
+  PCode
   SourceFileIndexer
   SleighInit
   ConstTpl

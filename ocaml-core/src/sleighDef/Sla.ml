@@ -258,8 +258,16 @@ let rec resolve_handle (s : t) (C st : Constructor.disas_t)
       [] st.operandIds
   in
   let op_resolved = List.rev op_resolved in
+  let* handle_const =
+    match st.tmpl with
+    | Some { resultTpl = Some v } ->
+        HandleTpl.getFixedHandle v
+          (op_resolved
+          |> List.map (fun (x : OperandSymbol.handle_t) -> x.mapped.handle))
+    | _ -> FixedHandle.of_constant 0L |> Result.ok
+  in
   (* TODO: HandleTpl to FixedHandle *)
-  (TypeDef.C { st with operandIds = op_resolved }, ()) |> Result.ok
+  (TypeDef.C { st with operandIds = op_resolved }, handle_const) |> Result.ok
 
 and resolve_handle_op (v : t) (op : OperandSymbol.disas_t)
     (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
