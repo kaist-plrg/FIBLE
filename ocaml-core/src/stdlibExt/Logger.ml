@@ -119,3 +119,12 @@ let raise (fname : String.t) (line : Int.t) (e : exn) : 'a =
     Format.pp_print_flush formatter ())
   else ();
   Stdlib.raise e
+
+let annotate (fname : String.t) (line : Int.t)
+    (fstr : ('a, Format.formatter, unit, string) format4) : 'a =
+  let (format1 : (string -> int -> 'a, Format.formatter, unit, 'a) format4) =
+    "%s:%d: "
+  in
+  let format2 = fstr in
+  let fstr = format1 ^^ format2 in
+  Format.asprintf fstr fname line

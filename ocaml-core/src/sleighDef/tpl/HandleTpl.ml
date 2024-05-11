@@ -25,7 +25,7 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
       let* temp_offset = ConstTpl.decode temp_offset sleighInit in
       { space; size; ptrspace; ptroffset; ptrsize; temp_space; temp_offset }
       |> Result.ok
-  | _ -> "Expected 7 children" |> Result.error
+  | _ -> [%logstr "Expected 7 children"] |> Result.error
 
 let getFixedHandle (v : t) (opers : FixedHandle.t List.t) :
     (FixedHandle.t, String.t) Result.t =
@@ -38,7 +38,7 @@ let getFixedHandle (v : t) (opers : FixedHandle.t List.t) :
       | Handle v ->
           let* handle =
             List.nth_opt opers (v.handleInd |> Int32.to_int)
-            |> Option.to_result ~none:"getFixedHandle real Handle"
+            |> Option.to_result ~none:[%logstr "getFixedHandle real Handle"]
           in
           {
             FixedHandle.space;

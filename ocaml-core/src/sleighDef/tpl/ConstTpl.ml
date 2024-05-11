@@ -77,7 +77,7 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
         | "offset_plus" ->
             let* offset = XmlExt.attrib_int xml "plus" in
             HandleType.OffsetPlus offset |> Result.ok
-        | _ -> "Unknown handle selector" |> Result.error
+        | _ -> [%logstr "Unknown handle selector"] |> Result.error
       in
       Handle { handleInd; field } |> Result.ok
   | "start" -> Start |> Result.ok
@@ -96,7 +96,7 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
   | "flowref_size" -> FlowRefSize |> Result.ok
   | "flowdest" -> FlowDest |> Result.ok
   | "flowdest_size" -> FlowDestSize |> Result.ok
-  | _ -> Format.asprintf "Unknown handle type %s" tp |> Result.error
+  | _ -> [%logstr "Unknown handle type %s" tp] |> Result.error
 
 let try_real (h : t) : Int64.t option =
   match h with Real value -> Some value | _ -> None
@@ -111,12 +111,12 @@ let fixSpace (v : t) (opers : FixedHandle.t List.t) :
       | HandleType.Space -> (
           match handle.offset_space with
           | Some _ ->
-              handle.temp_space |> Option.to_result ~none:"fixSpace: No space"
+              handle.temp_space |> Option.to_result ~none:[%logstr "fixSpace: No space"]
           | None -> handle.space |> Result.ok)
-      | _ -> Error "fixSpace: no space field")
-  | Curspace -> Error "unimplemented: fixSpace curspace"
-  | FlowRef -> Error "unimplemented: fixSpace flowref"
-  | _ -> Error "Expected space"
+      | _ -> Error [%logstr "fixSpace: no space field"])
+  | Curspace -> Error [%logstr "unimplemented"]
+  | FlowRef -> Error [%logstr "unimplemented"]
+  | _ -> Error [%logstr "unimplemented"]
 
 let fix (v : t) (opers : FixedHandle.t List.t) : (Int64.t, String.t) Result.t =
   match v with
@@ -124,22 +124,22 @@ let fix (v : t) (opers : FixedHandle.t List.t) : (Int64.t, String.t) Result.t =
   | Handle v -> (
       let handle = List.nth opers (Int32.to_int v.handleInd) in
       match v.field with
-      | HandleType.Space -> Error "unimplemented: fix space"
+      | HandleType.Space -> [%logstr "unimplemented"] |> Result.error
       | HandleType.Offset -> (
           match handle.offset_space with
           | Some _ -> handle.temp_offset |> Result.ok
           | None -> handle.offset_offset |> Result.ok)
       | HandleType.Size -> handle.size |> Int64.of_int32 |> Result.ok
       | HandleType.OffsetPlus offset ->
-          "unimplemented: fix offset plus" |> Result.error)
-  | Start -> "unimplemented: fix start" |> Result.error
-  | Next -> "unimplemented: fix next" |> Result.error
-  | Next2 -> "unimplemented: fix next2" |> Result.error
-  | Curspace -> "unimplemented: fix curspace" |> Result.error
-  | CurspaceSize -> "unimplemented: fix curspace size" |> Result.error
+        [%logstr "unimplemented"] |> Result.error)
+  | Start -> [%logstr "unimplemented"] |> Result.error
+  | Next -> [%logstr "unimplemented"] |> Result.error
+  | Next2 -> [%logstr "unimplemented"] |> Result.error
+  | Curspace -> [%logstr "unimplemented"] |> Result.error
+  | CurspaceSize -> [%logstr "unimplemented"] |> Result.error
   | Space spaceid -> 0L |> Result.ok
-  | Realtive _ -> "unimplemented: fix relative" |> Result.error
-  | FlowRef -> "unimplemented: fix flowref" |> Result.error
-  | FlowRefSize -> "unimplemented: fix flowref size" |> Result.error
-  | FlowDest -> "unimplemented: fix flowdest" |> Result.error
-  | FlowDestSize -> "unimplemented: fix flowdest size" |> Result.error
+  | Realtive _ -> [%logstr "unimplemented"] |> Result.error
+  | FlowRef -> [%logstr "unimplemented"] |> Result.error
+  | FlowRefSize -> [%logstr "unimplemented"] |> Result.error
+  | FlowDest -> [%logstr "unimplemented"] |> Result.error
+  | FlowDestSize -> [%logstr "unimplemented"] |> Result.error
