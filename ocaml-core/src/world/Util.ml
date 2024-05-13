@@ -49,53 +49,28 @@ let establish_server server_fun sock =
   done
 
 module SpaceInfo = struct
-  type t = { unique : int32; register : int32; const : int32; ram : int32 }
-
-  let pp fmt (s : t) =
-    Format.fprintf fmt "{unique=%ld; register=%ld; const=%ld}" s.unique
-      s.register s.const
+  type t = SleighDef.SpaceInfo.t
 
   let get (fd : Unix.file_descr) : t =
     let unique = Interaction.get_int fd in
     let register = Interaction.get_int fd in
     let const = Interaction.get_int fd in
     let ram = Interaction.get_int fd in
-    { unique; register; const; ram }
+    { SleighDef.SpaceInfo.unique; register; const; ram }
 end
 
 module VarNode_Raw = struct
-  type t = { space : int32; offset : int64; size : int32 }
-
-  let pp fmt (v : t) =
-    Format.fprintf fmt "{space=%ld; offset=%Ld; size=%ld}" v.space v.offset
-      v.size
+  type t = SleighDef.VarNode.t
 
   let get (fd : Unix.file_descr) : t =
     let space = Interaction.get_int fd in
     let offset = Interaction.get_long fd in
     let size = Interaction.get_int fd in
-    { space; offset; size }
+    { SleighDef.VarNode.space; offset; size }
 end
 
 module PCode_Raw = struct
-  type t = {
-    opcode : int32;
-    mnemonic : string;
-    inputs : VarNode_Raw.t array;
-    output : VarNode_Raw.t option;
-  }
-
-  let pp fmt (p : t) =
-    Format.fprintf fmt "{mnemonic: %s; opcode=%ld; inputs=%a; output=%a}"
-      p.mnemonic p.opcode
-      (Format.pp_print_list
-         ~pp_sep:(fun fmt () -> Format.fprintf fmt "; ")
-         VarNode_Raw.pp)
-      (Array.to_list p.inputs)
-      (fun fmt -> function
-        | None -> Format.fprintf fmt "None"
-        | Some v -> Format.fprintf fmt "%a" VarNode_Raw.pp v)
-      p.output
+  type t = SleighDef.PCode.t
 
   let get (fd : Unix.file_descr) : t =
     let mnemonic = Interaction.get_string fd in
@@ -112,18 +87,7 @@ module PCode_Raw = struct
 end
 
 module RegSpec = struct
-  module TMap = Map.Make (struct
-    type t = Int32.t * Int32.t
-
-    let compare (a1, a2) (b1, b2) =
-      let c = Int32.compare a1 b1 in
-      if c <> 0 then c else Int32.compare a2 b2
-  end)
-
-  type t = {
-    base_size : Int32.t Int32Map.t;
-    all_regs : (String.t * Int32.t * Int32.t) TMap.t;
-  }
+  type t = SleighDef.RegSpec.t
 
   let get (fd : Unix.file_descr) : t =
     [%log debug "RegSpec.get"];
@@ -155,11 +119,13 @@ module RegSpec = struct
         [%log debug "RegSpec.get: offset=%ld" offset];
         [%log debug "RegSpec.get: size=%ld" size];
         loop
-          (TMap.add (Int32.add baseid offset, size) (name, baseid, offset) acc)
+          (SleighDef.RegSpec.TMap.add
+             (Int32.add baseid offset, size)
+             (name, baseid, offset) acc)
           (n - 1))
     in
-    let rs = loop TMap.empty (Int32.to_int num) in
-    { base_size = bs; all_regs = rs }
+    let rs = loop SleighDef.RegSpec.TMap.empty (Int32.to_int num) in
+    { SleighDef.RegSpec.base_size = bs; all_regs = rs }
 end
 
 module ExternalFunction = struct

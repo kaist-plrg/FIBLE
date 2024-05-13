@@ -3,8 +3,8 @@ open Notation
 open Common
 
 let rec append_build (opreands : OperandSymbol.handle_t List.t)
-    (optpl : OpTpl.t) (secnum : Int32.t) (walker : ParserWalker.t) :
-    ('a, String.t) Result.t =
+    (optpl : OpTpl.t) (secnum : Int32.t) (walker : ParserWalker.t)
+    (pinfo : PatternInfo.t) : ('a, String.t) Result.t =
   let* index =
     optpl.ins |> ListExt.hd_opt
     |> Option.map (fun (x : VarNodeTpl.t) -> VarNodeTpl.get_offset x)
@@ -20,13 +20,13 @@ let rec append_build (opreands : OperandSymbol.handle_t List.t)
       if Int32.compare secnum 0l >= 0 then
         let cst = Int32Map.find_opt secnum c.namedtmpl in
         match cst with
-        | Some ctpl -> build_nonempty (TypeDef.C c) ctpl secnum walker
+        | Some ctpl -> build_nonempty (TypeDef.C c) ctpl secnum walker pinfo
         | None -> build_empty (TypeDef.C c) secnum
       else
         let* ctpl =
           c.tmpl |> Option.to_result ~none:"No template for constructor"
         in
-        build_nonempty (TypeDef.C c) ctpl (-1l) walker
+        build_nonempty (TypeDef.C c) ctpl (-1l) walker pinfo
   | _ -> "Build but not subtable" |> Result.error
 
 and delay_slot (optpl : OpTpl.t) : ('a, String.t) Result.t =
@@ -40,7 +40,8 @@ and append_cross_build (optpl : OpTpl.t) (secnum : Int32.t) :
   "append_cross_build" |> Result.error
 
 and dump (optpl : OpTpl.t) (operands : FixedHandle.t List.t)
-    (walker : ParserWalker.t) : (PCode.t List.t, String.t) Result.t =
+    (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (PCode.core_t List.t, String.t) Result.t =
   let* pre_insts, inputs =
     ResultExt.fold_left_M
       (fun (l, i) (x : VarNodeTpl.t) ->
@@ -48,7 +49,7 @@ and dump (optpl : OpTpl.t) (operands : FixedHandle.t List.t)
         let* nl, ni =
           if b then "unimpl_dynamic" |> Result.error
           else
-            let* v = VarNodeTpl.generateLocation x operands in
+            let* v = VarNodeTpl.generateLocation x operands pinfo in
             ([], v) |> Result.ok
         in
         (List.append l nl, ni :: i) |> Result.ok)
@@ -61,40 +62,48 @@ and dump (optpl : OpTpl.t) (operands : FixedHandle.t List.t)
            let* b = VarNodeTpl.is_dynamic x operands walker in
            if b then "unimpl_dynamic" |> Result.error
            else
-             let* v = VarNodeTpl.generateLocation x operands in
+             let* v = VarNodeTpl.generateLocation x operands pinfo in
              ([], Some v) |> Result.ok)
     |> Option.value ~default:(([], None) |> Result.ok)
   in
-  let cur_pcode = PCode.make optpl.opc inputs output in
+  let cur_pcode = PCode.make (OpTpl.opcode optpl.opc) inputs output in
   List.append pre_insts (cur_pcode :: post_insts) |> Result.ok
 
 and build_nonempty (C c : Constructor.handle_t) (ctpl : ConstructTpl.t)
-    (secnum : Int32.t) (walker : ParserWalker.t) :
-    (PCode.t List.t, String.t) Result.t =
+    (secnum : Int32.t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (PCode.core_t List.t, String.t) Result.t =
   ResultExt.fold_left_M
     (fun nplist (optpl : OpTpl.t) ->
       let* plist =
         match OpTpl.get_opc optpl with
-        | BUILD -> append_build c.operandIds optpl secnum walker
+        | BUILD -> append_build c.operandIds optpl secnum walker pinfo
         | DELAY_SLOT -> delay_slot optpl
         | LABEL -> set_label optpl
         | CROSSBUILD -> append_cross_build optpl secnum
         | _ ->
-            [%log info "Dumping op %a" OpTpl.pp_op optpl.opc];
+            [%log debug "Dumping op %a" OpTpl.pp_op optpl.opc];
             dump optpl
               (c.operandIds
               |> List.map (fun (x : OperandSymbol.handle_t) -> x.mapped.handle)
               )
-              walker
+              walker pinfo
       in
       List.append nplist plist |> Result.ok)
     [] ctpl.opTpls
 
 and build_empty (C c : Constructor.handle_t) (secnum : Int32.t) :
-    (PCode.t List.t, String.t) Result.t =
+    (PCode.core_t List.t, String.t) Result.t =
   "build_empty" |> Result.error
 
 let build (C c : Constructor.handle_t) (secnum : Int32.t)
-    (walker : ParserWalker.t) : (PCode.t List.t, String.t) Result.t =
+    (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (PCode.core_t List.t, String.t) Result.t =
   let* ctpl = c.tmpl |> Option.to_result ~none:"No template for constructor" in
-  build_nonempty (C c) ctpl secnum walker
+  build_nonempty (C c) ctpl secnum walker pinfo
+
+let build_with_mnemonic (C c : Constructor.handle_t) (secnum : Int32.t)
+    (walker : ParserWalker.t) (pinfo : PatternInfo.t) (mnemonic : String.t) :
+    (PCode.t List.t, String.t) Result.t =
+  let* ctpl = c.tmpl |> Option.to_result ~none:"No template for constructor" in
+  let* codes = build_nonempty (C c) ctpl secnum walker pinfo in
+  List.map (fun x -> PCode.append_mnemonic x mnemonic) codes |> Result.ok

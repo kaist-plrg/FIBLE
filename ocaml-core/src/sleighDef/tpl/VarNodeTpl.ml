@@ -29,13 +29,16 @@ let is_dynamic (v : t) (operands : FixedHandle.t List.t)
       Option.is_some res.offset_space |> Result.ok
   | _ -> false |> Result.ok
 
-let generateLocation (v : t) (opers : FixedHandle.t List.t) :
-    (VarNode.t, String.t) Result.t =
+let generateLocation (v : t) (opers : FixedHandle.t List.t)
+    (pinfo : PatternInfo.t) : (VarNode.t, String.t) Result.t =
   let* space = ConstTpl.fixSpace v.space opers in
-  let* size = ConstTpl.fix v.size opers |> Result.map Int64.to_int32 in
+  let* size = ConstTpl.fix v.size opers pinfo |> Result.map Int64.to_int32 in
   let* offset =
-    if AddrSpace.is_const_space space then ConstTpl.fix v.offset opers
-    else if AddrSpace.is_unique_space space then ConstTpl.fix v.offset opers
-    else ConstTpl.fix v.offset opers
+    if AddrSpace.is_const_space space then ConstTpl.fix v.offset opers pinfo
+    else if AddrSpace.is_unique_space space then
+      ConstTpl.fix v.offset opers pinfo
+      |> Result.map (Int64.logor pinfo.uoffset)
+    else ConstTpl.fix v.offset opers pinfo
   in
-  VarNode.make space size offset |> Result.ok
+  VarNode.make (AddrSpace.get_index space |> Int32.of_int) size offset
+  |> Result.ok

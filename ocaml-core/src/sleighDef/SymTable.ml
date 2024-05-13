@@ -103,3 +103,56 @@ let get_subtable (s : t) (pt : SubtablePtr.t) :
     (SubtableSymbol.t, String.t) Result.t =
   Int32Map.find_opt (SubtablePtr.get_id pt) s.symbolMap
   |> Option.to_result ~none:"not found subtable id"
+
+let get_reg_spec (s : ptr_t) : (RegSpec.t, String.t) Result.t =
+  let regs =
+    Int32Map.filter_map
+      (fun _ (v : Symbol.ptr_t) ->
+        match v with
+        | Triple (Tuple (Specific (Patternless (VarNode x)))) ->
+            if AddrSpace.get_name x.space = "register" then Some x else None
+        | _ -> None)
+      s.symbolMap
+    |> Int32Map.bindings |> List.map snd
+  in
+  let baseRegMap =
+    List.fold_left
+      (fun acc (x : VarNodeSymbol.t) ->
+        Seq.fold_left
+          (fun (acc : VarNodeSymbol.t Int32Map.t) (o : Int32.t) ->
+            match Int32Map.find_opt o acc with
+            | Some reg ->
+                if Int32.compare reg.size x.size < 0 then Int32Map.add o x acc
+                else acc
+            | None -> Int32Map.add o x acc)
+          acc
+          (Seq.init (x.size |> Int32.to_int) (fun i ->
+               Int32.add x.offset (Int32.of_int i))))
+      Int32Map.empty regs
+  in
+  let baseRegs =
+    List.filter
+      (fun (x : VarNodeSymbol.t) ->
+        match Int32Map.find_opt x.offset baseRegMap with
+        | Some r -> r.name = x.name
+        | None -> false)
+      regs
+  in
+  let base_size =
+    List.map (fun (x : VarNodeSymbol.t) -> (x.offset, x.size)) baseRegs
+    |> Int32Map.of_list
+  in
+  let all_regs =
+    List.filter_map
+      (fun (x : VarNodeSymbol.t) ->
+        match Int32Map.find_opt x.offset baseRegMap with
+        | Some r ->
+            Some
+              ( (x.offset, x.size),
+                (x.name, r.offset, Int32.sub x.offset r.offset) )
+        | _ -> None)
+      regs
+    |> RegSpec.TMap.of_list
+  in
+
+  { RegSpec.base_size; all_regs } |> Result.ok

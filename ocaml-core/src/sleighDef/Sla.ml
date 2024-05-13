@@ -26,6 +26,8 @@ type t = {
   sourcefiles : SourceFileIndexer.t;
   spaces : Spaces.t;
   symbol_table : SymTable.t;
+  spaceinfo : SpaceInfo.t;
+  regspec : RegSpec.t;
   root : SubtableSymbol.t;
 }
 
@@ -56,7 +58,8 @@ let build_from_sleighInit
     |> ResultExt.join_list
     |> Result.map Int32Map.of_list
   in
-
+  let* spaceinfo = Spaces.to_spaceinfo spaces in
+  let* regspec = SymTable.get_reg_spec symbol_table in
   {
     maxdelayslotbytes;
     unique_allocatemask;
@@ -73,6 +76,8 @@ let build_from_sleighInit
         scopeMap = symbol_table.scopeMap;
         symbolMap;
       };
+    spaceinfo;
+    regspec;
     root;
   }
   |> Result.ok
@@ -90,8 +95,8 @@ let decode (xml : Xml.xml) : (t, String.t) Result.t =
     XmlExt.child_tag_fst xml "spaces" |> Fun.flip Result.bind Spaces.decode
   in
   let maxdelayslotbytes = XmlExt.attrib_int_value xml "maxdelay" 0l
-  and unique_allocatemask = XmlExt.attrib_int_value xml "numsections" 0l
-  and numSections = XmlExt.attrib_int_value xml "uniqmask" 0l in
+  and unique_allocatemask = XmlExt.attrib_int_value xml "uniqmask" 0l
+  and numSections = XmlExt.attrib_int_value xml "numsections" 0l in
   let sleighInit : SleighInit.t =
     {
       maxdelayslotbytes;
@@ -160,7 +165,13 @@ let rec resolve (s : t) (st : SubtableSymbol.t) (walker : ParserWalker.t) :
     ResultExt.fold_left_M
       (fun walker (c : ContextChange.t) ->
         ContextChange.apply c (translate_oe s) walker
-          { PatternInfo.addr = 0L; naddr = 0L; n2addr = None })
+          {
+            PatternInfo.addr = 0L;
+            naddr = 0L;
+            n2addr = None;
+            umask = 0l;
+            uoffset = 0L;
+          })
       walker v.context
   in
   let* op_resolved =
@@ -264,6 +275,7 @@ let rec resolve_handle (s : t) (C st : Constructor.disas_t)
         HandleTpl.getFixedHandle v
           (op_resolved
           |> List.map (fun (x : OperandSymbol.handle_t) -> x.mapped.handle))
+          pinfo
     | _ -> FixedHandle.of_constant 0L |> Result.ok
   in
   (* TODO: HandleTpl to FixedHandle *)

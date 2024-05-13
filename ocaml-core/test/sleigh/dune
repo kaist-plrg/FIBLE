@@ -58,3 +58,27 @@
  (alias runtest)
  (action
   (diff DisassemblyTest4.expected DisassemblyTest4.output)))
+
+(rule
+ (with-stdout-to
+  PCodeGenTest1.output
+  (run
+   ../../src/tool/slaparser.exe
+   "554889e54883ec1089c6b80000000090c9c3"
+   -entry
+   0x400cd0)))
+
+(rule
+ (alias runtest)
+ (action
+  (diff PCodeGenTest1.expected PCodeGenTest1.output)))
+
+(rule
+ (with-stdout-to
+  PCodeGenTest2.output
+  (run ../../src/tool/slaparser.exe "e930000000" -entry 0x400cd0)))
+
+(rule
+ (alias runtest)
+ (action
+  (diff PCodeGenTest2.expected PCodeGenTest2.output)))

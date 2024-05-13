@@ -30,13 +30,13 @@ let print_attribs (xml : Xml.xml) : Unit.t =
 
 module StringSet = Set.Make (String)
 
-let do_parse (s : SleighDef.Sla.t) (input : String.t) (disass_only : Bool.t)
+let do_parse (sla : SleighDef.Sla.t) (input : String.t) (disass_only : Bool.t)
     (entry : Int64.t) : Unit.t =
-  [%log debug "scopes: %d" (Int32Map.cardinal s.symbol_table.scopeMap)];
-  [%log debug "symbols: %d" (Int32Map.cardinal s.symbol_table.symbolMap)];
+  [%log debug "scopes: %d" (Int32Map.cardinal sla.symbol_table.scopeMap)];
+  [%log debug "symbols: %d" (Int32Map.cardinal sla.symbol_table.symbolMap)];
   [%log
     debug "instruction constructor length: %d"
-      (ConstructorMap.cardinal s.root.construct)];
+      (ConstructorMap.cardinal sla.root.construct)];
   let rec aux (offset : Int32.t) : Unit.t =
     if String.length input <= Int32.to_int offset then ()
     else
@@ -47,27 +47,52 @@ let do_parse (s : SleighDef.Sla.t) (input : String.t) (disass_only : Bool.t)
       let pc = ParserContext.of_mock subinput in
       let pw = ParserWalker.from_context pc in
       let res =
-        let* v = Sla.resolve s s.root pw in
+        let* v = Sla.resolve sla sla.root pw in
         let offset2 = Constructor.calc_length v 0l in
         let pinfo =
           {
             PatternInfo.addr = Int64.add entry (Int64.of_int32 offset);
             naddr = Int64.add entry (Int64.of_int32 (Int32.add offset offset2));
             n2addr = None;
+            umask = sla.unique_allocatemask;
+            uoffset =
+              Int64.logand
+                (Int64.add entry (Int64.of_int32 offset))
+                (sla.unique_allocatemask |> Int64.of_int32)
+              |> Fun.flip Int64.shift_left 4;
           }
         in
         if disass_only then (
-          let* s = SymbolPrinter.print_constructor v s pw pinfo in
+          let* s = SymbolPrinter.print_constructor v sla pw pinfo in
           Format.printf "%s\n%!" s;
           offset2 |> Result.ok)
         else
-          let* v2, _ = Sla.resolve_handle s v pw pinfo in
-          let* s = PCodeBuilder.build v2 (-1l) pw in
+          let* mnem = SymbolPrinter.print_mnem v sla pw pinfo in
+          let* v2, _ = Sla.resolve_handle sla v pw pinfo in
+          let* s = PCodeBuilder.build_with_mnemonic v2 (-1l) pw pinfo mnem in
+          let s =
+            if List.length s = 0 then
+              [
+                {
+                  PCode.mnemonic = "NOP";
+                  opcode = 999l;
+                  inputs = [||];
+                  output = None;
+                };
+              ]
+            else s
+          in
+          let plist =
+            List.mapi
+              (Translate.pcode_to_common sla.spaceinfo sla.regspec pinfo.addr)
+              s
+          in
+
           Format.printf "%a\n%!"
             (Format.pp_print_list
                ~pp_sep:(fun fmt () -> Format.fprintf fmt "\n")
-               PCode.pp)
-            s;
+               Common.RawInst.pp_full)
+            plist;
           offset2 |> Result.ok
       in
       match res with

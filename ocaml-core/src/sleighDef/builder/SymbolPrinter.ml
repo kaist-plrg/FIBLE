@@ -1,6 +1,9 @@
 open StdlibExt
 open Notation
 
+let rec take (n : int) (l : 'a list) : 'a list =
+  if n <= 0 then [] else match l with [] -> [] | h :: t -> h :: take (n - 1) t
+
 let rec drop (n : int) (l : 'a list) : 'a list =
   if n <= 0 then l else match l with [] -> [] | _ :: t -> drop (n - 1) t
 
@@ -41,11 +44,59 @@ and print_constructor (C c : Constructor.disas_t) (sla : Sla.t)
   in
   Ok (String.concat "" op_list)
 
-let print_body (C s : Constructor.disas_t) (sla : Sla.t)
+let rec print_mnem (C s : Constructor.disas_t) (sla : Sla.t)
     (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (String.t, String.t) Result.t =
   match s.flowthruIndex with
-  | Some i -> Ok (Printf.sprintf "%ld" i)
+  | Some i ->
+      let* op =
+        List.nth_opt s.operandIds (Int32.to_int i)
+        |> Option.to_result ~none:"OperInd out of bounds"
+      in
+      let* s =
+        match op.operand_value with
+        | OTriple (Right c) -> c |> Result.ok
+        | _ -> "OperInd not a constructor" |> Result.error
+      in
+      print_mnem s sla walker pinfo
+  | None ->
+      let endind =
+        match s.firstWhitespace with
+        | -1l -> List.length s.printpieces
+        | i -> Int32.to_int i
+      in
+      let d = take endind s.printpieces in
+      let* op_list =
+        List.map
+          (fun (p : TypeDef.printpiece) ->
+            match p with
+            | Str s -> s |> Result.ok
+            | OperInd op ->
+                let* op =
+                  List.nth_opt s.operandIds (Int32.to_int op)
+                  |> Option.to_result ~none:"OperInd out of bounds"
+                in
+                print_oper op sla walker pinfo)
+          d
+        |> ResultExt.join_list
+      in
+      Ok (String.concat "" op_list)
+
+let rec print_body (C s : Constructor.disas_t) (sla : Sla.t)
+    (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
+    (String.t, String.t) Result.t =
+  match s.flowthruIndex with
+  | Some i ->
+      let* op =
+        List.nth_opt s.operandIds (Int32.to_int i)
+        |> Option.to_result ~none:"OperInd out of bounds"
+      in
+      let* s =
+        match op.operand_value with
+        | OTriple (Right c) -> c |> Result.ok
+        | _ -> "OperInd not a constructor" |> Result.error
+      in
+      print_body s sla walker pinfo
   | None -> (
       match s.firstWhitespace with
       | -1l -> "" |> Result.ok

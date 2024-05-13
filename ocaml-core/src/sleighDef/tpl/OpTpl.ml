@@ -155,6 +155,83 @@ let match_op (s : String.t) : op_t Option.t =
   | "LZCOUNT" -> LZCOUNT |> Option.some
   | _ -> None
 
+let opcode (op : op_t) : Int32.t =
+  match op with
+  | BLANK -> 0l
+  | COPY -> 1l
+  | LOAD -> 2l
+  | STORE -> 3l
+  | BRANCH -> 4l
+  | CBRANCH -> 5l
+  | BRANCHIND -> 6l
+  | CALL -> 7l
+  | CALLIND -> 8l
+  | CALLOTHER -> 9l
+  | RETURN -> 10l
+  | INT_EQUAL -> 11l
+  | INT_NOTEQUAL -> 12l
+  | INT_SLESS -> 13l
+  | INT_SLESSEQUAL -> 14l
+  | INT_LESS -> 15l
+  | INT_LESSEQUAL -> 16l
+  | INT_ZEXT -> 17l
+  | INT_SEXT -> 18l
+  | INT_ADD -> 19l
+  | INT_SUB -> 20l
+  | INT_CARRY -> 21l
+  | INT_SCARRY -> 22l
+  | INT_SBORROW -> 23l
+  | INT_2COMP -> 24l
+  | INT_NEGATE -> 25l
+  | INT_XOR -> 26l
+  | INT_AND -> 27l
+  | INT_OR -> 28l
+  | INT_LEFT -> 29l
+  | INT_RIGHT -> 30l
+  | INT_SRIGHT -> 31l
+  | INT_MULT -> 32l
+  | INT_DIV -> 33l
+  | INT_SDIV -> 34l
+  | INT_REM -> 35l
+  | INT_SREM -> 36l
+  | BOOL_NEGATE -> 37l
+  | BOOL_XOR -> 38l
+  | BOOL_AND -> 39l
+  | BOOL_OR -> 40l
+  | FLOAT_EQUAL -> 41l
+  | FLOAT_NOTEQUAL -> 42l
+  | FLOAT_LESS -> 43l
+  | FLOAT_LESSEQUAL -> 44l
+  | UNUSED1 -> 45l
+  | FLOAT_NAN -> 46l
+  | FLOAT_ADD -> 47l
+  | FLOAT_DIV -> 48l
+  | FLOAT_MULT -> 49l
+  | FLOAT_SUB -> 50l
+  | FLOAT_NEG -> 51l
+  | FLOAT_ABS -> 52l
+  | FLOAT_SQRT -> 53l
+  | INT2FLOAT -> 54l
+  | FLOAT2FLOAT -> 55l
+  | TRUNC -> 56l
+  | CEIL -> 57l
+  | FLOOR -> 58l
+  | ROUND -> 59l
+  | BUILD -> 60l
+  | DELAY_SLOT -> 61l
+  | PIECE -> 62l
+  | SUBPIECE -> 63l
+  | CAST -> 64l
+  | LABEL -> 65l
+  | CROSSBUILD -> 66l
+  | SEGMENTOP -> 67l
+  | CPOOLREF -> 68l
+  | NEW -> 69l
+  | INSERT -> 70l
+  | EXTRACT -> 71l
+  | POPCOUNT -> 72l
+  | LZCOUNT -> 73l
+
 type t = { opc : op_t; out : VarNodeTpl.t Option.t; ins : VarNodeTpl.t List.t }
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t

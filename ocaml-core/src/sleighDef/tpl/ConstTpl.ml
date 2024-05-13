@@ -111,14 +111,16 @@ let fixSpace (v : t) (opers : FixedHandle.t List.t) :
       | HandleType.Space -> (
           match handle.offset_space with
           | Some _ ->
-              handle.temp_space |> Option.to_result ~none:[%logstr "fixSpace: No space"]
+              handle.temp_space
+              |> Option.to_result ~none:[%logstr "fixSpace: No space"]
           | None -> handle.space |> Result.ok)
       | _ -> Error [%logstr "fixSpace: no space field"])
   | Curspace -> Error [%logstr "unimplemented"]
   | FlowRef -> Error [%logstr "unimplemented"]
   | _ -> Error [%logstr "unimplemented"]
 
-let fix (v : t) (opers : FixedHandle.t List.t) : (Int64.t, String.t) Result.t =
+let fix (v : t) (opers : FixedHandle.t List.t) (pinfo : PatternInfo.t) :
+    (Int64.t, String.t) Result.t =
   match v with
   | Real v -> v |> Result.ok
   | Handle v -> (
@@ -131,13 +133,16 @@ let fix (v : t) (opers : FixedHandle.t List.t) : (Int64.t, String.t) Result.t =
           | None -> handle.offset_offset |> Result.ok)
       | HandleType.Size -> handle.size |> Int64.of_int32 |> Result.ok
       | HandleType.OffsetPlus offset ->
-        [%logstr "unimplemented"] |> Result.error)
-  | Start -> [%logstr "unimplemented"] |> Result.error
-  | Next -> [%logstr "unimplemented"] |> Result.error
-  | Next2 -> [%logstr "unimplemented"] |> Result.error
+          [%logstr "unimplemented"] |> Result.error)
+  | Start -> pinfo.addr |> Common.Addr.get_offset |> Result.ok
+  | Next -> pinfo.naddr |> Common.Addr.get_offset |> Result.ok
+  | Next2 -> (
+      match pinfo.n2addr with
+      | Some n2addr -> n2addr |> Common.Addr.get_offset |> Result.ok
+      | None -> [%logstr "no n2addr"] |> Result.error)
   | Curspace -> [%logstr "unimplemented"] |> Result.error
   | CurspaceSize -> [%logstr "unimplemented"] |> Result.error
-  | Space spaceid -> 0L |> Result.ok
+  | Space spaceid -> AddrSpace.get_index spaceid |> Int64.of_int |> Result.ok
   | Realtive _ -> [%logstr "unimplemented"] |> Result.error
   | FlowRef -> [%logstr "unimplemented"] |> Result.error
   | FlowRefSize -> [%logstr "unimplemented"] |> Result.error
