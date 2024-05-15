@@ -1,6 +1,5 @@
 open StdlibExt
 open Notation
-open Common
 
 let rec append_build (opreands : OperandSymbol.handle_t List.t)
     (optpl : OpTpl.t) (secnum : Int32.t) (walker : ParserWalker.t)
@@ -15,18 +14,19 @@ let rec append_build (opreands : OperandSymbol.handle_t List.t)
   let* operand =
     List.nth_opt opreands index |> Option.to_result ~none:"No operand at index"
   in
+  let nwalker = ParserWalker.replace_offset walker operand.mapped.offset in
   match operand.operand_value with
   | OTriple (Right (C c)) ->
       if Int32.compare secnum 0l >= 0 then
         let cst = Int32Map.find_opt secnum c.namedtmpl in
         match cst with
-        | Some ctpl -> build_nonempty (TypeDef.C c) ctpl secnum walker pinfo
+        | Some ctpl -> build_nonempty (TypeDef.C c) ctpl secnum nwalker pinfo
         | None -> build_empty (TypeDef.C c) secnum
       else
         let* ctpl =
           c.tmpl |> Option.to_result ~none:"No template for constructor"
         in
-        build_nonempty (TypeDef.C c) ctpl (-1l) walker pinfo
+        build_nonempty (TypeDef.C c) ctpl (-1l) nwalker pinfo
   | _ -> "Build but not subtable" |> Result.error
 
 and delay_slot (optpl : OpTpl.t) : ('a, String.t) Result.t =
@@ -47,7 +47,28 @@ and dump (optpl : OpTpl.t) (operands : FixedHandle.t List.t)
       (fun (l, i) (x : VarNodeTpl.t) ->
         let* b = VarNodeTpl.is_dynamic x operands walker in
         let* nl, ni =
-          if b then "unimpl_dynamic" |> Result.error
+          if b then
+            let* handl =
+              x.offset |> ConstTpl.try_handle
+              |> Option.to_result ~none:"No handle"
+            in
+            let* v = VarNodeTpl.generateLocation x operands pinfo in
+            let* pt, spc = VarNodeTpl.generatePointer x operands pinfo in
+            let load_op =
+              PCode.make (OpTpl.opcode OpTpl.LOAD)
+                [|
+                  VarNode.make
+                    (AddrSpace.const_space |> AddrSpace.get_index
+                   |> Int32.of_int)
+                    8l
+                    (AddrSpace.get_index spc |> Int64.of_int);
+                  pt;
+                |]
+                (Some v)
+            in
+            match snd handl with
+            | OffsetPlus _ -> "unimpl_offset_plus" |> Result.error
+            | _ -> ([ load_op ], v) |> Result.ok
           else
             let* v = VarNodeTpl.generateLocation x operands pinfo in
             ([], v) |> Result.ok
@@ -60,7 +81,29 @@ and dump (optpl : OpTpl.t) (operands : FixedHandle.t List.t)
     OpTpl.get_out optpl
     |> Option.map (fun (x : VarNodeTpl.t) ->
            let* b = VarNodeTpl.is_dynamic x operands walker in
-           if b then "unimpl_dynamic" |> Result.error
+           if b then
+             let* handl =
+               x.offset |> ConstTpl.try_handle
+               |> Option.to_result ~none:"No handle"
+             in
+             let* v = VarNodeTpl.generateLocation x operands pinfo in
+             let* pt, spc = VarNodeTpl.generatePointer x operands pinfo in
+             let store_op =
+               PCode.make (OpTpl.opcode OpTpl.STORE)
+                 [|
+                   VarNode.make
+                     (AddrSpace.const_space |> AddrSpace.get_index
+                    |> Int32.of_int)
+                     8l
+                     (AddrSpace.get_index spc |> Int64.of_int);
+                   pt;
+                   v;
+                 |]
+                 None
+             in
+             match snd handl with
+             | OffsetPlus _ -> "unimpl_offset_plus" |> Result.error
+             | _ -> ([ store_op ], Some v) |> Result.ok
            else
              let* v = VarNodeTpl.generateLocation x operands pinfo in
              ([], Some v) |> Result.ok)

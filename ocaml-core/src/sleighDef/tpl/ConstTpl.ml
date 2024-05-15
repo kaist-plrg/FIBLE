@@ -101,6 +101,11 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
 let try_real (h : t) : Int64.t option =
   match h with Real value -> Some value | _ -> None
 
+let try_handle (h : t) : (Int32.t * HandleType.t) option =
+  match h with
+  | Handle { handleInd; field } -> Some (handleInd, field)
+  | _ -> None
+
 let fixSpace (v : t) (opers : FixedHandle.t List.t) :
     (AddrSpace.t, String.t) Result.t =
   match v with

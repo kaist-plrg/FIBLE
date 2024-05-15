@@ -42,3 +42,26 @@ let generateLocation (v : t) (opers : FixedHandle.t List.t)
   in
   VarNode.make (AddrSpace.get_index space |> Int32.of_int) size offset
   |> Result.ok
+
+let generatePointer (v : t) (opers : FixedHandle.t List.t)
+    (pinfo : PatternInfo.t) : (VarNode.t * AddrSpace.t, String.t) Result.t =
+  let* hind =
+    ConstTpl.try_handle v.offset
+    |> Option.map fst
+    |> Option.to_result ~none:"No handle"
+  in
+  let* op =
+    List.nth_opt opers (Int32.to_int hind)
+    |> Option.to_result ~none:[%logstr "Operand index out of bounds"]
+  in
+  let* space = op.offset_space |> Option.to_result ~none:[%logstr "No space"] in
+  let size = op.offset_size in
+  let offset =
+    if AddrSpace.is_const_space space then op.offset_offset
+    else if AddrSpace.is_unique_space space then
+      Int64.logor op.offset_offset pinfo.uoffset
+    else op.offset_offset
+  in
+  ( VarNode.make (AddrSpace.get_index space |> Int32.of_int) size offset,
+    op.space )
+  |> Result.ok

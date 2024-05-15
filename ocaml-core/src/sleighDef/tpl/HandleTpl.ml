@@ -54,7 +54,7 @@ let getFixedHandle (v : t) (opers : FixedHandle.t List.t)
           |> Result.ok
       | _ ->
           (* TODO: wrapOffset *)
-          let* offset_offset = ConstTpl.fix v.ptrspace opers pinfo in
+          let* offset_offset = ConstTpl.fix v.ptroffset opers pinfo in
           {
             FixedHandle.space;
             size;

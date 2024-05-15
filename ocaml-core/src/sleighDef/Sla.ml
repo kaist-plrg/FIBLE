@@ -248,23 +248,23 @@ let rec resolve_handle (s : t) (C st : Constructor.disas_t)
   let* op_resolved =
     ResultExt.fold_left_M
       (fun ops (op : OperandSymbol.disas_t) ->
-        let* ob =
-          if op.offsetbase = -1l then
-            ParserWalker.get_offset walker |> Result.ok
-          else
-            let* (resolved_op : OperandSymbol.handle_t) =
-              ([%log debug "Offsetbase: %ld" op.offsetbase];
-               List.nth_opt (List.rev ops) (Int32.to_int op.offsetbase))
-              |> Option.to_result ~none:"Offset not found"
-            in
-            Int32.add resolved_op.mapped.length resolved_op.mapped.offset
-            |> Result.ok
-        in
-        let off = Int32.add ob op.reloffset in
-        let nwalker = ParserWalker.replace_offset walker off in
+        (* let* ob =
+             if op.offsetbase = -1l then
+               ParserWalker.get_offset walker |> Result.ok
+             else
+               let* (resolved_op : OperandSymbol.handle_t) =
+                 ([%log debug "Offsetbase: %ld" op.offsetbase];
+                  List.nth_opt (List.rev ops) (Int32.to_int op.offsetbase))
+                 |> Option.to_result ~none:"Offset not found"
+               in
+               Int32.add resolved_op.mapped.length resolved_op.mapped.offset
+               |> Result.ok
+           in
+           let off = Int32.add ob op.reloffset in
+           let nwalker = ParserWalker.replace_offset walker off in *)
         [%log debug "Current constructor: %a" Constructor.pp_printpiece st];
         [%log debug "Resolving operand at %d" (List.length ops)];
-        let* nresolved = resolve_handle_op s op nwalker pinfo in
+        let* nresolved = resolve_handle_op s op walker pinfo in
         nresolved :: ops |> Result.ok)
       [] st.operandIds
   in
@@ -291,28 +291,28 @@ and resolve_handle_op (v : t) (op : OperandSymbol.disas_t)
   let* (nop, handle) : ('a, 'b) TypeDef.operand_elem * FixedHandle.t =
     match opv with
     | OTriple (Right c) ->
-        let* c, handle = resolve_handle v c walker pinfo in
+        let* c, handle = resolve_handle v c nwalker pinfo in
         (TypeDef.OTriple (Right c), handle) |> Result.ok
     | OTriple (Left x) ->
         let* v, handle =
           match x with
           | Specific (Operand a) ->
-              let* a = resolve_handle_op v a walker pinfo in
+              let* a = resolve_handle_op v a nwalker pinfo in
               (TypeDef.Specific (Operand a), a.mapped.handle) |> Result.ok
           | Specific (End v) ->
-              let* handle = EndSymbol.getFixedHandle v walker pinfo in
+              let* handle = EndSymbol.getFixedHandle v nwalker pinfo in
               (TypeDef.Specific (End v), handle) |> Result.ok
           | Specific (Start v) ->
-              let* handle = StartSymbol.getFixedHandle v walker pinfo in
+              let* handle = StartSymbol.getFixedHandle v nwalker pinfo in
               (TypeDef.Specific (Start v), handle) |> Result.ok
           | Specific (Next2 v) ->
-              let* handle = Next2Symbol.getFixedHandle v walker pinfo in
+              let* handle = Next2Symbol.getFixedHandle v nwalker pinfo in
               (TypeDef.Specific (Next2 v), handle) |> Result.ok
           | Specific (Patternless v) ->
-              let* handle = PatternlessSymbol.getFixedHandle v walker in
+              let* handle = PatternlessSymbol.getFixedHandle v nwalker in
               (TypeDef.Specific (Patternless v), handle) |> Result.ok
           | Family t ->
-              let* handle = FamilySymbol.getFixedHandle t walker pinfo in
+              let* handle = FamilySymbol.getFixedHandle t nwalker pinfo in
               (TypeDef.Family t, handle) |> Result.ok
         in
         (TypeDef.OTriple (Left v), handle) |> Result.ok
