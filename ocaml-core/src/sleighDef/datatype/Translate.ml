@@ -121,6 +121,7 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
     | 53l -> mkUop Ufloat_sqrt
     | 54l -> mkUop Uint2float
     | 55l -> mkUop Ufloat2float
+    | 56l -> mkUop Utrunc
     | 57l -> mkUop Ufloat_ceil
     | 58l -> mkUop Ufloat_floor
     | 59l -> mkUop Ufloat_round
@@ -129,6 +130,8 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
     | 72l -> mkUop Upopcount
     | 73l -> mkUop Ulzcount
     | 999l -> IN INop
-    | _ -> Iunimplemented
+    | _ ->
+        [%log debug "unimpl %ld" p.opcode];
+        Iunimplemented
   in
   { ins = inst; mnem = p.mnemonic; loc = (addr, seqn) }

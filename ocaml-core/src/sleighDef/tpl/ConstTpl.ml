@@ -138,7 +138,17 @@ let fix (v : t) (opers : FixedHandle.t List.t) (pinfo : PatternInfo.t) :
           | None -> handle.offset_offset |> Result.ok)
       | HandleType.Size -> handle.size |> Int64.of_int32 |> Result.ok
       | HandleType.OffsetPlus offset ->
-          [%logstr "unimplemented"] |> Result.error)
+          let bv =
+            if Option.is_none handle.offset_space then handle.offset_offset
+            else handle.temp_offset
+          in
+          if AddrSpace.is_const_space handle.space then
+            Int64.shift_right_logical bv
+              (Int32.shift_right_logical offset 16 |> Int32.to_int)
+            |> Result.ok
+          else
+            Int64.add bv (Int64.of_int32 (Int32.logand offset 0xffffl))
+            |> Result.ok)
   | Start -> pinfo.addr |> Common.Addr.get_offset |> Result.ok
   | Next -> pinfo.naddr |> Common.Addr.get_offset |> Result.ok
   | Next2 -> (
