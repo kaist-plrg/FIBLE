@@ -50,11 +50,11 @@ end) (RegFile : sig
 end) (Memory : sig
   type t
 
-  val load_mem : t -> Addr.t -> Int32.t -> Value.t
-  val load_string : t -> Addr.t -> (String.t, String.t) Result.t
-  val load_bytes : t -> Addr.t -> Int32.t -> (String.t, String.t) Result.t
-  val store_mem : t -> Addr.t -> Value.t -> t
-  val store_bytes : t -> Addr.t -> String.t -> t
+  val load_mem : t -> Byte8.t -> Int32.t -> Value.t
+  val load_string : t -> Byte8.t -> (String.t, String.t) Result.t
+  val load_bytes : t -> Byte8.t -> Int32.t -> (String.t, String.t) Result.t
+  val store_mem : t -> Byte8.t -> Value.t -> t
+  val store_bytes : t -> Byte8.t -> String.t -> t
 end) (Frame : sig
   type t
 
@@ -79,14 +79,14 @@ struct
 
   let get_reg (s : t) (r : RegId.t_full) : Value.t = RegFile.get_reg s.regs r
 
-  let load_mem_global (s : t) (addr : Addr.t) (width : Int32.t) : Value.t =
+  let load_mem_global (s : t) (addr : Byte8.t) (width : Int32.t) : Value.t =
     Memory.load_mem s.mem addr width
 
-  let load_string_global (s : t) (addr : Addr.t) : (String.t, String.t) Result.t
-      =
+  let load_string_global (s : t) (addr : Byte8.t) :
+      (String.t, String.t) Result.t =
     Memory.load_string s.mem addr
 
-  let store_mem_global (s : t) (addr : Addr.t) (v : Value.t) : t =
+  let store_mem_global (s : t) (addr : Byte8.t) (v : Value.t) : t =
     { s with mem = Memory.store_mem s.mem addr v }
 
   let load_mem_local (s : t) (addr : SPVal.t) (width : Int32.t) : Value.t =
@@ -199,7 +199,7 @@ struct
         [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
         Action.of_store addrv sv |> Result.ok
 
-  let step_ISLS (s : t) (v : ISLoadStore.t) (curr : HighCursor.t) :
+  let step_ISLS (s : t) (curr : HighCursor.t) (v : ISLoadStore.t) :
       (Action.t, String.t) Result.t =
     match v with
     | Sload { offset; output } ->

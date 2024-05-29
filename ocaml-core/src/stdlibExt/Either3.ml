@@ -10,37 +10,14 @@ let find_first = function First x -> Some x | _ -> None
 let find_second = function Second x -> Some x | _ -> None
 let find_third = function Third x -> Some x | _ -> None
 
-let map_first f = function
-  | First x -> First (f x)
-  | Second x -> Second x
-  | Third x -> Third x
-
-let map_second f = function
-  | First x -> First x
-  | Second x -> Second (f x)
-  | Third x -> Third x
-
-let map_third f = function
-  | First x -> First x
-  | Second x -> Second x
-  | Third x -> Third (f x)
-
-let map ~first ~second ~third : ('a, 'b, 'c) t -> ('d, 'e, 'f) t = function
-  | First x -> First (first x)
-  | Second x -> Second (second x)
-  | Third x -> Third (third x)
-
-let fold ~first ~second ~third : ('a, 'b, 'c) t -> 'd = function
+let fold first second third : ('a, 'b, 'c) t -> 'd = function
   | First x -> first x
   | Second x -> second x
   | Third x -> third x
 
-let iter ~first ~second ~third : ('a, 'b, 'c) t -> Unit.t = function
-  | First x -> first x
-  | Second x -> second x
-  | Third x -> third x
+let iter first second third : ('a, 'b, 'c) t -> Unit.t = fold first second third
 
-let equal ~first ~second ~third : ('a, 'b, 'c) t -> ('a, 'b, 'c) t -> bool =
+let equal first second third : ('a, 'b, 'c) t -> ('a, 'b, 'c) t -> bool =
  fun a b ->
   match (a, b) with
   | First x, First y -> first x y
@@ -48,7 +25,7 @@ let equal ~first ~second ~third : ('a, 'b, 'c) t -> ('a, 'b, 'c) t -> bool =
   | Third x, Third y -> third x y
   | _ -> false
 
-let compare ~first ~second ~third : ('a, 'b, 'c) t -> ('a, 'b, 'c) t -> int =
+let compare first second third : ('a, 'b, 'c) t -> ('a, 'b, 'c) t -> int =
  fun a b ->
   match (a, b) with
   | First x, First y -> first x y

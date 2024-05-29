@@ -42,19 +42,22 @@ let join a b =
   { regs = ARegFile.join a.regs b.regs; stack = AStack.join a.stack b.stack }
 
 let post_single_instr (i : Inst.t) (c : t) : AccessD.t * t =
-  match i with
-  | IN _ -> (AccessD.bottom, c)
-  | IA { expr; output } -> (AccessD.bottom, process_assignment c expr output)
-  | ILS (Load { pointer; output; _ }) ->
-      let pointer = eval_varnode c pointer in
-      [%log debug "load: %a" AbsVal.pp pointer];
-      (AccessD.log_access output.width pointer, process_load c pointer output)
-  | ILS (Store { pointer; value }) ->
-      let pointer = eval_varnode c pointer in
-      let value' = eval_varnode c value in
-      [%log debug "store: %a" AbsVal.pp pointer];
-      ( AccessD.log_access (VarNode.width value) pointer,
-        process_store c pointer value' )
+  Inst.fold
+    (function
+      | Load { pointer; output; _ } ->
+          let pointer = eval_varnode c pointer in
+          [%log debug "load: %a" AbsVal.pp pointer];
+          ( AccessD.log_access output.width pointer,
+            process_load c pointer output )
+      | Store { pointer; value } ->
+          let pointer = eval_varnode c pointer in
+          let value' = eval_varnode c value in
+          [%log debug "store: %a" AbsVal.pp pointer];
+          ( AccessD.log_access (VarNode.width value) pointer,
+            process_store c pointer value' ))
+    (fun { expr; output } -> (AccessD.bottom, process_assignment c expr output))
+    (fun _ -> (AccessD.bottom, c))
+    i
 
 let post_single_jmp (i : Jmp.t) (c : t) (sp_num : Int32.t) (fp_num : Int32.t) :
     AccessD.t * t =
@@ -72,7 +75,7 @@ let post_single_jmp (i : Jmp.t) (c : t) (sp_num : Int32.t) (fp_num : Int32.t) :
               |> fun r ->
               ARegFile.add r (RegId.Register fp_num)
                 (ARegFile.get c.regs (RegId.Register fp_num)) );
-          stack = AStack.TopHoleMap AddrMap.empty;
+          stack = AStack.TopHoleMap Byte8Map.empty;
         } )
   | _ -> (AccessD.bottom, c)
 

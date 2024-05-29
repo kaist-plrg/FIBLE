@@ -45,7 +45,8 @@ let init_from_sig (dmem : DMem.t) (rspec : int32 Int32Map.t) (init_sp : Int64.t)
       (Value.of_int64 init_sp 8l)
   in
   let mem =
-    Memory.store_mem (Memory.from_rom dmem) init_sp
+    Memory.store_mem (Memory.from_rom dmem)
+      (init_sp |> Byte8.of_int64)
       (Value.of_int64 0xDEADBEEFL 8l)
   in
   { regs; mem }

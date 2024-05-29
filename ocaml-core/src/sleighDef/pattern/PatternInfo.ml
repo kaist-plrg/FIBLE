@@ -1,9 +1,9 @@
 open Common
 
 type t = {
-  addr : Addr.t;
-  naddr : Addr.t;
-  n2addr : Addr.t Option.t;
+  addr : Byte8.t;
+  naddr : Byte8.t;
+  n2addr : Byte8.t Option.t;
   umask : Int32.t;
   uoffset : Int64.t;
 }

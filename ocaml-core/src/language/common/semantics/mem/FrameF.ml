@@ -19,21 +19,21 @@ struct
 
   type t = {
     left : FailableMemory.t;
-    right : Value.NonNumericValue.t AddrMap.t;
-    min_addr : Addr.t;
-    max_addr : Addr.t;
+    right : Value.NonNumericValue.t Byte8Map.t;
+    min_addr : Byte8.t;
+    max_addr : Byte8.t;
   }
 
-  let empty (min_addr : Addr.t) (max_addr : Addr.t) =
-    { left = FailableMemory.empty; right = AddrMap.empty; min_addr; max_addr }
+  let empty (min_addr : Byte8.t) (max_addr : Byte8.t) =
+    { left = FailableMemory.empty; right = Byte8Map.empty; min_addr; max_addr }
 
-  let load_mem (s : t) (addr : Addr.t) (width : Int32.t) : Value.t =
+  let load_mem (s : t) (addr : Byte8.t) (width : Int32.t) : Value.t =
     if
       s.min_addr <= addr
-      && Int64.add addr (Int64.pred (Int64.of_int32 width)) <= s.max_addr
+      && Byte8.add addr (Byte8.pred (Byte8.of_int32 width)) <= s.max_addr
     then
       match
-        AddrMap.find_opt addr s.right
+        Byte8Map.find_opt addr s.right
         |> Fun.flip Option.bind (fun v ->
                if Value.NonNumericValue.width v = width then Some v else None)
       with
@@ -48,14 +48,15 @@ struct
               Value.of_either (Right (Value.NonNumericValue.undefined width)))
     else Value.of_either (Right (Value.NonNumericValue.undefined width))
 
-  let load_string (s : t) (addr : Addr.t) : (String.t, String.t) Result.t =
+  let load_string (s : t) (addr : Byte8.t) : (String.t, String.t) Result.t =
     FailableMemory.load_string s.left addr
 
-  let load_bytes (s : t) (addr : Addr.t) (size : Int32.t) :
+  let load_bytes (s : t) (addr : Byte8.t) (size : Int32.t) :
       (String.t, String.t) Result.t =
     FailableMemory.load_bytes s.left addr size
 
-  let store_mem (s : t) (addr : Addr.t) (v : Value.t) : (t, String.t) Result.t =
+  let store_mem (s : t) (addr : Byte8.t) (v : Value.t) : (t, String.t) Result.t
+      =
     if
       s.min_addr <= addr
       && Int64.add addr (Int64.pred (Int64.of_int32 (Value.width v)))
@@ -66,21 +67,21 @@ struct
           {
             s with
             left = FailableMemory.undef_mem s.left addr 8l;
-            right = AddrMap.add addr v s.right;
+            right = Byte8Map.add addr v s.right;
           }
           |> Result.ok
       | Left v ->
           {
             s with
             left = FailableMemory.store_mem s.left addr v;
-            right = AddrMap.remove addr s.right;
+            right = Byte8Map.remove addr s.right;
           }
           |> Result.ok
     else
       Format.asprintf "%Ld out of bound [%Ld, %Ld]" addr s.min_addr s.max_addr
       |> Result.error
 
-  let store_bytes (s : t) (addr : Addr.t) (v : String.t) :
+  let store_bytes (s : t) (addr : Byte8.t) (v : String.t) :
       (t, String.t) Result.t =
     if
       s.min_addr <= addr

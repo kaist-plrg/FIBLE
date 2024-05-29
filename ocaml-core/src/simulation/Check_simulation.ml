@@ -144,14 +144,14 @@ let action_all a1 l1 l1_state a2 l2 l2_state a3 l3 l3_state =
         ASIR.Interp.action l2 l2_state a2,
         IOIR.Interp.action l3 l3_state a3 )
 
-let run (l1 : FGIR.Prog.t) (l2 : ASIR.Prog.t) (l3 : IOIR.Prog.t) (addr : Addr.t)
-    : (Unit.t, StopEvent.t) Result.t =
+let run (l1 : FGIR.Prog.t) (l2 : ASIR.Prog.t) (l3 : IOIR.Prog.t)
+    (addr : Byte8.t) : (Unit.t, StopEvent.t) Result.t =
   let l1_state = FGIR.Init.from_signature l1 addr in
   let l2_state = ASIR.Init.from_signature l2 addr in
   let l3_state = IOIR.Init.from_signature l3 addr in
   let sps =
     FuncTimestampMap.singleton
-      ((addr, 0), 0L)
+      (Loc.of_addr addr, 0L)
       (FGIR.Sem.Value.of_int64 0x7FFFFFFFC000L 8l)
   in
   let rec aux (l1_state : FGIR.Sem.State.t) (l2_state : ASIR.Sem.State.t)

@@ -49,11 +49,13 @@ let value_32 (x : t) : (Int32.t, String.t) Result.t =
   let* s = try_string (extend x 4l) in
   String.get_int32_le s 0 |> Result.ok
 
-let try_addr (x : t) : (Addr.t, String.t) Result.t = value_64 x
+let try_addr (x : t) : (Byte8.t, String.t) Result.t =
+  let* v = value_64 x in
+  Byte8.of_int64 v |> Result.ok
 
 let try_loc (x : t) : (Loc.t, String.t) Result.t =
   let* addr = try_addr x in
-  (addr, 0) |> Result.ok
+  Loc.of_addr addr |> Result.ok
 
 let pp fmt (x : t) =
   Format.fprintf fmt "@[%a:%d@]"

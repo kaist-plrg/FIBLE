@@ -51,7 +51,7 @@ struct
     | Num n -> NumericValue.pp fmt n
     | NonNum n -> NonNumericValue.pp fmt n
 
-  let try_addr (v : t) : (Addr.t, String.t) Result.t =
+  let try_addr (v : t) : (Byte8.t, String.t) Result.t =
     match v with
     | Num n -> NumericValue.try_addr n
     | NonNum n -> Error (Format.asprintf "try_addr: %a" NonNumericValue.pp n)

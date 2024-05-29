@@ -47,7 +47,7 @@ module Lattice_noBot = struct
 
   let post_single (rom : DMem.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
     match i with
-    | IA { expr; output } ->
+    | Second { expr; output } ->
         {
           value_nonrel =
             NonRelStateD.process_assignment a.value_nonrel a.value_octagon expr
@@ -58,7 +58,7 @@ module Lattice_noBot = struct
             BoolPowerD.process_assignment a.value_boolpower a.value_octagon expr
               output;
         }
-    | ILS (Load { pointer; output; _ }) ->
+    | First (Load { pointer; output; _ }) ->
         let addrSet = gen_aexpr_set a.value_octagon pointer in
         let regSet = AExprSet.used_regs addrSet in
         let inter_regSet =
@@ -84,7 +84,7 @@ module Lattice_noBot = struct
             BoolPowerD.process_load rom a.value_boolpower a.value_octagon output
               addrSet;
         }
-    | ILS (Store { pointer; value; _ }) ->
+    | First (Store { pointer; value; _ }) ->
         let addrSet = gen_aexpr_set a.value_octagon pointer in
         let regSet = AExprSet.used_regs addrSet in
         let inter_regSet =
@@ -108,7 +108,7 @@ module Lattice_noBot = struct
             BoolPowerD.process_store a.value_boolpower a.value_octagon value
               addrSet;
         }
-    | IN _ -> a
+    | Third _ -> a
 
   let filter_branch (a : t) (condv : VarNode.t) (trueloc : Loc.t)
       (targetloc : Loc.t) : t =

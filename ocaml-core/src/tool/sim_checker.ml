@@ -47,7 +47,7 @@ let main () =
          (fun (x : FGIR.Func.t) ->
            String.equal (Option.value x.nameo ~default:"") "main")
          l1.funcs)
-        .entry |> fst
+        .entry |> Loc.get_addr
     in
 
     match Simulation.Check_simulation.run l1 l2 l3 main with

@@ -60,13 +60,13 @@ let compute_dr_assignment (a : Assignable.t) : RegIdSet.t =
 
 let compute_dd_inst (i : Inst.t) : astate =
   match i with
-  | ILS (Load { pointer = Common.VarNode.Register rm; output; _ }) ->
+  | First (Load { pointer = Common.VarNode.Register rm; output; _ }) ->
       {
         must_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         may_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         dependent_regs = RegIdSetD.Set (RegIdSet.singleton rm.id);
       }
-  | ILS
+  | First
       (Store
         {
           pointer = Common.VarNode.Register rm;
@@ -78,29 +78,29 @@ let compute_dd_inst (i : Inst.t) : astate =
         may_def_regs = RegIdSetD.bot;
         dependent_regs = RegIdSetD.Set (RegIdSet.of_list [ rm.id; rs.id ]);
       }
-  | ILS
+  | First
       (Store
         { pointer = Common.VarNode.Const _; value = Common.VarNode.Register rs })
-  | ISLS (Sstore { value = Common.VarNode.Register rs; _ }) ->
+  | Second (Sstore { value = Common.VarNode.Register rs; _ }) ->
       {
         must_def_regs = RegIdSetD.bot;
         may_def_regs = RegIdSetD.bot;
         dependent_regs = RegIdSetD.Set (RegIdSet.singleton rs.id);
       }
-  | ILS (Load { pointer = Common.VarNode.Const _; output })
-  | ISLS (Sload { output; _ }) ->
+  | First (Load { pointer = Common.VarNode.Const _; output })
+  | Second (Sload { output; _ }) ->
       {
         must_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         may_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         dependent_regs = RegIdSetD.bot;
       }
-  | IA { expr; output } ->
+  | Third { expr; output } ->
       {
         must_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         may_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         dependent_regs = RegIdSetD.Set (compute_dr_assignment expr);
       }
-  | IN _ ->
+  | Fourth _ ->
       {
         must_def_regs = RegIdSetD.bot;
         may_def_regs = RegIdSetD.bot;

@@ -69,25 +69,29 @@ let translate_jmp (j : FGIR.Jmp.t_full)
 let translate_inst (i : FGIR.Inst.t_full) (ga : FGIR.SPFA.Immutable.t)
     (la : FGIR.AbsState.t) : Inst.t_full =
   let nins : Inst.t =
-    match i.ins with
-    | IN v -> IN v
-    | IA v -> IA v
-    | ILS (Load { space; pointer; output }) -> (
-        match pointer with
-        | Register r -> (
-            match FGIR.ARegFile.get la.regs r.id with
-            | Flat (SP c) ->
-                ISLS (Sload { offset = { value = c; width = 8l }; output })
-            | _ -> ILS (Load { space; pointer; output }))
-        | _ -> ILS (Load { space; pointer; output }))
-    | ILS (Store { space; pointer; value }) -> (
-        match pointer with
-        | Register r -> (
-            match FGIR.ARegFile.get la.regs r.id with
-            | Flat (SP c) ->
-                ISLS (Sstore { offset = { value = c; width = 8l }; value })
-            | _ -> ILS (Store { space; pointer; value }))
-        | _ -> ILS (Store { space; pointer; value }))
+    (FGIR.Inst.fold : _ -> _ -> _ -> _ -> Inst.t)
+      (function
+        | Load { space; pointer; output } -> (
+            match pointer with
+            | Register r -> (
+                match FGIR.ARegFile.get la.regs r.id with
+                | Flat (SP c) ->
+                    Second
+                      (Sload { offset = { value = c; width = 8l }; output })
+                | _ -> First (Load { space; pointer; output }))
+            | _ -> First (Load { space; pointer; output }))
+        | Store { space; pointer; value } -> (
+            match pointer with
+            | Register r -> (
+                match FGIR.ARegFile.get la.regs r.id with
+                | Flat (SP c) ->
+                    Second
+                      (Sstore { offset = { value = c; width = 8l }; value })
+                | _ -> First (Store { space; pointer; value }))
+            | _ -> First (Store { space; pointer; value })))
+      (fun v -> Third v)
+      (fun v -> Fourth v)
+      i.ins
   in
   { ins = nins; loc = i.loc; mnem = i.mnem }
 

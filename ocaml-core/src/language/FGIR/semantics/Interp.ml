@@ -29,18 +29,15 @@ let action_JR = State.mk_action_JR step_ret
 
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (curr : Cursor.t) :
     (StoreAction.t, String.t) Result.t =
-  match ins with
-  | IA i -> Store.step_IA s i
-  | ILS i -> Store.step_ILS s i
-  | IN i -> Store.step_IN s i
+  Inst.fold (Store.step_ILS s) (Store.step_IA s) (Store.step_IN s) ins
 
 let step_jmp (p : Prog.t) (jmp : Jmp.t) (s : State.t) :
     (Action.t, String.t) Result.t =
   match jmp with
-  | JI ji -> State.step_JI s p ji
+  | JI ji -> State.step_JI p s ji
   | JC jc -> (
       let* sc = SCall.eval s.sto jc in
-      match AddrMap.find_opt (Loc.to_addr sc.target.target) p.externs with
+      match Byte8Map.find_opt (Loc.get_addr sc.target.target) p.externs with
       | None -> Action.call sc |> Result.ok
       | Some name -> State.step_call_external p s.sto name sc.fallthrough)
   | JR jr ->
@@ -51,7 +48,7 @@ let step_jmp (p : Prog.t) (jmp : Jmp.t) (s : State.t) :
 let step (p : Prog.t) (s : State.t) : (Action.t, StopEvent.t) Result.t =
   match s.cont with
   | { remaining = []; jmp } -> step_jmp p jmp.jmp s |> StopEvent.of_str_res
-  | { remaining = { ins = IN _; _ } :: []; jmp } ->
+  | { remaining = { ins = Third _; _ } :: []; jmp } ->
       step_jmp p jmp.jmp s |> StopEvent.of_str_res
   | { remaining = i :: []; jmp = { jmp = JI (JIntra.Jfallthrough l) } } ->
       let* a = step_ins p i.ins s.sto s.cursor |> StopEvent.of_str_res in

@@ -14,8 +14,8 @@
   RegId
   VarNode
   ;; syntax-addr
-  Addr
-  AddrMap
+  Byte8
+  Byte8Map
   ;; syntax-loc
   Loc
   LocMap
@@ -25,12 +25,17 @@
   Uop
   Bop
   Assignable
-  RawInst
-  IAssignment
   ILoadStore
+  IAssignment
+  IUnimplemented
+  IJump
+  IJumpInd
+  ICbranch
   ISLoadStore
   INop
+  InstF
   InstFullF
+  RawInst
   ;; syntax-jmp
   CallTargetF
   JIntra

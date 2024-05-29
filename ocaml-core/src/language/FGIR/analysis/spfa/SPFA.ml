@@ -26,7 +26,7 @@ module Immutable = struct
                   ARegFile.TopHoleMap
                     (RegIdMap.singleton (Register sp_num)
                        (AbsVal.of_sp_offset 0L));
-                stack = AStack.TopHoleMap AddrMap.empty;
+                stack = AStack.TopHoleMap Byte8Map.empty;
               };
           post_state = FSAbsD.AbsLocMapD.empty;
         };
@@ -52,8 +52,9 @@ module Immutable = struct
     let na_pre =
       match (na, FSAbsD.AbsLocMapD.find_opt bb.loc ca.states.pre_state) with
       | Some (lss, a), Some b ->
-          if LocSetD.exists (fun ls -> fst bb.loc < fst ls) lss then
-            AbsState.widen b a
+          if
+            LocSetD.exists (fun ls -> Loc.get_addr bb.loc < Loc.get_addr ls) lss
+          then AbsState.widen b a
           else AbsState.join b a
       | Some (lss, a), None -> a
       | None, Some a -> a

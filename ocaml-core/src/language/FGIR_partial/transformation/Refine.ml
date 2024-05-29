@@ -90,16 +90,16 @@ let apply (p0 : ILIR.Prog.t) (f : Func.t) : Func.t =
           | Some addrs ->
               LocMap.add b.jmp.loc
                 (addrs |> Int64Set.to_list
-                |> List.map (fun (a : Addr.t) -> (a, 0))
+                |> List.map (fun (a : Byte8.t) -> Loc.of_addr a)
                 |> LocSet.of_list)
                 known_addrs
         in
         let ncfa =
-          ILIR.Shallow_CFA.follow_flow_with_known_addr p0 (Loc.to_addr f.entry)
+          ILIR.Shallow_CFA.follow_flow_with_known_addr p0 (Loc.get_addr f.entry)
             new_known_addrs
         in
         let new_f =
-          L0toL1_shallow.translate_func p0 f.nameo (Loc.to_addr f.entry) ncfa
+          L0toL1_shallow.translate_func p0 f.nameo (Loc.get_addr f.entry) ncfa
             new_known_addrs
         in
         aux new_f new_known_addrs

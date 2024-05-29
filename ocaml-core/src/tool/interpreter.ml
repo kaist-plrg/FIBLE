@@ -27,7 +27,7 @@ let interp_l1 l1 =
              (fun (x : FGIR.Func.t) ->
                String.equal (Option.value x.nameo ~default:"") "main")
              l1.funcs)
-            .entry |> fst))
+            .entry |> Loc.get_addr))
   with
   | Ok _ | Error NormalStop -> ()
   | Error (FailStop e) -> [%log error "Error: %s\n" e]
@@ -40,7 +40,7 @@ let interp_l2 l2 =
              (fun (x : ASIR.Func.t) ->
                String.equal (Option.value x.nameo ~default:"") "main")
              l2.funcs)
-            .entry |> fst))
+            .entry |> Loc.get_addr))
   with
   | Ok _ | Error NormalStop -> ()
   | Error (FailStop e) -> [%log error "Error: %s\n" e]

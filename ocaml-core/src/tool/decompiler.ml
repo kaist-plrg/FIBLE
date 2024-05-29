@@ -58,7 +58,7 @@ let speclist =
       ": add log feature" );
   ]
 
-let dump_cfa (cfa_res : (String.t * Addr.t * ILIR.Shallow_CFA.t) list)
+let dump_cfa (cfa_res : (String.t * Byte8.t * ILIR.Shallow_CFA.t) list)
     (dump_path : string) =
   List.iter
     (fun (fname, _, x) ->
@@ -73,8 +73,8 @@ let dump_cfa (cfa_res : (String.t * Addr.t * ILIR.Shallow_CFA.t) list)
       let ofmt = Format.formatter_of_out_channel oc in
       let sorted_fboundary =
         LocSetD.to_seq contained_addrs
-        |> Seq.filter (fun x -> snd x = 0)
-        |> Seq.map (fun x -> fst x)
+        |> Seq.filter (fun x -> Loc.get_seq x = 0)
+        |> Seq.map (fun x -> Loc.get_addr x)
         |> List.of_seq |> List.sort compare
       in
       List.iter (fun x -> Format.fprintf ofmt "%Lx\n" x) sorted_fboundary;
@@ -158,7 +158,7 @@ let main () =
     in
     let c1 = Sys.time () in
     [%log info "L0 translation time: %f" (c1 -. c0)];
-    let cfa_res : (String.t * Addr.t * ILIR.Shallow_CFA.t) list =
+    let cfa_res : (String.t * Byte8.t * ILIR.Shallow_CFA.t) list =
       func_with_addrs
       |> List.map (fun (fname, e) ->
              (fname, e, ILIR.Shallow_CFA.follow_flow l0 e))
@@ -187,7 +187,7 @@ let main () =
                  Int64Set.add_seq
                    (List.to_seq
                       (List.map
-                         (fun (i : FGIR.Inst.t_full) -> fst i.loc)
+                         (fun (i : FGIR.Inst.t_full) -> Loc.get_addr i.loc)
                          b.body))
                    a)
                a f.blocks)

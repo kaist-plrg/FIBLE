@@ -30,7 +30,7 @@ let dump_basic_block (f : t) (path : String.t) (filename : String.t) : unit =
   let oc = open_out (Filename.concat path (filename ^ ".bb")) in
   let fmt = Format.formatter_of_out_channel oc in
   List.iter
-    (fun (b : Block.t) -> Format.fprintf fmt "%Lx\n" (Loc.to_addr b.loc))
+    (fun (b : Block.t) -> Format.fprintf fmt "%Lx\n" (Loc.get_addr b.loc))
     (f.blocks
     |> List.filter (fun (b : Block.t) ->
            (not

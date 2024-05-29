@@ -13,7 +13,7 @@ let varnode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t) (v : VarNode.t) :
   else [%log fatal "Unknown space %ld" v.space]
 
 let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
-    (addr : Common.Addr.t) (seqn : Int.t) (p : PCode.t) : Common.RawInst.t_full
+    (addr : Common.Byte8.t) (seqn : Int.t) (p : PCode.t) : Common.RawInst.t_full
     =
   [%log debug "Converting %a" PCode.pp p];
   let inputs i = varnode_to_common si rspec p.inputs.(i) in
@@ -30,27 +30,31 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
     | _ -> [%log raise (Invalid_argument "Output is not a register")]
   in
   let mkJump _ =
-    Common.RawInst.Ijump
-      (match inputs 0 with
-      | Ram { value = a; _ } -> (a, 0)
-      | _ -> [%log fatal "Jump target is not a constant"])
+    Common.RawInst.fifth
+      {
+        target =
+          (match inputs 0 with
+          | Ram { value = a; _ } -> Common.Loc.of_addr a
+          | _ -> [%log fatal "Jump target is not a constant"]);
+      }
   in
-  let mkJIump _ = Common.RawInst.Ijump_ind (inputs 0) in
+  let mkJIump _ = Common.RawInst.sixth { target = inputs 0 } in
   let mkUop op =
-    Common.RawInst.IA { expr = Auop (op, inputs 0); output = output () }
+    Common.RawInst.second { expr = Auop (op, inputs 0); output = output () }
   in
   let mkBop op =
-    Common.RawInst.IA
+    Common.RawInst.second
       { expr = Abop (op, inputs 0, inputs 1); output = output () }
   in
   let (inst : Common.RawInst.t) =
     match p.opcode with
-    | 0l -> Iunimplemented
+    | 0l -> Common.RawInst.seventh IUnimplemented
     | 1l -> (
         match output_raw () with
-        | Register r -> IA { expr = Avar (inputs 0); output = r }
+        | Register r ->
+            Common.RawInst.second { expr = Avar (inputs 0); output = r }
         | Ram { value = a; width = w } ->
-            ILS
+            Common.RawInst.first
               (Store
                  {
                    space = Const { value = Int64.of_int32 si.ram; width = 8l };
@@ -59,23 +63,25 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
                  })
         | _ -> [%log fatal "Output is not a register or ram"])
     | 2l ->
-        ILS (Load { space = inputs 0; pointer = inputs 1; output = output () })
+        Common.RawInst.first
+          (Load { space = inputs 0; pointer = inputs 1; output = output () })
     | 3l ->
-        ILS (Store { space = inputs 0; pointer = inputs 1; value = inputs 2 })
+        Common.RawInst.first
+          (Store { space = inputs 0; pointer = inputs 1; value = inputs 2 })
     | 4l -> mkJump ()
     | 5l ->
-        Icbranch
+        Common.RawInst.fourth
           {
             condition = inputs 1;
             target =
               (match inputs 0 with
-              | Ram { value = a; _ } -> (a, 0)
+              | Ram { value = a; _ } -> Common.Loc.of_addr a
               | _ -> [%log fatal "Jump target is not a constant"]);
           }
     | 6l -> mkJIump ()
     | 7l -> mkJump ()
     | 8l -> mkJIump ()
-    | 9l -> Iunimplemented
+    | 9l -> Common.RawInst.seventh IUnimplemented
     | 10l -> mkJIump ()
     | 11l -> mkBop Bint_equal
     | 12l -> mkBop Bint_notequal
@@ -129,9 +135,9 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
     | 63l -> mkBop Bsubpiece
     | 72l -> mkUop Upopcount
     | 73l -> mkUop Ulzcount
-    | 999l -> IN INop
+    | 999l -> Common.RawInst.third INop
     | _ ->
         [%log debug "unimpl %ld" p.opcode];
-        Iunimplemented
+        Common.RawInst.seventh IUnimplemented
   in
-  { ins = inst; mnem = p.mnemonic; loc = (addr, seqn) }
+  { ins = inst; mnem = p.mnemonic; loc = Common.Loc.of_addr_seq (addr, seqn) }

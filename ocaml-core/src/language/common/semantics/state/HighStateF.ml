@@ -7,7 +7,7 @@ end) (Prog : sig
   type t
 
   val get_func_opt : t -> Loc.t -> Func.t option
-  val get_externs : t -> String.t AddrMap.t
+  val get_externs : t -> String.t Byte8Map.t
 end) (CallTarget : sig
   module Attr : sig
     type t
@@ -144,7 +144,7 @@ struct
       s.sto Cursor.pp s.cursor Cont.pp s.cont Stack.pp s.stack TimeStamp.pp
       s.timestamp
 
-  let step_JI (s : t) (p : Prog.t) (j : JIntra.t) :
+  let step_JI (p : Prog.t) (s : t) (j : JIntra.t) :
       (Action.t, String.t) Result.t =
     match j with
     | Jjump l | Jfallthrough l -> Action.jmp l |> Result.ok

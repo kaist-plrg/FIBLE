@@ -25,7 +25,7 @@ let print (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (String.t, String.t) Result.t =
   let* v =
     pinfo.n2addr
-    |> Option.map Common.Addr.get_offset
+    |> Option.map Common.Byte8.get_offset
     |> Option.to_result ~none:"No n2addr"
   in
   Format.sprintf "0x%Lx" v |> Result.ok
@@ -34,7 +34,7 @@ let getFixedHandle (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (FixedHandle.t, String.t) Result.t =
   let* v =
     pinfo.n2addr
-    |> Option.map Common.Addr.get_offset
+    |> Option.map Common.Byte8.get_offset
     |> Option.to_result ~none:"No n2addr"
   in
   FixedHandle.of_constant v |> Result.ok

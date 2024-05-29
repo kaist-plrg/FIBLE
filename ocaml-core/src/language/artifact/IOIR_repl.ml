@@ -61,7 +61,7 @@ let parse_identifier : String.t Angstrom.t =
 
 let parse_loc : Loc.t Angstrom.t =
   parse_hex >>= fun n ->
-  Angstrom.char ':' *> parse_num >>| fun l -> (n, l)
+  Angstrom.char ':' *> parse_num >>| fun l -> Loc.of_addr_seq (n, l)
 
 let parse_numval : NumericValue.t Angstrom.t =
   parse_hex >>| fun n -> Common.NumericValue.of_int64 n 8l

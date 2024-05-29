@@ -6,6 +6,9 @@
  (modules
   Either3
   Either4
+  Either5
+  Either6
+  Either7
   Int64Ext
   HashtblExt
   ResultExt

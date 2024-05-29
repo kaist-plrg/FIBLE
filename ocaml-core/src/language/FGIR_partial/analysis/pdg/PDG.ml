@@ -88,12 +88,12 @@ let compute_ud_assignment (a : Assignable.t) : RegIdSet.t =
 
 let compute_ud_inst (astate : abstr) (i : Inst.t_full) : abstr * ALocSet.t =
   match i.ins with
-  | ILS (Load { pointer = Common.VarNode.Register rm; output; _ }) ->
+  | First (Load { pointer = Common.VarNode.Register rm; output; _ }) ->
       ( update_reg_def_loc astate output.id i.loc,
         ALocSet.union (get_reg_def_locs astate rm.id) astate.store_locs )
-  | ILS (Load { pointer = Common.VarNode.Const _; output; _ }) ->
+  | First (Load { pointer = Common.VarNode.Const _; output; _ }) ->
       (update_reg_def_loc astate output.id i.loc, astate.store_locs)
-  | ILS
+  | First
       (Store
         {
           pointer = Common.VarNode.Register rm;
@@ -104,7 +104,7 @@ let compute_ud_inst (astate : abstr) (i : Inst.t_full) : abstr * ALocSet.t =
         ALocSet.union
           (get_reg_def_locs astate rm.id)
           (get_reg_def_locs astate rs.id) )
-  | ILS
+  | First
       (Store
         {
           pointer = Common.VarNode.Const _;
@@ -112,12 +112,12 @@ let compute_ud_inst (astate : abstr) (i : Inst.t_full) : abstr * ALocSet.t =
           _;
         }) ->
       (update_store_loc astate i.loc, get_reg_def_locs astate rs.id)
-  | IA { expr; output } ->
+  | Second { expr; output } ->
       ( update_reg_def_loc astate output.id i.loc,
         (compute_ud_assignment expr |> Fun.flip RegIdSet.fold)
           (fun r s -> ALocSet.union (get_reg_def_locs astate r) s)
           (if has_mem expr then astate.store_locs else ALocSet.empty) )
-  | IN _ -> (astate, ALocSet.empty)
+  | Third _ -> (astate, ALocSet.empty)
   | _ -> (astate, ALocSet.empty)
 
 let compute_ud_jmp (astate : abstr) (j : Jmp.t_full) : abstr * ALocSet.t =

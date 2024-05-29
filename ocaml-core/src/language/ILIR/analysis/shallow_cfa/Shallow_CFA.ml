@@ -31,26 +31,32 @@ let gen_jump_single (h : flow_heurstic_type) (p : Prog.t) (l : Loc.t)
   | HrExit -> LocSetD.empty
   | HrFallthrough -> LocSetD.empty
 
+let nonjumpv (fallthru : Loc.t) (_ : 'a) = HrSound (LocSetD.singleton fallthru)
+
 let flow_heuristic_simple (p : Prog.t) (l : Loc.t) (i : Inst.t) (m : Mnemonic.t)
     (known_addrs : LocSet.t LocMap.t) : heuristic_result =
-  match (i, m) with
-  | Ijump v, "CALL" -> HrFallthrough
-  | Ijump a, m ->
-      if AddrMap.mem (Loc.to_addr a) p.externs then HrFallthrough
-      else if
-        String.starts_with ~prefix:"J" m || String.starts_with ~prefix:"M" m
-      then HrSound (LocSetD.singleton a)
-      else HrExit
-  | Ijump_ind vn, "RET" -> HrExit
-  | Ijump_ind vn, "CALL" -> HrFallthrough
-  | Ijump_ind vn, _ ->
-      LocMap.find_opt l known_addrs
-      |> Option.map (fun s -> HrSound s)
-      |> Option.value ~default:HrStop
-  | Icbranch { target; _ }, _ ->
-      HrSound (LocSetD.of_list [ target; Prog.fallthru p l ])
-  | Iunimplemented, _ -> HrExit
-  | _ -> HrSound (LocSetD.singleton (Prog.fallthru p l))
+  let ft = Prog.fallthru p l in
+  Inst.fold (nonjumpv ft) (nonjumpv ft) (nonjumpv ft)
+    (fun { target; _ } -> HrSound (LocSetD.of_list [ target; ft ]))
+    (fun { target } ->
+      match m with
+      | "CALL" -> HrFallthrough
+      | m ->
+          if Byte8Map.mem (Loc.get_addr target) p.externs then HrFallthrough
+          else if
+            String.starts_with ~prefix:"J" m || String.starts_with ~prefix:"M" m
+          then HrSound (LocSetD.singleton target)
+          else HrExit)
+    (fun { target } ->
+      match m with
+      | "RET" -> HrExit
+      | "CALL" -> HrFallthrough
+      | _ ->
+          LocMap.find_opt l known_addrs
+          |> Option.map (fun s -> HrSound s)
+          |> Option.value ~default:HrStop)
+    (fun _ -> HrExit)
+    i
 
 type t = {
   boundary_point : BoundaryPointD.t;
@@ -121,11 +127,15 @@ let rec a_fixpoint_worklist (p : Prog.t) (c : t) (ls : Loc.t List.t)
             newLs)
         known_addrs
 
-let follow_flow (p : Prog.t) (e : Addr.t) : t =
-  [%log debug "entry: %a" Addr.pp e];
-  a_fixpoint_worklist p (init p (e, 0)) ((e, 0) :: []) LocMap.empty
+let follow_flow (p : Prog.t) (e : Byte8.t) : t =
+  [%log debug "entry: %a" Byte8.pp e];
+  a_fixpoint_worklist p
+    (init p (Loc.of_addr e))
+    (Loc.of_addr e :: []) LocMap.empty
 
-let follow_flow_with_known_addr (p : Prog.t) (e : Addr.t)
+let follow_flow_with_known_addr (p : Prog.t) (e : Byte8.t)
     (known_addrs : LocSet.t LocMap.t) : t =
-  [%log debug "entry: %a" Addr.pp e];
-  a_fixpoint_worklist p (init p (e, 0)) ((e, 0) :: []) known_addrs
+  [%log debug "entry: %a" Byte8.pp e];
+  a_fixpoint_worklist p
+    (init p (Loc.of_addr e))
+    (Loc.of_addr e :: []) known_addrs

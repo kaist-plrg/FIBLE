@@ -149,11 +149,11 @@ let fix (v : t) (opers : FixedHandle.t List.t) (pinfo : PatternInfo.t) :
           else
             Int64.add bv (Int64.of_int32 (Int32.logand offset 0xffffl))
             |> Result.ok)
-  | Start -> pinfo.addr |> Common.Addr.get_offset |> Result.ok
-  | Next -> pinfo.naddr |> Common.Addr.get_offset |> Result.ok
+  | Start -> pinfo.addr |> Common.Byte8.get_offset |> Result.ok
+  | Next -> pinfo.naddr |> Common.Byte8.get_offset |> Result.ok
   | Next2 -> (
       match pinfo.n2addr with
-      | Some n2addr -> n2addr |> Common.Addr.get_offset |> Result.ok
+      | Some n2addr -> n2addr |> Common.Byte8.get_offset |> Result.ok
       | None -> [%logstr "no n2addr"] |> Result.error)
   | Curspace -> [%logstr "unimplemented"] |> Result.error
   | CurspaceSize -> [%logstr "unimplemented"] |> Result.error

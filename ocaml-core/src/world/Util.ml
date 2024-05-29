@@ -146,11 +146,11 @@ module ExternalFunction = struct
     in
     loop StringMap.empty (Int32.to_int num)
 
-  let to_addrMap (ext : t) : String.t AddrMap.t =
+  let to_addrMap (ext : t) : String.t Byte8Map.t =
     StringMap.fold
       (fun name args acc ->
-        List.fold_right (fun addr acc -> AddrMap.add addr name acc) args acc)
-      ext AddrMap.empty
+        List.fold_right (fun addr acc -> Byte8Map.add addr name acc) args acc)
+      ext Byte8Map.empty
 end
 
 module DMemWrapper = struct
