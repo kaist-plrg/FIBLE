@@ -53,7 +53,7 @@ let post_single_instr (i : Inst.t) (c : t) : AccessD.t * t =
           let pointer = eval_varnode c pointer in
           let value' = eval_varnode c value in
           [%log debug "store: %a" AbsVal.pp pointer];
-          ( AccessD.log_access (VarNode.width value) pointer,
+          ( AccessD.log_access (VarNode.get_width value) pointer,
             process_store c pointer value' ))
     (fun { expr; output } -> (AccessD.bottom, process_assignment c expr output))
     (fun _ -> (AccessD.bottom, c))

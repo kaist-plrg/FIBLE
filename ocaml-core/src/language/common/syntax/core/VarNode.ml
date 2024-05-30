@@ -8,7 +8,7 @@ let pp (fmt : Format.formatter) (v : t) =
 
 let compare = compare
 
-let width = function
+let get_width = function
   | Register n -> n.width
-  | Const n -> n.width
-  | Ram n -> n.width
+  | Const n -> Const.get_width n
+  | Ram n -> Const.get_width n

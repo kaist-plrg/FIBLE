@@ -75,7 +75,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
   | Auop (Uint_sext, vn) ->
       let v = eval_varnode a d vn in
       Map.add (KReg outv.id)
-        (AbsNumeric.sext v (VarNode.width vn) (RegId.width outv))
+        (AbsNumeric.sext v (VarNode.get_width vn) (RegId.width outv))
         na
   | Auop (Uint_zext, vn) -> Map.add (KReg outv.id) (eval_varnode a d vn) na
   | Auop (_, _) -> na
