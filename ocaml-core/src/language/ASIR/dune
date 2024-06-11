@@ -8,6 +8,7 @@
   (pps ppx_log))
  (libraries ocamlgraph stdlibExt ppx_log common FGIR)
  (modules
+  VarNode
   Block
   Func
   Inst

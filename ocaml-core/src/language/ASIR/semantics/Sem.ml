@@ -7,16 +7,21 @@ module Cursor = Common.CursorF.Make (TimeStamp)
 module RegFile = Common.RegFileF.Make (Value)
 module Frame = Common.FrameF.Make (Value)
 module LocalMemory = Common.LocalMemoryF.Make (Value) (Frame)
-module Memory = Common.MemoryF.Make (Value)
+module GlobalMemory = Common.GlobalMemoryF.Make (Value)
+
+module Memory =
+  Common.MemoryF.Make (Value) (TimeStamp) (Frame) (GlobalMemory) (LocalMemory)
 
 module Store =
-  Common.HighStoreF.Make (Prog) (Value) (StoreAction) (Cursor) (RegFile)
+  Common.HighStoreF.Make (Prog) (Common.NumericConst) (VarNode) (Value)
+    (StoreAction)
+    (Cursor)
+    (RegFile)
     (Memory)
     (Frame)
-    (LocalMemory)
 
 module SCallTarget =
-  Common.SCallTargetF.Make (CallTarget) (Value) (Store)
+  Common.SCallTargetF.Make (VarNode) (CallTarget) (Value) (Store)
     (struct
       type t = Unit.t
 
@@ -25,7 +30,8 @@ module SCallTarget =
     end)
 
 module SCall =
-  Common.SCallF.Make (CallTarget) (JCall) (Value) (Store) (SCallTarget)
+  Common.SCallF.Make (VarNode) (CallTarget) (JCall) (Value) (Store)
+    (SCallTarget)
     (struct
       type t = JCall.Attr.t
 
@@ -34,7 +40,8 @@ module SCall =
     end)
 
 module STailCall =
-  Common.STailCallF.Make (CallTarget) (JTailCall) (Value) (Store) (SCallTarget)
+  Common.STailCallF.Make (VarNode) (CallTarget) (JTailCall) (Value) (Store)
+    (SCallTarget)
     (struct
       type t = JTailCall.Attr.t
 
@@ -43,7 +50,7 @@ module STailCall =
     end)
 
 module SRet =
-  Common.SRetF.Make (JRet) (Value) (Store)
+  Common.SRetF.Make (VarNode) (JRet) (Value) (Store)
     (struct
       type t = JRet.Attr.t
 
@@ -77,7 +84,10 @@ module Stack = struct
 end
 
 module State =
-  Common.HighStateF.Make (Func) (Prog) (CallTarget) (JCall) (JTailCall) (JRet)
+  Common.HighStateF.Make (Func) (Prog) (VarNode) (CallTarget) (JCall)
+    (JTailCall)
+    (JRet)
+    (Jmp.JIntra)
     (TimeStamp)
     (Value)
     (Store)

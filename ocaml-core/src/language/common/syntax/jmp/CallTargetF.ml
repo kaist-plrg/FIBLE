@@ -1,4 +1,8 @@
-module Make (Attr : sig
+module Make (VarNode : sig
+  type t
+
+  val pp : Format.formatter -> t -> unit
+end) (Attr : sig
   type t
 
   val pp : Format.formatter -> t -> unit

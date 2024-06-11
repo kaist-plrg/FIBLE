@@ -415,7 +415,7 @@ let process_load (_ : DMem.t) (a : t) (outv : RegId.t_full)
   in
   retv |> rewrite_alias
 
-let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_full) =
+let process_assignment (a : t) (asn : Inst.Assignable.t) (outv : RegId.t_full) =
   (let na = clear_mr a outv.id in
    match asn with
    | Avar (Register r) -> add_single_eq na (KReg outv.id) (KReg r.id) 0L
@@ -451,7 +451,8 @@ let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_full) =
    | Auop (_, _) -> na)
   |> rewrite_alias
 
-let process_store (a : t) (vn : VarNode.t) (addrSet : AExprSet.t) : t =
+let process_store (a : t) (vn : Common.NumericVarNode.t) (addrSet : AExprSet.t)
+    : t =
   (match vn with
   | Register r -> add_single_eq a (KMemLoc addrSet) (KReg r.id) 0L
   | _ -> a)

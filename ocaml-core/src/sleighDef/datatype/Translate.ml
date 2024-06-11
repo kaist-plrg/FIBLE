@@ -1,5 +1,5 @@
 let varnode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t) (v : VarNode.t) :
-    Common.VarNode.t =
+    Common.NumericConst.t Common.VarNodeF.poly_t =
   if v.space = si.unique then
     Register
       { id = Unique (Int64.to_int32 v.offset); offset = 0l; width = v.size }

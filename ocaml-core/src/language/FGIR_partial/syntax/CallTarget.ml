@@ -4,4 +4,4 @@ module Inner = struct
   let pp fmt (p : t) = Format.fprintf fmt ""
 end
 
-include Common.CallTargetF.Make (Inner)
+include Common.CallTargetF.Make (VarNode) (Inner)

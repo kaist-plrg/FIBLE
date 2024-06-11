@@ -1,20 +1,21 @@
 open StdlibExt
 
-module Make (Value : sig
+module type S = sig
+  module Value : ValueF.S
+
   type t
 
-  module NonNumericValue : sig
-    type t
+  val empty : Byte8.t -> Byte8.t -> t
+  val load_mem : t -> Byte8.t -> Int32.t -> Value.t
+  val load_string : t -> Byte8.t -> (String.t, String.t) Result.t
+  val load_bytes : t -> Byte8.t -> Int32.t -> (String.t, String.t) Result.t
+  val store_mem : t -> Byte8.t -> Value.t -> (t, String.t) Result.t
+  val store_bytes : t -> Byte8.t -> String.t -> (t, String.t) Result.t
+end
 
-    val width : t -> Int32.t
-    val undefined : Int32.t -> t
-  end
+module Make (Value : ValueF.S) = struct
+  module Value = Value
 
-  val width : t -> Int32.t
-  val to_either : t -> (NumericValue.t, NonNumericValue.t) Either.t
-  val of_either : (NumericValue.t, NonNumericValue.t) Either.t -> t
-end) =
-struct
   let ( let* ) = Result.bind
 
   type t = {

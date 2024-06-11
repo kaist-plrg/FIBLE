@@ -1,4 +1,5 @@
 open Common
+module JIntra = JIntraF.Make (VarNode)
 
 module Inner = struct
   type t =

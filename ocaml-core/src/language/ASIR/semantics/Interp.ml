@@ -43,13 +43,12 @@ let step_call_internal (s : State.t) (p : Prog.t)
            offset = 0L;
          })
   in
-  let sto =
+  let sto : Store.t =
     {
-      s.sto with
       regs;
-      local =
-        s.sto.local
-        |> LocalMemory.add (calln, TimeStamp.succ s.timestamp) nlocal;
+      mem =
+        s.sto.mem
+        |> Memory.add_local_frame (calln, TimeStamp.succ s.timestamp) nlocal;
     }
   in
   (sto, (s.cursor, saved_sp, fallthrough)) |> Result.ok
@@ -92,7 +91,7 @@ let step (p : Prog.t) (s : State.t) : (Action.t, StopEvent.t) Result.t =
   | { remaining = []; jmp } -> step_jmp p jmp.jmp s |> StopEvent.of_str_res
   | { remaining = { ins = Fourth _; _ } :: []; jmp } ->
       step_jmp p jmp.jmp s |> StopEvent.of_str_res
-  | { remaining = i :: []; jmp = { jmp = JI (JIntra.Jfallthrough l) } } ->
+  | { remaining = i :: []; jmp = { jmp = JI (JIntraF.Jfallthrough l) } } ->
       let* a = step_ins p s.sto s.cursor i.ins |> StopEvent.of_str_res in
       Action.of_store a (Some l) |> Result.ok
   | { remaining = i :: res; jmp } ->

@@ -7,14 +7,13 @@ type t = { regs : ARegFile.t; stack : AStack.t }
 
 let eval_varnode (c : t) (vn : VarNode.t) : AbsVal.t =
   match vn with
-  | VarNode.Const c -> AbsVal.of_const (NumericValue.of_int64 c.value c.width)
-  | VarNode.Register r -> ARegFile.get c.regs r.id
-  | VarNode.Ram _ -> AbsVal.Top
+  | Const c -> AbsVal.of_const (NumericValue.of_int64 c.value c.width)
+  | Register r -> ARegFile.get c.regs r.id
+  | Ram _ -> AbsVal.Top
 
-let process_assignment (c : t) (a : Assignable.t) (i : RegId.t_full) : t =
+let process_assignment (c : t) (a : Inst.Assignable.t) (i : RegId.t_full) : t =
   match a with
-  | Assignable.Avar vn ->
-      { c with regs = ARegFile.add c.regs i.id (eval_varnode c vn) }
+  | Avar vn -> { c with regs = ARegFile.add c.regs i.id (eval_varnode c vn) }
   | Auop (uop, vn) ->
       {
         c with

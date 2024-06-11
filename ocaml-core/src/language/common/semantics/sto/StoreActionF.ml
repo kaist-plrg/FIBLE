@@ -4,6 +4,8 @@ module Make (Value : sig
   type t
 end) =
 struct
+  type value_t = Value.t
+
   type t =
     | Assign of RegId.t_full * Value.t
     | Load of RegId.t_full * Value.t * Value.t

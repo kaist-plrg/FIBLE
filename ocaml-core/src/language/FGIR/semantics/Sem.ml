@@ -4,10 +4,10 @@ module StoreAction = Common.StoreActionF.Make (Value)
 module TimeStamp = Common.UnitTimeStamp
 module Cursor = Common.CursorF.Make (TimeStamp)
 module RegFile = Common.RegFileF.Make (Value)
-module Store = Common.LowStore
+module Store = Common.LowStore.Make (VarNode) (Inst.Assignable)
 
 module SCallTarget =
-  Common.SCallTargetF.Make (CallTarget) (Value) (Store)
+  Common.SCallTargetF.Make (VarNode) (CallTarget) (Value) (Store)
     (struct
       type t = Unit.t
 
@@ -16,7 +16,8 @@ module SCallTarget =
     end)
 
 module SCall =
-  Common.SCallF.Make (CallTarget) (JCall) (Value) (Store) (SCallTarget)
+  Common.SCallF.Make (VarNode) (CallTarget) (JCall) (Value) (Store)
+    (SCallTarget)
     (struct
       type t = Unit.t
 
@@ -25,7 +26,8 @@ module SCall =
     end)
 
 module STailCall =
-  Common.STailCallF.Make (CallTarget) (JTailCall) (Value) (Store) (SCallTarget)
+  Common.STailCallF.Make (VarNode) (CallTarget) (JTailCall) (Value) (Store)
+    (SCallTarget)
     (struct
       type t = Unit.t
 
@@ -34,7 +36,7 @@ module STailCall =
     end)
 
 module SRet =
-  Common.SRetF.Make (JRet) (Value) (Store)
+  Common.SRetF.Make (VarNode) (JRet) (Value) (Store)
     (struct
       type t = Value.t
 
@@ -63,7 +65,10 @@ module Stack = struct
 end
 
 module State =
-  Common.HighStateF.Make (Func) (Prog) (CallTarget) (JCall) (JTailCall) (JRet)
+  Common.HighStateF.Make (Func) (Prog) (VarNode) (CallTarget) (JCall)
+    (JTailCall)
+    (JRet)
+    (Jmp.JIntra)
     (TimeStamp)
     (Value)
     (Store)

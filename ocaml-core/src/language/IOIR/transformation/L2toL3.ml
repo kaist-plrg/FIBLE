@@ -38,7 +38,7 @@ let translate_jmp (j : ASIR.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
                       inputs =
                         inputs
                         |> List.map (fun n ->
-                               VarNode.Register
+                               VarNodeF.Register
                                  { id = n; offset = 0l; width = 8l });
                     };
                 };
@@ -67,7 +67,7 @@ let translate_jmp (j : ASIR.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
         let returns =
           snd la
           |> List.map (fun n ->
-                 VarNode.Register { id = n; offset = 0l; width = 8l })
+                 VarNodeF.Register { id = n; offset = 0l; width = 8l })
         in
         JT
           {
@@ -81,7 +81,7 @@ let translate_jmp (j : ASIR.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
                       inputs =
                         inputs
                         |> List.map (fun n ->
-                               VarNode.Register
+                               VarNodeF.Register
                                  { id = n; offset = 0l; width = 8l });
                     };
                 };
@@ -91,7 +91,7 @@ let translate_jmp (j : ASIR.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
         let returns =
           snd la
           |> List.map (fun n ->
-                 VarNode.Register { id = n; offset = 0l; width = 8l })
+                 VarNodeF.Register { id = n; offset = 0l; width = 8l })
         in
         JT
           {
@@ -102,7 +102,7 @@ let translate_jmp (j : ASIR.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
         let retvs =
           snd la
           |> List.map (fun n ->
-                 VarNode.Register { id = n; offset = 0l; width = 8l })
+                 VarNodeF.Register { id = n; offset = 0l; width = 8l })
         in
         JR { attr = retvs }
   in

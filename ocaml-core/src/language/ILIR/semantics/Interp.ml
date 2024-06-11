@@ -1,6 +1,7 @@
 open StdlibExt
 open Common
 open Notation
+open Inst
 open Sem
 
 let fallthrough (p : Prog.t) (pc : Loc.t) (s : (Store.t, String.t) Result.t) :

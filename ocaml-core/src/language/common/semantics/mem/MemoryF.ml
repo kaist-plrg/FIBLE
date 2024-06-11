@@ -1,67 +1,61 @@
 open StdlibExt
 open Notation
 
-module Make (Value : sig
+module type S = sig
+  module Value : ValueF.S
+  module TimeStamp : TimeStampF.S
+  module Frame : FrameF.S with module Value = Value
+
   type t
 
-  module NonNumericValue : sig
-    type t
+  val load_mem : t -> Value.pointer_t -> Int32.t -> Value.t
+  val load_string : t -> Value.pointer_t -> (String.t, String.t) Result.t
 
-    val width : t -> Int32.t
-    val undefined : Int32.t -> t
-  end
+  val load_bytes :
+    t -> Value.pointer_t -> Int32.t -> (String.t, String.t) Result.t
 
-  val to_either : t -> (NumericValue.t, NonNumericValue.t) Either.t
-  val of_either : (NumericValue.t, NonNumericValue.t) Either.t -> t
-end) =
+  val store_mem : t -> Value.pointer_t -> Value.t -> (t, String.t) Result.t
+  val store_bytes : t -> Value.pointer_t -> String.t -> (t, String.t) Result.t
+  val add_local_frame : Loc.t * TimeStamp.t -> Frame.t -> t -> t
+end
+
+module Make
+    (Value : ValueF.S)
+    (TimeStamp : TimeStampF.S)
+    (Frame : FrameF.S with module Value = Value)
+    (GlobalMemory : GlobalMemoryF.S with module Value = Value)
+    (LocalMemory : LocalMemoryF.S
+                     with module Value = Value
+                      and module Frame = Frame) =
 struct
-  type t = {
-    left : DMemCombinedFailableMemory.t;
-    right : Value.NonNumericValue.t Byte8Map.t;
-  }
+  module Value = Value
+  module TimeStamp = TimeStamp
+  module Frame = Frame
 
-  let from_rom (rom : DMem.t) =
-    { left = DMemCombinedFailableMemory.from_rom rom; right = Byte8Map.empty }
+  type t = Unit.t
 
-  let load_mem (s : t) (addr : Byte8.t) (width : Int32.t) : Value.t =
-    match
-      Byte8Map.find_opt addr s.right
-      |> Fun.flip Option.bind (fun v ->
-             if Value.NonNumericValue.width v = width then Some v else None)
-    with
-    | Some v -> Value.of_either (Right v)
-    | None -> (
-        match
-          let* res = DMemCombinedFailableMemory.load_mem s.left addr width in
-          Ok (Value.of_either (Left res))
-        with
-        | Ok v -> v
-        | Error _ ->
-            Value.of_either (Right (Value.NonNumericValue.undefined width)))
+  let of_global_memory (m : GlobalMemory.t) : t = ()
 
-  let load_string (s : t) (addr : Byte8.t) : (String.t, String.t) Result.t =
-    DMemCombinedFailableMemory.load_string s.left addr
+  let load_mem (m : t) (ptr : Value.pointer_t) (width : Int32.t) : Value.t =
+    Value.zero width
 
-  let load_bytes (s : t) (addr : Byte8.t) (size : Int32.t) :
+  let load_string (m : t) (ptr : Value.pointer_t) :
       (String.t, String.t) Result.t =
-    DMemCombinedFailableMemory.load_bytes s.left addr size
+    Ok ""
 
-  let store_mem (s : t) (addr : Byte8.t) (v : Value.t) : t =
-    match Value.to_either v with
-    | Right v ->
-        {
-          left = DMemCombinedFailableMemory.undef_mem s.left addr 8l;
-          right = Byte8Map.add addr v s.right;
-        }
-    | Left v ->
-        {
-          left = DMemCombinedFailableMemory.store_mem s.left addr v;
-          right = Byte8Map.remove addr s.right;
-        }
+  let load_bytes (m : t) (ptr : Value.pointer_t) (width : Int32.t) :
+      (String.t, String.t) Result.t =
+    Ok ""
 
-  let store_bytes (s : t) (addr : Byte8.t) (v : String.t) : t =
-    {
-      left = DMemCombinedFailableMemory.store_bytes s.left addr v;
-      right = Byte8Map.remove addr s.right;
-    }
+  let store_mem (m : t) (ptr : Value.pointer_t) (v : Value.t) :
+      (t, String.t) Result.t =
+    Ok ()
+
+  let store_bytes (m : t) (ptr : Value.pointer_t) (v : String.t) :
+      (t, String.t) Result.t =
+    Ok ()
+
+  let add_local_frame (loc : Loc.t * TimeStamp.t) (frame : Frame.t) (m : t) : t
+      =
+    ()
 end

@@ -1,4 +1,5 @@
 open Common
+module JIntra = JIntraF.Make (VarNode)
 include JmpFullF.MakeFromJmps (JIntra) (JCall) (JTailCall) (JRet)
 
 let from_partial (j : FGIR_partial.Jmp.t_full) : t_full =

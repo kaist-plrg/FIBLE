@@ -56,61 +56,45 @@ let update_reg_def_loc (a : abstr) (r : RegId.t) (l : Loc.t) : abstr =
 let update_store_loc (a : abstr) (l : Loc.t) : abstr =
   { a with store_locs = ALocSet.add (ALoc l) a.store_locs }
 
-let has_mem (a : Assignable.t) : bool =
+let has_mem (a : Inst.Assignable.t) : bool =
   match a with
-  | Assignable.Avar (VarNode.Ram _)
-  | Assignable.Auop (_, VarNode.Ram _)
-  | Assignable.Abop (_, _, VarNode.Ram _)
-  | Assignable.Abop (_, VarNode.Ram _, _) ->
+  | Avar (Ram _) | Auop (_, Ram _) | Abop (_, _, Ram _) | Abop (_, Ram _, _) ->
       true
   | _ -> false
 
-let compute_ud_assignment (a : Assignable.t) : RegIdSet.t =
+let compute_ud_assignment (a : Inst.Assignable.t) : RegIdSet.t =
   match a with
-  | Assignable.Avar (VarNode.Register r)
-  | Assignable.Auop (_, VarNode.Register r)
-  | Assignable.Abop (_, VarNode.Register r, VarNode.Const _)
-  | Assignable.Abop (_, VarNode.Register r, VarNode.Ram _)
-  | Assignable.Abop (_, VarNode.Const _, VarNode.Register r)
-  | Assignable.Abop (_, VarNode.Ram _, VarNode.Register r) ->
+  | Avar (Register r)
+  | Auop (_, Register r)
+  | Abop (_, Register r, Const _)
+  | Abop (_, Register r, Ram _)
+  | Abop (_, Const _, Register r)
+  | Abop (_, Ram _, Register r) ->
       RegIdSet.singleton r.id
-  | Assignable.Avar (VarNode.Const _)
-  | Assignable.Avar (VarNode.Ram _)
-  | Assignable.Auop (_, VarNode.Const _)
-  | Assignable.Auop (_, VarNode.Ram _)
-  | Assignable.Abop (_, VarNode.Const _, VarNode.Const _)
-  | Assignable.Abop (_, VarNode.Const _, VarNode.Ram _)
-  | Assignable.Abop (_, VarNode.Ram _, VarNode.Const _)
-  | Assignable.Abop (_, VarNode.Ram _, VarNode.Ram _) ->
+  | Avar (Const _)
+  | Avar (Ram _)
+  | Auop (_, Const _)
+  | Auop (_, Ram _)
+  | Abop (_, Const _, Const _)
+  | Abop (_, Const _, Ram _)
+  | Abop (_, Ram _, Const _)
+  | Abop (_, Ram _, Ram _) ->
       RegIdSet.empty
-  | Assignable.Abop (_, VarNode.Register r1, VarNode.Register r2) ->
-      RegIdSet.of_list [ r1.id; r2.id ]
+  | Abop (_, Register r1, Register r2) -> RegIdSet.of_list [ r1.id; r2.id ]
 
 let compute_ud_inst (astate : abstr) (i : Inst.t_full) : abstr * ALocSet.t =
   match i.ins with
-  | First (Load { pointer = Common.VarNode.Register rm; output; _ }) ->
+  | First (Load { pointer = Register rm; output; _ }) ->
       ( update_reg_def_loc astate output.id i.loc,
         ALocSet.union (get_reg_def_locs astate rm.id) astate.store_locs )
-  | First (Load { pointer = Common.VarNode.Const _; output; _ }) ->
+  | First (Load { pointer = Const _; output; _ }) ->
       (update_reg_def_loc astate output.id i.loc, astate.store_locs)
-  | First
-      (Store
-        {
-          pointer = Common.VarNode.Register rm;
-          value = Common.VarNode.Register rs;
-          _;
-        }) ->
+  | First (Store { pointer = Register rm; value = Register rs; _ }) ->
       ( update_store_loc astate i.loc,
         ALocSet.union
           (get_reg_def_locs astate rm.id)
           (get_reg_def_locs astate rs.id) )
-  | First
-      (Store
-        {
-          pointer = Common.VarNode.Const _;
-          value = Common.VarNode.Register rs;
-          _;
-        }) ->
+  | First (Store { pointer = Const _; value = Register rs; _ }) ->
       (update_store_loc astate i.loc, get_reg_def_locs astate rs.id)
   | Second { expr; output } ->
       ( update_reg_def_loc astate output.id i.loc,
@@ -122,15 +106,15 @@ let compute_ud_inst (astate : abstr) (i : Inst.t_full) : abstr * ALocSet.t =
 
 let compute_ud_jmp (astate : abstr) (j : Jmp.t_full) : abstr * ALocSet.t =
   match j.jmp with
-  | JI (Jjump_ind { target = VarNode.Register r; _ })
-  | JI (Jcbranch { condition = VarNode.Register r; _ })
-  | JC { target = Cind { target = VarNode.Register r }; _ }
-  | JswitchStop (VarNode.Register r) ->
+  | JI (Jjump_ind { target = Register r; _ })
+  | JI (Jcbranch { condition = Register r; _ })
+  | JC { target = Cind { target = Register r }; _ }
+  | JswitchStop (Register r) ->
       (astate, get_reg_def_locs astate r.id)
-  | JI (Jjump_ind { target = VarNode.Ram _; _ })
-  | JI (Jcbranch { condition = VarNode.Ram _; _ })
-  | JC { target = Cind { target = VarNode.Ram _; _ }; _ }
-  | Jmp.JswitchStop (VarNode.Ram _) ->
+  | JI (Jjump_ind { target = Ram _; _ })
+  | JI (Jcbranch { condition = Ram _; _ })
+  | JC { target = Cind { target = Ram _; _ }; _ }
+  | Jmp.JswitchStop (Ram _) ->
       (astate, astate.store_locs)
   | _ -> (astate, ALocSet.empty)
 

@@ -1,6 +1,10 @@
 open StdlibExt.Notation
 
-module Make (CallTarget : sig
+module Make (VarNode : sig
+  type t
+
+  val pp : Format.formatter -> t -> unit
+end) (CallTarget : sig
   type t
 
   module Attr : sig

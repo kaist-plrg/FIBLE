@@ -9,10 +9,15 @@
  (libraries ocamlgraph ctypes ctypes-foreign ppx_log stdlibExt)
  (modules
   ;; syntax-core
-  Const
+  NumericConst
+  SymbolicConst
+  SymbolizableConst
+  ConstF
   Mnemonic
   RegId
-  VarNode
+  VarNodeF
+  NumericVarNode
+  SymbolicVarNode
   ;; syntax-addr
   Byte8
   Byte8Map
@@ -24,7 +29,7 @@
   ;; syntax-inst
   Uop
   Bop
-  Assignable
+  AssignableF
   ILoadStore
   IAssignment
   IUnimplemented
@@ -38,7 +43,7 @@
   RawInst
   ;; syntax-jmp
   CallTargetF
-  JIntra
+  JIntraF
   JCallF
   JRetF
   JTailCallF
@@ -48,6 +53,7 @@
   ;; syntax-func
   FuncHelperF
   ;; semantics-timestamp
+  TimeStampF
   Int64TimeStamp
   UnitTimeStamp
   ;; semantics-cursor
@@ -57,6 +63,7 @@
   ;; semantics-cont
   ContF
   ;; semantics-value
+  NonNumericValueF
   Storable
   NumericValue
   NumericBop
@@ -76,6 +83,7 @@
   FrameF
   FuncTimestampMap
   LocalMemoryF
+  GlobalMemoryF
   MemoryF
   ;; semantics-sto
   StoreActionF

@@ -8,6 +8,10 @@ end) (Prog : sig
 
   val get_func_opt : t -> Loc.t -> Func.t option
   val get_externs : t -> String.t Byte8Map.t
+end) (VarNode : sig
+  type t
+
+  val pp : Format.formatter -> t -> unit
 end) (CallTarget : sig
   module Attr : sig
     type t
@@ -24,6 +28,8 @@ end) (JTailCall : sig
   type t
 end) (JRet : sig
   type t
+end) (JIntra : sig
+  type t = VarNode.t JIntraF.poly_t
 end) (TimeStamp : sig
   type t
 

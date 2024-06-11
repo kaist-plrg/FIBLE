@@ -37,58 +37,48 @@ let default =
     dependent_regs = RegIdSetD.bot;
   }
 
-let compute_dr_assignment (a : Assignable.t) : RegIdSet.t =
+let compute_dr_assignment (a : Inst.Assignable.t) : RegIdSet.t =
   match a with
-  | Assignable.Avar (VarNode.Register r)
-  | Assignable.Auop (_, VarNode.Register r)
-  | Assignable.Abop (_, VarNode.Register r, VarNode.Const _)
-  | Assignable.Abop (_, VarNode.Register r, VarNode.Ram _)
-  | Assignable.Abop (_, VarNode.Const _, VarNode.Register r)
-  | Assignable.Abop (_, VarNode.Ram _, VarNode.Register r) ->
+  | Avar (Register r)
+  | Auop (_, Register r)
+  | Abop (_, Register r, Const _)
+  | Abop (_, Register r, Ram _)
+  | Abop (_, Const _, Register r)
+  | Abop (_, Ram _, Register r) ->
       RegIdSet.singleton r.id
-  | Assignable.Avar (VarNode.Const _)
-  | Assignable.Avar (VarNode.Ram _)
-  | Assignable.Auop (_, VarNode.Const _)
-  | Assignable.Auop (_, VarNode.Ram _)
-  | Assignable.Abop (_, VarNode.Const _, VarNode.Const _)
-  | Assignable.Abop (_, VarNode.Const _, VarNode.Ram _)
-  | Assignable.Abop (_, VarNode.Ram _, VarNode.Const _)
-  | Assignable.Abop (_, VarNode.Ram _, VarNode.Ram _) ->
+  | Avar (Const _)
+  | Avar (Ram _)
+  | Auop (_, Const _)
+  | Auop (_, Ram _)
+  | Abop (_, Const _, Const _)
+  | Abop (_, Const _, Ram _)
+  | Abop (_, Ram _, Const _)
+  | Abop (_, Ram _, Ram _) ->
       RegIdSet.empty
-  | Assignable.Abop (_, VarNode.Register r1, VarNode.Register r2) ->
-      RegIdSet.of_list [ r1.id; r2.id ]
+  | Abop (_, Register r1, Register r2) -> RegIdSet.of_list [ r1.id; r2.id ]
 
 let compute_dd_inst (i : Inst.t) : astate =
   match i with
-  | First (Load { pointer = Common.VarNode.Register rm; output; _ }) ->
+  | First (Load { pointer = Register rm; output; _ }) ->
       {
         must_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         may_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         dependent_regs = RegIdSetD.Set (RegIdSet.singleton rm.id);
       }
-  | First
-      (Store
-        {
-          pointer = Common.VarNode.Register rm;
-          value = Common.VarNode.Register rs;
-          _;
-        }) ->
+  | First (Store { pointer = Register rm; value = Register rs; _ }) ->
       {
         must_def_regs = RegIdSetD.bot;
         may_def_regs = RegIdSetD.bot;
         dependent_regs = RegIdSetD.Set (RegIdSet.of_list [ rm.id; rs.id ]);
       }
-  | First
-      (Store
-        { pointer = Common.VarNode.Const _; value = Common.VarNode.Register rs })
-  | Second (Sstore { value = Common.VarNode.Register rs; _ }) ->
+  | First (Store { pointer = Const _; value = Register rs })
+  | Second (Sstore { value = Register rs; _ }) ->
       {
         must_def_regs = RegIdSetD.bot;
         may_def_regs = RegIdSetD.bot;
         dependent_regs = RegIdSetD.Set (RegIdSet.singleton rs.id);
       }
-  | First (Load { pointer = Common.VarNode.Const _; output })
-  | Second (Sload { output; _ }) ->
+  | First (Load { pointer = Const _; output }) | Second (Sload { output; _ }) ->
       {
         must_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
         may_def_regs = RegIdSetD.Set (RegIdSet.singleton output.id);
@@ -115,9 +105,9 @@ let compute_dd_inst (i : Inst.t) : astate =
 
 let compute_dd_jmp (j : Jmp.t) : astate =
   match j with
-  | JI (Jjump_ind { target = VarNode.Register r; _ })
-  | JI (Jcbranch { condition = VarNode.Register r; _ })
-  | JC { target = Cind { target = VarNode.Register r; _ }; _ } ->
+  | JI (Jjump_ind { target = Register r; _ })
+  | JI (Jcbranch { condition = Register r; _ })
+  | JC { target = Cind { target = Register r; _ }; _ } ->
       {
         must_def_regs = RegIdSetD.bot;
         may_def_regs = RegIdSetD.bot;

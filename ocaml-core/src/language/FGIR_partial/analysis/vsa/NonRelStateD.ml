@@ -54,7 +54,7 @@ let process_load (rom : DMem.t) (a : t) (d : OctagonD.t) (outv : RegId.t_full)
         a
   | None -> clear_mr a outv.id
 
-let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
+let process_assignment (a : t) (d : OctagonD.t) (asn : Inst.Assignable.t)
     (outv : RegId.t_full) =
   let na = clear_mr a outv.id in
   match asn with

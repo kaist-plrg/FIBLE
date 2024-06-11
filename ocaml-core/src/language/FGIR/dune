@@ -8,6 +8,7 @@
   (pps ppx_log))
  (libraries stdlibExt ppx_log common FGIR_partial)
  (modules
+  VarNode
   Inst
   CallTarget
   JCall

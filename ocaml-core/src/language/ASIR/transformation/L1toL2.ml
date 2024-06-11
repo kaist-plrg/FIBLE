@@ -75,18 +75,14 @@ let translate_inst (i : FGIR.Inst.t_full) (ga : FGIR.SPFA.Immutable.t)
             match pointer with
             | Register r -> (
                 match FGIR.ARegFile.get la.regs r.id with
-                | Flat (SP c) ->
-                    Second
-                      (Sload { offset = { value = c; width = 8l }; output })
+                | Flat (SP c) -> Second (Sload { offset = c; output })
                 | _ -> First (Load { space; pointer; output }))
             | _ -> First (Load { space; pointer; output }))
         | Store { space; pointer; value } -> (
             match pointer with
             | Register r -> (
                 match FGIR.ARegFile.get la.regs r.id with
-                | Flat (SP c) ->
-                    Second
-                      (Sstore { offset = { value = c; width = 8l }; value })
+                | Flat (SP c) -> Second (Sstore { offset = c; value })
                 | _ -> First (Store { space; pointer; value }))
             | _ -> First (Store { space; pointer; value })))
       (fun v -> Third v)

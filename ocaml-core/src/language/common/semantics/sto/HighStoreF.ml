@@ -1,70 +1,51 @@
 open StdlibExt
 open Notation
 
-module Make (Prog : sig
-  type t
+module Make
+    (Prog : sig
+      type t
 
-  val get_sp_num : t -> Int32.t
-end) (Value : sig
-  type t
-  type pointer_t
+      val get_sp_num : t -> Int32.t
+    end)
+    (Const : ConstF.S)
+    (VarNode : VarNodeF.S with type const_t = Const.t)
+    (Value : ValueF.S with type const_t = Const.t)
+    (Action : sig
+      type t
 
-  module NonNumericValue : sig
-    type t
-  end
+      val of_assign : RegId.t_full -> Value.t -> t
+      val of_load : RegId.t_full -> Value.t -> Value.t -> t
+      val of_store : Value.t -> Value.t -> t
+      val nop : t
 
-  val try_pointer : t -> (pointer_t, String.t) Result.t
-  val of_num : NumericValue.t -> t
-  val eval_uop : Uop.t -> t -> Int32.t -> (t, String.t) Result.t
-  val eval_bop : Bop.t -> t -> t -> Int32.t -> (t, String.t) Result.t
-  val zero : Int32.t -> t
-  val sp : SPVal.t -> t
-  val undefined : Int32.t -> t
-  val pp : Format.formatter -> t -> unit
-  val to_either : t -> (NumericValue.t, NonNumericValue.t) Either.t
-end) (Action : sig
-  type t
+      val to_either4 :
+        t ->
+        ( RegId.t_full * Value.t,
+          RegId.t_full * Value.t * Value.t,
+          Value.t * Value.t,
+          Unit.t )
+        Either4.t
+    end)
+    (HighCursor : sig
+      type t
 
-  val of_assign : RegId.t_full -> Value.t -> t
-  val of_load : RegId.t_full -> Value.t -> Value.t -> t
-  val of_store : Value.t -> Value.t -> t
-  val nop : t
+      val get_func_loc : t -> Loc.t
+      val get_timestamp : t -> Int64.t
+    end)
+    (RegFile : sig
+      type t
 
-  val to_either4 :
-    t ->
-    ( RegId.t_full * Value.t,
-      RegId.t_full * Value.t * Value.t,
-      Value.t * Value.t,
-      Unit.t )
-    Either4.t
-end) (HighCursor : sig
-  type t
+      val pp : Format.formatter -> t -> unit
+      val add_reg : t -> RegId.t_full -> Value.t -> t
+      val get_reg : t -> RegId.t_full -> Value.t
+    end)
+    (Memory : MemoryF.S with module Value = Value)
+    (Frame : sig
+      type t
 
-  val get_func_loc : t -> Loc.t
-  val get_timestamp : t -> Int64.t
-end) (RegFile : sig
-  type t
-
-  val pp : Format.formatter -> t -> unit
-  val add_reg : t -> RegId.t_full -> Value.t -> t
-  val get_reg : t -> RegId.t_full -> Value.t
-end) (Memory : sig
-  type t
-
-  val load_mem : t -> Value.pointer_t -> Int32.t -> Value.t
-  val load_string : t -> Value.pointer_t -> (String.t, String.t) Result.t
-
-  val load_bytes :
-    t -> Value.pointer_t -> Int32.t -> (String.t, String.t) Result.t
-
-  val store_mem : t -> Value.pointer_t -> Value.t -> (t, String.t) Result.t
-  val store_bytes : t -> Value.pointer_t -> String.t -> (t, String.t) Result.t
-end) (Frame : sig
-  type t
-
-  val empty : Int64.t -> Int64.t -> t
-  val store_mem : t -> Int64.t -> Value.t -> (t, String.t) Result.t
-end) =
+      val empty : Int64.t -> Int64.t -> t
+      val store_mem : t -> Int64.t -> Value.t -> (t, String.t) Result.t
+    end) =
 struct
   type t = { regs : RegFile.t; mem : Memory.t }
 
@@ -103,10 +84,8 @@ struct
   let eval_vn (s : t) (vn : VarNode.t) : (Value.t, String.t) Result.t =
     match vn with
     | Register r -> get_reg s r |> Result.ok
-    | Const v ->
-        NumericValue.of_int64 v.value v.width |> Value.of_num |> Result.ok
-    | Ram v ->
-        load_mem s (NumericValue.of_int64 v.value 8l |> Value.of_num) v.width
+    | Const v -> v |> Value.of_const |> Result.ok
+    | Ram v -> load_mem s (v |> Value.of_const) (Const.get_width v)
 
   let eval_vn_list (s : t) (vnl : VarNode.t List.t) :
       (Value.t List.t, String.t) Result.t =
@@ -119,8 +98,8 @@ struct
         | Error e -> Error e)
       vnl (Ok [])
 
-  let eval_assignment (s : t) (a : Assignable.t) (outwidth : Int32.t) :
-      (Value.t, String.t) Result.t =
+  let eval_assignment (s : t) (a : VarNode.t AssignableF.poly_t)
+      (outwidth : Int32.t) : (Value.t, String.t) Result.t =
     match a with
     | Avar vn -> eval_vn s vn
     | Auop (u, vn) ->
@@ -135,12 +114,14 @@ struct
         let* rv = eval_vn s rv in
         Value.eval_bop b lv rv outwidth
 
-  let step_IA (s : t) ({ expr; output } : IAssignment.t) :
+  let step_IA (s : t)
+      ({ expr; output } : VarNode.t AssignableF.poly_t IAssignment.poly_t) :
       (Action.t, String.t) Result.t =
     let* v = eval_assignment s expr output.width in
     Action.of_assign output v |> Result.ok
 
-  let step_ILS (s : t) (v : ILoadStore.t) : (Action.t, String.t) Result.t =
+  let step_ILS (s : t) (v : VarNode.t ILoadStore.poly_t) :
+      (Action.t, String.t) Result.t =
     match v with
     | Load { pointer; output; _ } ->
         let* addrv = eval_vn s pointer in
@@ -153,8 +134,8 @@ struct
         [%log debug "Storing %a at %a" Value.pp sv Value.pp addrv];
         Action.of_store addrv sv |> Result.ok
 
-  let step_ISLS (s : t) (curr : HighCursor.t) (v : ISLoadStore.t) :
-      (Action.t, String.t) Result.t =
+  let step_ISLS (s : t) (curr : HighCursor.t) (v : VarNode.t ISLoadStore.poly_t)
+      : (Action.t, String.t) Result.t =
     match v with
     | Sload { offset; output } ->
         let addrv =
@@ -163,7 +144,7 @@ struct
               func = HighCursor.get_func_loc curr;
               timestamp = HighCursor.get_timestamp curr;
               multiplier = 1L;
-              offset = offset.value;
+              offset;
             }
         in
         let* lv = load_mem s addrv output.width in
@@ -176,7 +157,7 @@ struct
               func = HighCursor.get_func_loc curr;
               timestamp = HighCursor.get_timestamp curr;
               multiplier = 1L;
-              offset = offset.value;
+              offset;
             }
         in
         let* sv = eval_vn s value in
@@ -214,31 +195,30 @@ struct
         let* v = load_string s v in
         Interop.VString v |> Result.ok
     | T8 -> (
-        match Value.to_either v with
-        | Left value ->
+        match Value.try_num v with
+        | Ok value ->
             let* value = NumericValue.value_64 value in
             Interop.V8 (Char.chr (Int64.to_int value)) |> Result.ok
-        | Right _ -> Error "Not a number")
+        | _ -> Error "Not a number")
     | T16 -> (
-        match Value.to_either v with
-        | Left value ->
+        match Value.try_num v with
+        | Ok value ->
             let* value = NumericValue.value_64 value in
-
             Interop.V16 (Int64.to_int32 value) |> Result.ok
-        | Right _ -> Error "Not a number")
+        | _ -> Error "Not a number")
     | T32 -> (
-        match Value.to_either v with
-        | Left value ->
+        match Value.try_num v with
+        | Ok value ->
             let* value = NumericValue.value_64 value in
 
             Interop.V32 (Int64.to_int32 value) |> Result.ok
-        | Right _ -> Error "Not a number")
+        | _ -> Error "Not a number")
     | T64 -> (
-        match Value.to_either v with
-        | Left value ->
+        match Value.try_num v with
+        | Ok value ->
             let* value = NumericValue.value_64 value in
             Interop.V64 value |> Result.ok
-        | Right _ ->
+        | _ ->
             Interop.V64
               (Foreign.foreign "strdup"
                  (Ctypes_static.( @-> ) Ctypes.string

@@ -11,4 +11,4 @@ module Inner = struct
       p.outputs (pp_list VarNode.pp) p.inputs
 end
 
-include Common.CallTargetF.Make (Inner)
+include Common.CallTargetF.Make (VarNode) (Inner)

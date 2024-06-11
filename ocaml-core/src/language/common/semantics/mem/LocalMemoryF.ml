@@ -1,20 +1,27 @@
 open StdlibExt
 open Notation
 
-module Make (Value : sig
+module type S = sig
+  module Value : ValueF.S
+  module Frame : FrameF.S with module Value = Value
+
   type t
 
-  val of_num : NumericValue.t -> t
-end) (Frame : sig
-  type t
+  val empty : t
+  val add : Loc.t * Int64.t -> Frame.t -> t -> t
+  val remove : Loc.t * Int64.t -> t -> t
+  val load_mem : t -> SPVal.t -> Int32.t -> Value.t
+  val load_string : t -> SPVal.t -> (String.t, String.t) Result.t
+  val store_mem : t -> SPVal.t -> Value.t -> (t, String.t) Result.t
+  val load_bytes : t -> SPVal.t -> Int32.t -> (String.t, String.t) Result.t
+  val store_bytes : t -> SPVal.t -> String.t -> (t, String.t) Result.t
+end
 
-  val load_mem : t -> Int64.t -> Int32.t -> Value.t
-  val load_string : t -> Int64.t -> (String.t, String.t) Result.t
-  val load_bytes : t -> Int64.t -> Int32.t -> (String.t, String.t) Result.t
-  val store_mem : t -> Int64.t -> Value.t -> (t, String.t) Result.t
-  val store_bytes : t -> Int64.t -> String.t -> (t, String.t) Result.t
-end) =
+module Make (Value : ValueF.S) (Frame : FrameF.S with module Value = Value) =
 struct
+  module Value = Value
+  module Frame = Frame
+
   type t = Frame.t FuncTimestampMap.t
 
   let empty = FuncTimestampMap.empty

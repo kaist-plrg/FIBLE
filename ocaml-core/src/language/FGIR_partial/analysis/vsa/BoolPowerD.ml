@@ -31,7 +31,7 @@ let clear_mr a (r : RegId.t) =
   Map.clear_mr a r
   |> Map.map (fun (vt, vf) -> (OctagonD.clear_mr vt r, OctagonD.clear_mr vf r))
 
-let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
+let process_assignment (a : t) (d : OctagonD.t) (asn : Inst.Assignable.t)
     (outv : RegId.t_full) =
   let outmr : Key.t = KReg outv.id in
   let a =
@@ -154,7 +154,7 @@ let process_load (rom : DMem.t) (a : t) (d : OctagonD.t) (outv : RegId.t_full)
          ( OctagonD.process_load rom vt outv addrSet,
            OctagonD.process_load rom vf outv addrSet ))
 
-let process_store (a : t) (d : OctagonD.t) (vn : VarNode.t)
+let process_store (a : t) (d : OctagonD.t) (vn : Common.NumericVarNode.t)
     (addrSet : AExprSet.t) : t =
   Map.map
     (fun (vt, vf) ->

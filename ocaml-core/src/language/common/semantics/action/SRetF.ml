@@ -1,6 +1,10 @@
 open StdlibExt.Notation
 
-module Make (JRet : sig
+module Make (VarNode : sig
+  type t
+
+  val pp : Format.formatter -> t -> unit
+end) (JRet : sig
   type t
 
   module Attr : sig
