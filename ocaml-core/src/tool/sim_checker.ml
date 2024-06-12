@@ -51,8 +51,8 @@ let main () =
     in
 
     match Simulation.Check_simulation.run l1 l2 l3 main with
-    | Ok () -> [%log info "Simulation succeeded"]
-    | Error NormalStop -> [%log info "Simulation succeeded"]
+    | Ok () -> Format.printf "Simulation succeeded\n"
+    | Error NormalStop -> Format.printf "Simulation succeeded\n"
     | Error (FailStop e) -> [%log info "Simulation failed: %s" e]
 
 let () = Global.run_main main
