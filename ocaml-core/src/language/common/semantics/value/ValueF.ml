@@ -4,7 +4,9 @@ open Notation
 module type S = sig
   type t
   type const_t
-  type pointer_t
+  type globalptr_t = Byte8.t
+  type localptr_t = SPVal.t
+  type pointer_t = (globalptr_t, localptr_t) Either.t
 
   module NonNumericValue : NonNumericValueF.S
 
@@ -32,33 +34,25 @@ module type S = sig
   val extend_undef : t -> Int32.t -> t
 end
 
-module Make (NonNumericValue : sig
-  type t
-
-  val pp : Format.formatter -> t -> unit
-  val eval_uop : Uop.t -> t -> Int32.t -> (NumericValue.t, t) Either.t
-
-  val eval_bop :
-    Bop.t ->
-    (t * t, t * NumericValue.t, NumericValue.t * t) Either3.t ->
-    Int32.t ->
-    (NumericValue.t, t) Either.t
-
-  val width : t -> Int32.t
-  val undefined : Int32.t -> t
-  val sp : SPVal.t -> t
-  val get_sp : t -> SPVal.t option
-end) =
-struct
+module Make (NonNumericValue : NonNumericValueF.S) = struct
   module NonNumericValue = NonNumericValue
 
   type const_t = NumericConst.t
-  type pointer_t = Unit.t
-
-  let try_pointer _ = Ok ()
-  let try_num _ = Error "try_num: not a numeric value"
-
+  type globalptr_t = Byte8.t
+  type localptr_t = SPVal.t
+  type pointer_t = (globalptr_t, localptr_t) Either.t
   type t = Num of NumericValue.t | NonNum of NonNumericValue.t
+
+  let try_pointer v =
+    match v with
+    | Num n -> NumericValue.try_addr n |> Result.map Either.left
+    | NonNum n ->
+        NonNumericValue.get_sp n
+        |> Option.to_result ~none:"try_pointer: not a pointer"
+        |> Result.map Either.right
+
+  let try_num v =
+    match v with Num n -> Ok n | NonNum n -> Error "try_num: not a number"
 
   let of_const (c : const_t) : t = Num (NumericValue.of_int64 c.value c.width)
   let of_num (n : NumericValue.t) : t = Num n

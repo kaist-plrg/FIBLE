@@ -32,30 +32,48 @@ struct
   module TimeStamp = TimeStamp
   module Frame = Frame
 
-  type t = Unit.t
+  type t = { global : GlobalMemory.t; local : LocalMemory.t }
 
-  let of_global_memory (m : GlobalMemory.t) : t = ()
+  let of_global_memory (m : GlobalMemory.t) : t =
+    { global = m; local = LocalMemory.empty }
 
   let load_mem (m : t) (ptr : Value.pointer_t) (width : Int32.t) : Value.t =
-    Value.zero width
+    match ptr with
+    | Either.Left ptr -> GlobalMemory.load_mem m.global ptr width
+    | Either.Right ptr -> LocalMemory.load_mem m.local ptr width
 
   let load_string (m : t) (ptr : Value.pointer_t) :
       (String.t, String.t) Result.t =
-    Ok ""
+    match ptr with
+    | Either.Left ptr -> GlobalMemory.load_string m.global ptr
+    | Either.Right ptr -> LocalMemory.load_string m.local ptr
 
   let load_bytes (m : t) (ptr : Value.pointer_t) (width : Int32.t) :
       (String.t, String.t) Result.t =
-    Ok ""
+    match ptr with
+    | Either.Left ptr -> GlobalMemory.load_bytes m.global ptr width
+    | Either.Right ptr -> LocalMemory.load_bytes m.local ptr width
 
   let store_mem (m : t) (ptr : Value.pointer_t) (v : Value.t) :
       (t, String.t) Result.t =
-    Ok ()
+    match ptr with
+    | Either.Left ptr ->
+        GlobalMemory.store_mem m.global ptr v |> fun x ->
+        Ok { m with global = x }
+    | Either.Right ptr ->
+        LocalMemory.store_mem m.local ptr v
+        |> Result.map (fun x -> { m with local = x })
 
   let store_bytes (m : t) (ptr : Value.pointer_t) (v : String.t) :
       (t, String.t) Result.t =
-    Ok ()
+    match ptr with
+    | Either.Left ptr ->
+        GlobalMemory.store_bytes m.global ptr v |> fun x ->
+        Ok { m with global = x }
+    | Either.Right ptr ->
+        LocalMemory.store_bytes m.local ptr v
+        |> Result.map (fun x -> { m with local = x })
 
-  let add_local_frame (loc : Loc.t * TimeStamp.t) (frame : Frame.t) (m : t) : t
-      =
-    ()
+  let add_local_frame (loc : Loc.t * Int64.t) (frame : Frame.t) (m : t) : t =
+    { m with local = LocalMemory.add loc frame m.local }
 end
