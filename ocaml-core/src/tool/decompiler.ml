@@ -7,7 +7,7 @@ open World
 let usage_msg = "pcert -i <ifile>"
 let ghidra_path = ref ""
 let ifile = ref ""
-let dump_path = ref ""
+let dump_path = ref "./"
 let func_path = ref ""
 
 type dump_flag_type = {

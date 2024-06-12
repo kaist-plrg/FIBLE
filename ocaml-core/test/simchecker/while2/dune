@@ -6,7 +6,27 @@
    (= %{ocaml-config:system} linux)))
  (deps main.c)
  (action
-  (run clang -o %{target} -O0 %{deps})))
+  (ignore-stdout
+   (run clang -o %{target} -O0 %{deps}))))
+
+(rule
+ (targets main.fgir_dump main.asir_dump main.ioir_dump)
+ (enabled_if
+  (and
+   (= %{ocaml-config:architecture} amd64)
+   (= %{ocaml-config:system} linux)))
+ (deps main.bin)
+ (action
+  (ignore-stdout
+   (run
+    ../../../src/tool/decompiler.exe
+    -i
+    %{deps}
+    -project-cwd
+    ../../../../../../
+    -dump-l1
+    -dump-l2
+    -dump-l3))))
 
 (rule
  (target main.output)
@@ -14,14 +34,14 @@
   (and
    (= %{ocaml-config:architecture} amd64)
    (= %{ocaml-config:system} linux)))
- (deps main.bin)
+ (deps main.fgir_dump main.asir_dump main.ioir_dump)
  (action
   (with-stdout-to
    %{target}
    (run
     ../../../src/tool/sim_checker.exe
     -i
-    %{deps}
+    main
     -project-cwd
     ../../../../../../))))
 
