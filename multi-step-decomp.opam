@@ -13,6 +13,8 @@ depends: [
   "ctypes"
   "ctypes-foreign"
   "angstrom"
+  "sexplib"
+  "ppx_sexp_conv"
   "xml-light"
   "odoc" {with-doc}
 ]
