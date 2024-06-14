@@ -1,5 +1,7 @@
 type t = Int64.t
 
+val t_of_sexp : Sexplib.Sexp.t -> t
+val sexp_of_t : t -> Sexplib.Sexp.t
 val add : t -> t -> t
 val pp : Format.formatter -> t -> unit
 val scan : Scanf.Scanning.in_channel -> t

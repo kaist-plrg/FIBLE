@@ -1,8 +1,9 @@
+open Sexplib.Std
 open Common
 
 module Inner = struct
   type t = {
-    nameo : String.t option;
+    nameo : string option;
     entry : Loc.t;
     boundaries : LocSet.t;
     sp_boundary : int64 * int64;
@@ -11,6 +12,7 @@ module Inner = struct
     outputs : RegId.t list;
     blocks : Block.t list;
   }
+  [@@deriving sexp]
 
   let get_blocks { blocks; _ } = blocks
   let get_entry { entry; _ } = entry

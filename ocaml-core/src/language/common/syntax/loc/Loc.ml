@@ -1,4 +1,6 @@
-type t = Byte8.t * int
+open Sexplib.Std
+
+type t = int64 * int [@@deriving sexp]
 
 let compare (a : t) (b : t) = compare a b
 let pp fmt (addr, seq) = Format.fprintf fmt "%a:%d" Byte8.pp addr seq

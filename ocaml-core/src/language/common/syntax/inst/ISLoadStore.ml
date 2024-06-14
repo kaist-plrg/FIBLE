@@ -1,14 +1,12 @@
+open Sexplib
+
 type 'varnode_t poly_t =
   | Sload of { offset : Byte8.t; output : RegId.t_full }
   | Sstore of { offset : Byte8.t; value : 'varnode_t }
+[@@deriving sexp]
 
-module Make (VarNode : sig
-  type t
-
-  val pp : Format.formatter -> t -> unit
-end) =
-struct
-  type t = VarNode.t poly_t
+module Make (VarNode : VarNodeF.S) = struct
+  type t = VarNode.t poly_t [@@deriving sexp]
 
   let pp (fmt : Format.formatter) (p : t) =
     match p with

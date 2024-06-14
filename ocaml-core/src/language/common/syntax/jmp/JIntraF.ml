@@ -2,20 +2,20 @@ type 'varnode_t poly_t =
   | Junimplemented
   | Jfallthrough of Loc.t
   | Jjump of Loc.t
-  | Jjump_ind of { target : 'varnode_t; candidates : LocSet.t; sound : Bool.t }
+  | Jjump_ind of {
+      target : 'varnode_t;
+      candidates : LocSet.t;
+      sound : bool; [@sexp.bool]
+    }
   | Jcbranch of {
       condition : 'varnode_t;
       target_true : Loc.t;
       target_false : Loc.t;
     }
+[@@deriving sexp]
 
-module Make (VarNode : sig
-  type t
-
-  val pp : Format.formatter -> t -> unit
-end) =
-struct
-  type t = VarNode.t poly_t
+module Make (VarNode : VarNodeF.S) = struct
+  type t = VarNode.t poly_t [@@deriving sexp]
 
   let pp fmt (v : t) =
     match v with

@@ -1,14 +1,16 @@
+open Sexplib.Std
 open Common
 
 module Inner = struct
   type t = {
-    nameo : String.t option;
+    nameo : string option;
     entry : Loc.t;
     boundaries : LocSet.t;
     sp_boundary : int64 * int64;
     sp_diff : int64;
     blocks : Block.t list;
   }
+  [@@deriving sexp]
 
   let pp fmt { nameo; entry; boundaries; sp_boundary; sp_diff; blocks } =
     Format.fprintf fmt

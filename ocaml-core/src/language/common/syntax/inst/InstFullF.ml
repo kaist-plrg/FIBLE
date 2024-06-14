@@ -5,9 +5,12 @@ module Make (Inst : sig
 
   val pp : Format.formatter -> t -> unit
   val is_nop : t -> bool
+  val t_of_sexp : Sexplib.Sexp.t -> t
+  val sexp_of_t : t -> Sexplib.Sexp.t
 end) =
 struct
   type t_full = { ins : Inst.t; loc : Loc.t; mnem : Mnemonic.t }
+  [@@deriving sexp]
 
   let pp_full (fmt : Format.formatter) (p : t_full) =
     Format.fprintf fmt "%a: %a [%a]" Loc.pp p.loc Inst.pp p.ins Mnemonic.pp

@@ -1,10 +1,5 @@
-module Make (VarNode : sig
-  type t
-
-  val pp : Format.formatter -> t -> unit
-end) =
-struct
-  type t = { condition : VarNode.t; target : Loc.t }
+module Make (VarNode : VarNodeF.S) = struct
+  type t = { condition : VarNode.t; target : Loc.t } [@@deriving sexp]
 
   let pp fmt { condition; target } =
     Format.fprintf fmt "if %a goto %a;" VarNode.pp condition Loc.pp target

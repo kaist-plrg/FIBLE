@@ -7,10 +7,13 @@ module type JumpSig = sig
   val succ : t -> Loc.t List.t
   val is_ret : t -> bool
   val resolve_calltarget_opt : t -> Loc.t option
+  val t_of_sexp : Sexplib.Sexp.t -> t
+  val sexp_of_t : t -> Sexplib.Sexp.t
 end
 
 module Make (Jmp : JumpSig) = struct
   type t_full = { jmp : Jmp.t; loc : Loc.t; mnem : Mnemonic.t }
+  [@@deriving sexp]
 
   let pp_full (fmt : Format.formatter) (a : t_full) =
     Format.fprintf fmt "%a: %a [%a]" Loc.pp a.loc Jmp.pp a.jmp Mnemonic.pp
@@ -30,6 +33,7 @@ module MakeFromJmps
 struct
   module Inner = struct
     type t = JI of JIntra.t | JC of JCall.t | JT of JTailCall.t | JR of JRet.t
+    [@@deriving sexp]
 
     let pp fmt (a : t) =
       match a with

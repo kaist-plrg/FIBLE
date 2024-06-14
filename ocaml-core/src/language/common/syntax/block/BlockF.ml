@@ -1,14 +1,19 @@
+open Sexplib.Std
 open StdlibExt
 
 module Make (Inst : sig
   type t_full
 
   val pp_full : Format.formatter -> t_full -> unit
+  val t_full_of_sexp : Sexplib.Sexp.t -> t_full
+  val sexp_of_t_full : t_full -> Sexplib.Sexp.t
 end) (Jmp : sig
   type t_full
 
   val succ_full : t_full -> Loc.t list
   val pp_full : Format.formatter -> t_full -> unit
+  val t_full_of_sexp : Sexplib.Sexp.t -> t_full
+  val sexp_of_t_full : t_full -> Sexplib.Sexp.t
 end) =
 struct
   type t = {
@@ -17,6 +22,7 @@ struct
     body : Inst.t_full list;
     jmp : Jmp.t_full;
   }
+  [@@deriving sexp]
 
   let fold_left f acc { body; jmp; _ } = List.fold_left f acc body
 

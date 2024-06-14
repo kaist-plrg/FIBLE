@@ -1,5 +1,7 @@
-type t = Unique of Int32.t | Register of Int32.t
-type t_full = { id : t; offset : int32; width : int32 }
+open Sexplib.Std
+
+type t = Unique of int32 | Register of int32 [@@deriving sexp]
+type t_full = { id : t; offset : int32; width : int32 } [@@deriving sexp]
 
 let width v = v.width
 

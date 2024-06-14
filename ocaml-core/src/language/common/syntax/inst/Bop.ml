@@ -34,3 +34,4 @@ type t =
   | Bfloat_sub
   | Bfloat_mult
   | Bfloat_div
+[@@deriving sexp]

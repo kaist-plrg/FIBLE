@@ -1,4 +1,6 @@
-type t = { start : Int64.t; size : Int32.t; bytes : String.t }
+open Sexplib.Std
+
+type t = { start : int64; size : int32; bytes : string } [@@deriving sexp]
 
 let create start bytes =
   { start; size = Int32.of_int (String.length bytes); bytes }

@@ -1,7 +1,8 @@
+open Sexplib.Std
 open Common
 
 module Inner = struct
-  type t = VarNode.t List.t
+  type t = VarNode.t list [@@deriving sexp]
 
   let pp_list (fmt : Format.formatter -> 'a -> unit) =
     Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ") fmt

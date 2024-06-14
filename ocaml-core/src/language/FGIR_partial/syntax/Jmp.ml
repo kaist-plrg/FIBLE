@@ -8,6 +8,7 @@ module Inner = struct
     | JT of JTailCall.t
     | JR of JRet.t
     | JswitchStop of VarNode.t
+  [@@deriving sexp]
 
   let pp fmt (a : t) =
     match a with

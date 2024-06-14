@@ -1,13 +1,15 @@
+open Sexplib.Std
 open Common
 open Basic_domain
 
 module Inner = struct
   type t = {
-    nameo : String.t option;
+    nameo : string option;
     entry : Loc.t;
     boundaries : LocSetD.t;
     blocks : Block.t list;
   }
+  [@@deriving sexp]
 
   let get_entry (f : t) : Loc.t = f.entry
   let get_blocks (f : t) : Block.t list = f.blocks

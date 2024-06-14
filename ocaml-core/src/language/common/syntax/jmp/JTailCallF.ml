@@ -3,15 +3,19 @@ module Make (CallTarget : sig
 
   val pp : Format.formatter -> t -> unit
   val get_loc_opt : t -> Loc.t option
+  val t_of_sexp : Sexplib.Sexp.t -> t
+  val sexp_of_t : t -> Sexplib.Sexp.t
 end) (Attr : sig
   type t
 
   val pp : Format.formatter -> t -> unit
+  val t_of_sexp : Sexplib.Sexp.t -> t
+  val sexp_of_t : t -> Sexplib.Sexp.t
 end) =
 struct
   module Attr = Attr
 
-  type t = { target : CallTarget.t; attr : Attr.t }
+  type t = { target : CallTarget.t; attr : Attr.t } [@@deriving sexp]
 
   let pp fmt ({ target; attr } : t) =
     Format.fprintf fmt "tailcall %a [%a];" CallTarget.pp target Attr.pp attr

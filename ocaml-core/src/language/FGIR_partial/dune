@@ -5,8 +5,8 @@
  (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
  (flags -w -20-33-3)
  (preprocess
-  (pps ppx_log))
- (libraries stdlibExt ppx_log common ILIR)
+  (pps ppx_log ppx_sexp_conv))
+ (libraries sexplib ppx_sexp_conv stdlibExt ppx_log common ILIR)
  (modules
   VarNode
   Inst

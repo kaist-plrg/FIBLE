@@ -1,4 +1,6 @@
-type t = MemoryBlock.t List.t
+open Sexplib.Std
+
+type t = MemoryBlock.t list [@@deriving sexp]
 
 let get_byte (memory : t) (address : Int64.t) : Char.t =
   List.fold_left

@@ -1,5 +1,7 @@
-type section_t = Instruction | Data | Bss
-type t = { section : section_t; offset : Int64.t }
+open Sexplib.Std
+
+type section_t = Instruction | Data | Bss [@@deriving sexp]
+type t = { section : section_t; offset : int64 } [@@deriving sexp]
 
 let get_width (_ : t) = 8l
 

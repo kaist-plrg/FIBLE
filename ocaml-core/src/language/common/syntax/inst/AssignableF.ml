@@ -2,14 +2,17 @@ type 'varnode_t poly_t =
   | Avar of 'varnode_t
   | Auop of (Uop.t * 'varnode_t)
   | Abop of (Bop.t * 'varnode_t * 'varnode_t)
+[@@deriving sexp]
 
 module Make (VarNode : sig
   type t
 
   val pp : Format.formatter -> t -> unit
+  val sexp_of_t : t -> Sexplib.Sexp.t
+  val t_of_sexp : Sexplib.Sexp.t -> t
 end) =
 struct
-  type t = VarNode.t poly_t
+  type t = VarNode.t poly_t [@@deriving sexp]
 
   let pp (fmt : Format.formatter) (a : t) =
     match a with

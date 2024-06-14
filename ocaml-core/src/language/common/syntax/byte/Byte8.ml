@@ -1,6 +1,8 @@
 open StdlibExt
 include Int64Ext
 
+let t_of_sexp = Sexplib.Std.int64_of_sexp
+let sexp_of_t = Sexplib.Std.sexp_of_int64
 let pp fmt t = Format.fprintf fmt "0x%Lx" t
 
 let scan (ic : Scanf.Scanning.in_channel) : t =
