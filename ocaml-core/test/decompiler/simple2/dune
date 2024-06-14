@@ -1,0 +1,48 @@
+(rule
+ (target main.bin)
+ (enabled_if
+  (and
+   (= %{ocaml-config:architecture} amd64)
+   (= %{ocaml-config:system} linux)))
+ (deps main.c)
+ (action
+  (ignore-stdout
+   (run clang -o %{target} -O0 %{deps}))))
+
+(rule
+ (targets main.fgir_dump main.asir_dump main.ioir_dump)
+ (enabled_if
+  (and
+   (= %{ocaml-config:architecture} amd64)
+   (= %{ocaml-config:system} linux)))
+ (deps main.bin)
+ (action
+  (ignore-stdout
+   (run
+    ../../../src/tool/decompiler.exe
+    -i
+    %{deps}
+    -project-cwd
+    ../../../../../../
+    -dump-l1
+    -dump-l2
+    -dump-l3))))
+
+(rule
+ (alias runtest)
+ (enabled_if
+  (and
+   (= %{ocaml-config:architecture} amd64)
+   (= %{ocaml-config:system} linux)))
+ (deps
+  main.fgir_dump
+  main.asir_dump
+  main.ioir_dump
+  main.fgir_dump.expected
+  main.asir_dump.expected
+  main.ioir_dump.expected)
+ (action
+  (progn
+   (diff main.fgir_dump main.fgir_dump.expected)
+   (diff main.asir_dump main.asir_dump.expected)
+   (diff main.ioir_dump main.ioir_dump.expected))))
