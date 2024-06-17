@@ -1,7 +1,8 @@
 open StdlibExt.Notation
 module NonNumericValue = NonNumericValue
 module Cont = Common.ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)
-module Value = Common.ValueF.Make (NonNumericValue)
+module Pointer = Common.GlobalAndStackPointer
+module Value = Common.ValueF.Make (Pointer) (NonNumericValue)
 module StoreAction = Common.StoreActionF.Make (Value)
 module TimeStamp = Common.Int64TimeStamp
 module Cursor = Common.CursorF.Make (TimeStamp)
@@ -11,10 +12,13 @@ module LocalMemory = Common.LocalMemoryF.Make (Value) (Frame)
 module GlobalMemory = Common.GlobalMemoryF.Make (Value)
 
 module Memory =
-  Common.MemoryF.Make (Value) (TimeStamp) (Frame) (GlobalMemory) (LocalMemory)
+  Common.MemoryF.Make (Pointer) (Value) (TimeStamp) (Frame) (GlobalMemory)
+    (LocalMemory)
 
 module Store =
-  Common.HighStoreF.Make (Prog) (Common.NumericConst) (VarNode) (Value)
+  Common.HighStoreF.Make (Prog) (Common.NumericConst) (VarNode) (Pointer)
+    (Value)
+    (Value)
     (StoreAction)
     (Cursor)
     (RegFile)

@@ -70,6 +70,8 @@
   ;; semantics-cont
   ContF
   ;; semantics-value
+  PointerF
+  GlobalAndStackPointer
   NonNumericValueF
   Storable
   NumericValue

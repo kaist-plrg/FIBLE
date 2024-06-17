@@ -20,7 +20,7 @@ module Make (Value : ValueF.S) = struct
 
   type t = {
     left : FailableMemory.t;
-    right : Value.NonNumericValue.t Byte8Map.t;
+    right : Value.t Byte8Map.t;
     min_addr : Byte8.t;
     max_addr : Byte8.t;
   }
@@ -36,18 +36,17 @@ module Make (Value : ValueF.S) = struct
       match
         Byte8Map.find_opt addr s.right
         |> Fun.flip Option.bind (fun v ->
-               if Value.NonNumericValue.width v = width then Some v else None)
+               if Value.width v = width then Some v else None)
       with
-      | Some v -> Value.of_either (Right v)
+      | Some v -> v
       | None -> (
           match
             let* res = FailableMemory.load_mem s.left addr width in
-            Ok (Value.of_either (Left res))
+            Ok res
           with
-          | Ok v -> v
-          | Error _ ->
-              Value.of_either (Right (Value.NonNumericValue.undefined width)))
-    else Value.of_either (Right (Value.NonNumericValue.undefined width))
+          | Ok v -> Value.of_num v
+          | Error _ -> Value.undefined width)
+    else Value.undefined width
 
   let load_string (s : t) (addr : Byte8.t) : (String.t, String.t) Result.t =
     FailableMemory.load_string s.left addr
@@ -63,15 +62,15 @@ module Make (Value : ValueF.S) = struct
       && Int64.add addr (Int64.pred (Int64.of_int32 (Value.width v)))
          <= s.max_addr
     then
-      match Value.to_either v with
-      | Right v ->
+      match Value.try_num v with
+      | Error _ ->
           {
             s with
             left = FailableMemory.undef_mem s.left addr 8l;
             right = Byte8Map.add addr v s.right;
           }
           |> Result.ok
-      | Left v ->
+      | Ok v ->
           {
             s with
             left = FailableMemory.store_mem s.left addr v;

@@ -8,8 +8,14 @@ module Make
       val get_sp_num : t -> Int32.t
     end)
     (Const : ConstF.S)
-    (VarNode : VarNodeF.S with type const_t = Const.t)
-    (Value : ValueF.S with type const_t = Const.t)
+    (VarNode : VarNodeF.S with module Const = Const)
+    (Pointer : PointerF.S)
+    (Value : ValueF.S with module Const = Const and module Pointer = Pointer)
+    (SPtoVal : sig
+      type t = Value.t
+
+      val sp : SPVal.t -> Value.t
+    end)
     (Action : sig
       type t
 
@@ -39,7 +45,7 @@ module Make
       val add_reg : t -> RegId.t_full -> Value.t -> t
       val get_reg : t -> RegId.t_full -> Value.t
     end)
-    (Memory : MemoryF.S with module Value = Value)
+    (Memory : MemoryF.S with module Value = Value and module Pointer = Pointer)
     (Frame : sig
       type t
 
@@ -139,7 +145,7 @@ struct
     match v with
     | Sload { offset; output } ->
         let addrv =
-          Value.sp
+          SPtoVal.sp
             {
               func = HighCursor.get_func_loc curr;
               timestamp = HighCursor.get_timestamp curr;
@@ -152,7 +158,7 @@ struct
         Action.of_load output addrv lv |> Result.ok
     | Sstore { offset; value } ->
         let addrv =
-          Value.sp
+          SPtoVal.sp
             {
               func = HighCursor.get_func_loc curr;
               timestamp = HighCursor.get_timestamp curr;

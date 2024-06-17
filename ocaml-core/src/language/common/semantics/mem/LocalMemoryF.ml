@@ -33,7 +33,7 @@ struct
       Frame.load_mem
         (FuncTimestampMap.find (addr.func, addr.timestamp) s)
         addr.offset width
-    else Value.of_num (NumericValue.zero width)
+    else Value.zero width
 
   let load_string (s : t) (addr : SPVal.t) : (String.t, String.t) Result.t =
     if FuncTimestampMap.mem (addr.func, addr.timestamp) s then

@@ -17,10 +17,7 @@ end
 module Make (Value : ValueF.S) = struct
   module Value = Value
 
-  type t = {
-    left : DMemCombinedFailableMemory.t;
-    right : Value.NonNumericValue.t Byte8Map.t;
-  }
+  type t = { left : DMemCombinedFailableMemory.t; right : Value.t Byte8Map.t }
 
   let from_rom (rom : DMem.t) =
     { left = DMemCombinedFailableMemory.from_rom rom; right = Byte8Map.empty }
@@ -29,17 +26,16 @@ module Make (Value : ValueF.S) = struct
     match
       Byte8Map.find_opt addr s.right
       |> Fun.flip Option.bind (fun v ->
-             if Value.NonNumericValue.width v = width then Some v else None)
+             if Value.width v = width then Some v else None)
     with
-    | Some v -> Value.of_either (Right v)
+    | Some v -> v
     | None -> (
         match
           let* res = DMemCombinedFailableMemory.load_mem s.left addr width in
-          Ok (Value.of_either (Left res))
+          Ok res
         with
-        | Ok v -> v
-        | Error _ ->
-            Value.of_either (Right (Value.NonNumericValue.undefined width)))
+        | Ok v -> Value.of_num v
+        | Error _ -> Value.undefined width)
 
   let load_string (s : t) (addr : Byte8.t) : (String.t, String.t) Result.t =
     DMemCombinedFailableMemory.load_string s.left addr
@@ -49,13 +45,13 @@ module Make (Value : ValueF.S) = struct
     DMemCombinedFailableMemory.load_bytes s.left addr size
 
   let store_mem (s : t) (addr : Byte8.t) (v : Value.t) : t =
-    match Value.to_either v with
-    | Right v ->
+    match Value.try_num v with
+    | Error _ ->
         {
           left = DMemCombinedFailableMemory.undef_mem s.left addr 8l;
           right = Byte8Map.add addr v s.right;
         }
-    | Left v ->
+    | Ok v ->
         {
           left = DMemCombinedFailableMemory.store_mem s.left addr v;
           right = Byte8Map.remove addr s.right;

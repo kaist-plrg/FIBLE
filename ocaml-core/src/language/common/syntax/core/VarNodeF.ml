@@ -5,8 +5,9 @@ type 'const_t poly_t =
 [@@deriving sexp]
 
 module type S = sig
-  type const_t
-  type t = const_t poly_t
+  module Const : ConstF.S
+
+  type t = Const.t poly_t
 
   val pp : Format.formatter -> t -> unit
   val compare : t -> t -> int
@@ -15,17 +16,10 @@ module type S = sig
   val sexp_of_t : t -> Sexplib.Sexp.t
 end
 
-module Make (Const : sig
-  type t
+module Make (Const : ConstF.S) = struct
+  module Const = Const
 
-  val pp : Format.formatter -> t -> unit
-  val get_width : t -> Int32.t
-  val t_of_sexp : Sexplib.Sexp.t -> t
-  val sexp_of_t : t -> Sexplib.Sexp.t
-end) =
-struct
-  type const_t = Const.t [@@deriving sexp]
-  type t = const_t poly_t [@@deriving sexp]
+  type t = Const.t poly_t [@@deriving sexp]
 
   let pp (fmt : Format.formatter) (v : t) =
     match v with

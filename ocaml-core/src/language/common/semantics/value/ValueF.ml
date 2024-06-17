@@ -3,44 +3,33 @@ open Notation
 
 module type S = sig
   type t
-  type const_t
-  type globalptr_t = Byte8.t
-  type localptr_t = SPVal.t
-  type pointer_t = (globalptr_t, localptr_t) Either.t
 
-  module NonNumericValue : NonNumericValueF.S
+  module Pointer : PointerF.S
+  module Const : ConstF.S
 
-  val try_pointer : t -> (pointer_t, String.t) Result.t
+  val try_pointer : t -> (Pointer.t, String.t) Result.t
   val try_num : t -> (NumericValue.t, String.t) Result.t
-  val of_const : const_t -> t
+  val of_const : Const.t -> t
   val of_num : NumericValue.t -> t
-  val of_nonnum : NonNumericValue.t -> t
-  val to_either : t -> (NumericValue.t, NonNumericValue.t) Either.t
-  val of_either : (NumericValue.t, NonNumericValue.t) Either.t -> t
-  val get_space : t -> (NumericValue.t, SPVal.t, Unit.t) Either3.t
   val zero : Int32.t -> t
   val width : t -> Int32.t
   val pp : Format.formatter -> t -> unit
-  val try_addr : t -> (Byte8.t, String.t) Result.t
-  val try_loc : t -> (Loc.t, String.t) Result.t
   val try_isZero : t -> (Bool.t, String.t) Result.t
   val eval_uop : Uop.t -> t -> Int32.t -> (t, String.t) Result.t
   val eval_bop : Bop.t -> t -> t -> Int32.t -> (t, String.t) Result.t
   val get : t -> Int32.t -> Int32.t -> t
-  val extend : t -> Int32.t -> t
   val set : t -> t -> Int32.t -> t
-  val sp : SPVal.t -> t
+  val extend : t -> Int32.t -> t
   val undefined : Int32.t -> t
   val extend_undef : t -> Int32.t -> t
 end
 
-module Make (NonNumericValue : NonNumericValueF.S) = struct
+module Make (Pointer : PointerF.S) (NonNumericValue : NonNumericValueF.S) =
+struct
   module NonNumericValue = NonNumericValue
+  module Pointer = Pointer
+  module Const = NumericConst
 
-  type const_t = NumericConst.t
-  type globalptr_t = Byte8.t
-  type localptr_t = SPVal.t
-  type pointer_t = (globalptr_t, localptr_t) Either.t
   type t = Num of NumericValue.t | NonNum of NonNumericValue.t
 
   let try_pointer v =
@@ -54,7 +43,7 @@ module Make (NonNumericValue : NonNumericValueF.S) = struct
   let try_num v =
     match v with Num n -> Ok n | NonNum n -> Error "try_num: not a number"
 
-  let of_const (c : const_t) : t = Num (NumericValue.of_int64 c.value c.width)
+  let of_const (c : Const.t) : t = Num (NumericValue.of_int64 c.value c.width)
   let of_num (n : NumericValue.t) : t = Num n
   let of_nonnum (n : NonNumericValue.t) : t = NonNum n
 
