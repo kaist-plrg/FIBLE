@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 let rec take (n : int) (l : 'a list) : 'a list =
   if n <= 0 then [] else match l with [] -> [] | h :: t -> h :: take (n - 1) t
 
@@ -40,7 +37,7 @@ and print_constructor (C c : Constructor.disas_t) (sla : Sla.t)
             in
             print_oper op sla walker pinfo)
       c.printpieces
-    |> ResultExt.join_list
+    |> Result.join_list
   in
   Ok (String.concat "" op_list)
 
@@ -78,7 +75,7 @@ let rec print_mnem (C s : Constructor.disas_t) (sla : Sla.t)
                 in
                 print_oper op sla walker pinfo)
           d
-        |> ResultExt.join_list
+        |> Result.join_list
       in
       Ok (String.concat "" op_list)
 
@@ -115,6 +112,6 @@ let rec print_body (C s : Constructor.disas_t) (sla : Sla.t)
                     in
                     print_oper op sla walker pinfo)
               d
-            |> ResultExt.join_list
+            |> Result.join_list
           in
           Ok (String.concat "" op_list))

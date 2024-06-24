@@ -1,5 +1,3 @@
-open StdlibExt
-
 type t = { a_interval : IntervalD.t; a_mod8 : Mod8D.t; a_limset : LimSetD.t }
 
 let top =

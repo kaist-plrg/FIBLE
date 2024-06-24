@@ -1,4 +1,3 @@
-open StdlibExt
 open Common
 module PC = Graph.Path.Check (ICFG.G)
 

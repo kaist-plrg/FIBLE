@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 module type S = sig
   module Value : ValueF.S
   module Frame : FrameF.S with module Value = Value

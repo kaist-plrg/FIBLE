@@ -1,5 +1,4 @@
-open StdlibExt
-include Int64Ext
+include Int64
 
 let t_of_sexp = Sexplib.Std.int64_of_sexp
 let sexp_of_t = Sexplib.Std.sexp_of_int64

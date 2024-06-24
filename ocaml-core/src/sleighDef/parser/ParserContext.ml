@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = { instb : String.t; context : Int32.t List.t }
 
 let getInstructionBits (v : t) (startbit : Int32.t) (size : Int32.t)

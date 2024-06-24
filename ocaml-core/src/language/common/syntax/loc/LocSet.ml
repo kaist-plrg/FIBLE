@@ -1,5 +1,4 @@
 open Sexplib.Std
-open StdlibExt
 include Set.Make (Loc)
 
 let t_of_sexp (se : Sexplib.Sexp.t) : t =

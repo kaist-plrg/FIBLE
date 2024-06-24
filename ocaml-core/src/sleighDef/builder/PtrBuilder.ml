@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 let get_operand_raw (P ptr : OperandPtr.t) (map : TypeDef.sym_ptr_t Int32Map.t)
     : (OperandSymbol.ptr_t, String.t) Result.t =
   let* t =
@@ -45,7 +42,7 @@ let build_varnodelist (v : VarNodeListSymbol.ptr_t)
            match ptr with
            | Some ptr -> get_varnode_raw ptr map |> Result.map Option.some
            | None -> None |> Result.ok)
-    |> ResultExt.join_list
+    |> Result.join_list
   in
   Ok { v with varNodeIds }
 
@@ -131,7 +128,7 @@ and build_constructor (s : Constructor.ptr_t)
       |> List.map (fun ptr ->
              let* optr = get_operand_raw ptr map in
              build_operand (SubtablePtr.get_id s.parentId) optr map (fuel - 1))
-      |> ResultExt.join_list
+      |> Result.join_list
     in
     { s with operandIds } |> Result.ok
 
@@ -145,7 +142,7 @@ and build_constructor_map (s : ConstructorMap.ptr_t)
       |> List.map (fun (k, v) ->
              let* v = build_constructor v map (fuel - 1) in
              (k, v) |> Result.ok)
-      |> ResultExt.join_list
+      |> Result.join_list
     in
     { s with map = Int32Map.of_list nmap } |> Result.ok
 

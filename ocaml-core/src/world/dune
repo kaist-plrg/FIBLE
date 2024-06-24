@@ -4,5 +4,5 @@
   (pps ppx_log ppx_cwd))
  (libraries unix stdlibExt ppx_log ctypes ctypes-foreign common sleighDef)
  (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
- (flags -w -20-33-3)
+ (flags -w -20-33-3 -open StdlibExt -open Notation)
  (modules Interaction Ghidra Environment Util Global))

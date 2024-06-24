@@ -1,5 +1,3 @@
-open StdlibExt
-
 module Make (Value : sig
   type t
 

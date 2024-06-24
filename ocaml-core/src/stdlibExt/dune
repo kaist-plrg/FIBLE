@@ -9,9 +9,9 @@
   Either5
   Either6
   Either7
-  Int64Ext
-  HashtblExt
-  ResultExt
+  Int64
+  Hashtbl
+  Result
   IntMap
   Int64Map
   Int32Map
@@ -20,7 +20,7 @@
   Int64Set
   Int32Set
   Int64Hashtbl
-  ListExt
+  List
   MutMap
   MutSet
   Notation

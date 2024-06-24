@@ -1,5 +1,3 @@
-open StdlibExt
-
 type et = EInt of int64 | ETop
 
 let pp_et fmt (x : et) =

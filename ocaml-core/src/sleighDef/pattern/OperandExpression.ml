@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 module Inner = struct
   type t = Pat of PatternValue.t | Oper of OperandValue.t
 

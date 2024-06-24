@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 module HandleType = struct
   type t = Space | Offset | Size | OffsetPlus of Int32.t
 end

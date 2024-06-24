@@ -1,5 +1,4 @@
 open Sexplib.Std
-open StdlibExt
 open Common
 
 type t = {

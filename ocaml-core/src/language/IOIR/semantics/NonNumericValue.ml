@@ -1,4 +1,3 @@
-open StdlibExt
 open Common
 
 type t = SP of SPVal.t | Undef of Int32.t | Reg of RegId.t
@@ -29,14 +28,14 @@ let eval_bop (b : Bop.t)
   | Bop.Bint_add, Second (SP o, lv) | Bop.Bint_add, Third (lv, SP o) -> (
       match NumericValue.value_64 lv with
       | Ok ln ->
-          Right (eval_sp_arith o (Int64Ext.sext ln (NumericValue.width lv) 8l))
+          Right (eval_sp_arith o (Int64.sext ln (NumericValue.width lv) 8l))
       | Error _ -> Right (Undef outwidth))
   | Bop.Bint_sub, Second (SP o, rv) -> (
       match NumericValue.value_64 rv with
       | Ok rn ->
           Right
             (eval_sp_arith o
-               (Int64.neg (Int64Ext.sext rn (NumericValue.width rv) 8l)))
+               (Int64.neg (Int64.sext rn (NumericValue.width rv) 8l)))
       | Error _ -> Right (Undef outwidth))
   | Bop.Bint_sub, Third (rv, SP o) -> (
       match NumericValue.value_64 rv with

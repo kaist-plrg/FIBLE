@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = {
   space : ConstTpl.t;
   size : ConstTpl.t;

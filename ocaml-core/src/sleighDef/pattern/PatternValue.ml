@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t =
   | Token of TokenField.t
   | Context of ContextField.t

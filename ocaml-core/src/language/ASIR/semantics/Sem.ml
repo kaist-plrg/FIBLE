@@ -1,6 +1,6 @@
 module NonNumericValue = NonNumericValue
 module Cont = Common.ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)
-module Pointer = Common.GlobalAndStackPointer
+module Pointer = Common.GlobalAndStackPointer.Make (Common.Byte8) (Common.SPVal)
 module Value = Common.ValueF.Make (Pointer) (NonNumericValue)
 module StoreAction = Common.StoreActionF.Make (Value)
 module TimeStamp = Common.Int64TimeStamp

@@ -1,5 +1,4 @@
 open Sexplib.Std
-open StdlibExt
 
 module Make (Inst : sig
   type t_full

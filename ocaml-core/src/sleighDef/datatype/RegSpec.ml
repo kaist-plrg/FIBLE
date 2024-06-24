@@ -1,5 +1,3 @@
-open StdlibExt
-
 module TMap = Map.Make (struct
   type t = Int32.t * Int32.t
 

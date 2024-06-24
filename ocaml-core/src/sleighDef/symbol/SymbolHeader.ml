@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = { tag : SymbolTag.t; name : String.t; id : Int32.t; scopeid : Int32.t }
 
 let str_to_tag (s : String.t) : (SymbolTag.t, String.t) Result.t =

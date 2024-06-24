@@ -1,5 +1,3 @@
-open StdlibExt
-
 type t = Top | LimSet of Int64Set.t
 
 let top = Top
@@ -47,7 +45,7 @@ let mul (a : t) (b : t) (width : int32) : t =
         (Seq.flat_map
            (fun x ->
              Seq.map
-               (fun y -> Int64Ext.cut_width (Int64.mul x y) width)
+               (fun y -> Int64.cut_width (Int64.mul x y) width)
                (Int64Set.to_seq b))
            (Int64Set.to_seq a))
       |> lift_set
@@ -61,7 +59,7 @@ let add (a : t) (b : t) (width : int32) : t =
         (Seq.flat_map
            (fun x ->
              Seq.map
-               (fun y -> Int64Ext.cut_width (Int64.add x y) width)
+               (fun y -> Int64.cut_width (Int64.add x y) width)
                (Int64Set.to_seq b))
            (Int64Set.to_seq a))
       |> lift_set
@@ -71,9 +69,7 @@ let sext (a : t) (in_width : int32) (out_width : int32) : t =
   | Top -> Top
   | LimSet a ->
       Int64Set.of_seq
-        (Seq.map
-           (fun x -> Int64Ext.sext x in_width out_width)
-           (Int64Set.to_seq a))
+        (Seq.map (fun x -> Int64.sext x in_width out_width) (Int64Set.to_seq a))
       |> lift_set
 
 let try_concretize (x : t) (limit : int) : Int64Set.t option =

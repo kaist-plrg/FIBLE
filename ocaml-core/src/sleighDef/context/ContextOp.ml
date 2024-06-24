@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = {
   num : Int32.t;
   shift : Int32.t;

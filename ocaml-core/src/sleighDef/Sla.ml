@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type ptr_t = {
   maxdelayslotbytes : Int32.t;
   unique_allocatemask : Int32.t;
@@ -55,7 +52,7 @@ let build_from_sleighInit
     |> List.map (fun (k, v) ->
            let* v' = PtrBuilder.build_subtable_full v symbol_table.symbolMap in
            (k, v') |> Result.ok)
-    |> ResultExt.join_list
+    |> Result.join_list
     |> Result.map Int32Map.of_list
   in
   let* spaceinfo = Spaces.to_spaceinfo spaces in
@@ -162,7 +159,7 @@ let rec resolve (s : t) (st : SubtableSymbol.t) (walker : ParserWalker.t) :
   let* v = DecisionNode.resolve st.decisiontree walker in
   List.iter (fun c -> [%log debug "Context: %a" ContextChange.pp c]) v.context;
   let* nwalker =
-    ResultExt.fold_left_M
+    Result.fold_left_M
       (fun walker (c : ContextChange.t) ->
         ContextChange.apply c (translate_oe s) walker
           {
@@ -175,7 +172,7 @@ let rec resolve (s : t) (st : SubtableSymbol.t) (walker : ParserWalker.t) :
       walker v.context
   in
   let* op_resolved =
-    ResultExt.fold_left_M
+    Result.fold_left_M
       (fun ops (op : OperandSymbol.t) ->
         let* ob =
           if op.offsetbase = -1l then
@@ -246,7 +243,7 @@ let rec resolve_handle (s : t) (C st : Constructor.disas_t)
     (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (Constructor.handle_t * FixedHandle.t, String.t) Result.t =
   let* op_resolved =
-    ResultExt.fold_left_M
+    Result.fold_left_M
       (fun ops (op : OperandSymbol.disas_t) ->
         (* let* ob =
              if op.offsetbase = -1l then

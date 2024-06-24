@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = { index : Int32.t; table : SubtablePtr.t; ctid : ConstructorPtr.t }
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t

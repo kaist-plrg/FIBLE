@@ -1,5 +1,3 @@
-open StdlibExt
-
 module type S = sig
   module Value : ValueF.S
 

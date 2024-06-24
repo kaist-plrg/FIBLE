@@ -1,5 +1,3 @@
-open StdlibExt.Notation
-
 module Make (VarNode : sig
   type t
 

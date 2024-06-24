@@ -1,5 +1,3 @@
-open StdlibExt
-open Notation
 open Common
 open Sem
 

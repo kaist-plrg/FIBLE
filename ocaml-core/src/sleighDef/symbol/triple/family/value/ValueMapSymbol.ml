@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = TypeDef.valuemap_t
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
@@ -12,7 +9,7 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
       let* values =
         values
         |> List.map (fun xml -> XmlExt.attrib_int xml "val")
-        |> ResultExt.join_list
+        |> Result.join_list
       in
       ({
          name = header.name;

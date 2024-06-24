@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t =
   | Const
   | Unique of Int.t

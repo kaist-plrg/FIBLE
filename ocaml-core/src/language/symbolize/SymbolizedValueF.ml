@@ -1,5 +1,3 @@
-open StdlibExt
-open Notation
 open Common
 
 module MakeNonnum (NonNumericValue : sig

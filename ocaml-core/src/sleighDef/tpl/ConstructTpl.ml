@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = {
   sectionId : Int32.t Option.t;
   delaySlot : Int32.t;
@@ -26,7 +23,7 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
     | _ -> HandleTpl.decode hd sleighInit |> Result.map Option.some
   in
   let* opTpls =
-    List.map (fun xml -> OpTpl.decode xml sleighInit) ops |> ResultExt.join_list
+    List.map (fun xml -> OpTpl.decode xml sleighInit) ops |> Result.join_list
   in
   { sectionId; delaySlot; numlabels; resultTpl; opTpls } |> Result.ok
 

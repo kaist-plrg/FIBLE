@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = TypeDef.epsilon_t
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)

@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 module Make (VarNode : sig
   type t = NumericConst.t VarNodeF.poly_t
 
@@ -219,8 +216,7 @@ struct
     in
     try
       let ndt =
-        List.combine nondep_tags
-          (ListExt.take (List.length nondep_tags) val_list)
+        List.combine nondep_tags (List.take (List.length nondep_tags) val_list)
       in
       List.fold_right
         (fun (t, v) acc ->

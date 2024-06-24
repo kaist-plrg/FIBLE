@@ -1,5 +1,3 @@
-open StdlibExt
-open Notation
 include Xml
 
 let attrib (x : Xml.xml) (attr : String.t) : (String.t, String.t) Result.t =

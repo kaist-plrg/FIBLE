@@ -1,5 +1,3 @@
-open StdlibExt
-open Notation
 include PatternExpressionF.Make (PatternValue)
 
 let rec get_value (v : t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :

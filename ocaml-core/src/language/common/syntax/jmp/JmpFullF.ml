@@ -1,5 +1,3 @@
-open StdlibExt
-
 module type JumpSig = sig
   type t
 

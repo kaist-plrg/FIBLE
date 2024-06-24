@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = { space : Int32.t; size : Int32.t; offset : Int64.t }
 
 let make space size offset = { space; size; offset }

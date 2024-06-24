@@ -1,4 +1,4 @@
-include StdlibExt.HashtblExt.Make (struct
+include Hashtbl.Make (struct
   type t = Loc.t
 
   let equal = ( = )

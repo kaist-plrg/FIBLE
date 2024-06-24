@@ -1,5 +1,4 @@
 open Sexplib.Std
-open StdlibExt
 
 type t = string [@@deriving sexp]
 

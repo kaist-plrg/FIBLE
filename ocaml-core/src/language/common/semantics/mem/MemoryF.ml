@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 module type S = sig
   module Pointer : PointerF.S
   module Value : ValueF.S

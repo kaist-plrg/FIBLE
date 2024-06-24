@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 (*
      - SpecificPtr
        x EndPtr

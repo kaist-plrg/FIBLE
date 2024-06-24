@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type printpiece = Str of String.t | OperInd of Int32.t
 
 type 'operand_t constructor_poly_t = {

@@ -1,4 +1,3 @@
-open StdlibExt.Notation
 include Byte8Map
 
 type t = { ram : Storable.t Byte8Map.t; rom : DMem.t }

@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type ('varnode_t, 'tuple_t, 'mapped_t, 'oper_artifact) poly_t =
   ('varnode_t, 'tuple_t, 'mapped_t, 'oper_artifact) TypeDef.tuple_poly_t
 

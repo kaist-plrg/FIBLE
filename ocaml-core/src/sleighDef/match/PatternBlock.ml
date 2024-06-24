@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = {
   offset : Int32.t;
   nonzerosize : Int32.t;
@@ -18,7 +15,7 @@ let decode (xml : Xml.xml) : (t, String.t) Result.t =
            let* mask = XmlExt.attrib_int xml "mask" in
            let* value = XmlExt.attrib_int xml "val" in
            (mask, value) |> Result.ok)
-    |> ResultExt.join_list
+    |> Result.join_list
   in
   { offset; nonzerosize; maskvalues } |> Result.ok
 

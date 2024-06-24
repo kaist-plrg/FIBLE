@@ -1,5 +1,3 @@
-open StdlibExt
-open Notation
 open Common
 
 let check_error (a1 : ('a, StopEvent.t) Result.t)

@@ -1,4 +1,4 @@
-include HashtblExt.Make (struct
+include Hashtbl.Make (struct
   type t = int64
 
   let equal = ( = )

@@ -1,4 +1,3 @@
-open StdlibExt
 include Set.Make (RegId)
 
 let pp fmt v =

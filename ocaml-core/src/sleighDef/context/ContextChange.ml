@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = Commit of ContextCommit.t | Op of ContextOp.t
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t

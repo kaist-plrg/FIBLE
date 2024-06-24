@@ -1,5 +1,3 @@
-open StdlibExt
-open Notation
 open Storable
 
 type t = Storable.t List.t
@@ -99,7 +97,7 @@ let try_chars (x : t) : (Char.t list, String.t) Result.t =
     x (Ok [])
 
 let of_int64 v width =
-  let bits = Int64Ext.bitwidth v in
+  let bits = Int64.bitwidth v in
   if Int64.to_int32 bits > Int32.mul width 8l then
     [%log
       raise
@@ -109,7 +107,7 @@ let of_int64 v width =
   else of_int64_le v width
 
 let of_int64_safe (v : Int64.t) (width : Int32.t) : (t, String.t) Result.t =
-  let bits = Int64Ext.bitwidth v in
+  let bits = Int64.bitwidth v in
   if Int64.to_int32 bits > Int32.mul width 8l then
     Error
       (Format.sprintf

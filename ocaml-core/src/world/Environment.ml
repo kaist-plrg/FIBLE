@@ -1,4 +1,3 @@
-open StdlibExt
 open Util
 open Ctypes
 open Common

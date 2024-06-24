@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 module Make (Value : sig
   type t
 end) (Store : sig

@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type 'varnode_t poly_t = 'varnode_t TypeDef.varnodelist_poly_t
 type t = TypeDef.varnodelist_t
 type ptr_t = TypeDef.varnodelist_ptr_t

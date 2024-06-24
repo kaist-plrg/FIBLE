@@ -1,5 +1,3 @@
-open StdlibExt
-
 type t = Int64Set.t
 
 let top = Int64Set.of_list [ 0L; 1L; 2L; 3L; 4L; 5L; 6L; 7L ]

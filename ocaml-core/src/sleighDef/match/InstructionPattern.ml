@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = { pattern : PatternBlock.t }
 
 let decode (xml : Xml.xml) : (t, String.t) Result.t =

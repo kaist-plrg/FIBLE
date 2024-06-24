@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type op_t =
   | BLANK
   | COPY
@@ -252,7 +249,7 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t
   let* ins =
     ins
     |> List.map (fun xml -> VarNodeTpl.decode xml sleighInit)
-    |> ResultExt.join_list
+    |> Result.join_list
   in
   { opc; out; ins } |> Result.ok
 

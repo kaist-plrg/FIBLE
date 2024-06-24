@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type 'operand_t poly_t = 'operand_t TypeDef.constructor_poly_t
 type t = TypeDef.constructor_unmapped
 type disas_t = TypeDef.constructor_disas
@@ -32,7 +29,7 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) :
     List.map
       (fun xml -> XmlExt.attrib_int xml "id" |> Result.map OperandPtr.of_int32)
       opers
-    |> ResultExt.join_list
+    |> Result.join_list
   in
   let* printpieces =
     List.map
@@ -46,15 +43,15 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) :
             TypeDef.OperInd id |> Result.ok
         | _ -> Error "Invalid tag")
       prints
-    |> ResultExt.join_list
+    |> Result.join_list
   in
   let* context =
     List.map (fun xml -> ContextChange.decode xml sleighInit) contexts
-    |> ResultExt.join_list
+    |> Result.join_list
   in
   let* tmpls =
     List.map (fun xml -> ConstructTpl.decode xml sleighInit) tmpls
-    |> ResultExt.join_list
+    |> Result.join_list
   in
   let tmpl =
     List.find_opt

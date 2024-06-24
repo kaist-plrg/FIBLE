@@ -1,5 +1,3 @@
-open StdlibExt
-
 module Make (A : Set.OrderedType) = struct
   include Set.Make (A)
 

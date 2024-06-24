@@ -1,11 +1,8 @@
-open StdlibExt
-open Notation
-
 let rec append_build (opreands : OperandSymbol.handle_t List.t)
     (optpl : OpTpl.t) (secnum : Int32.t) (walker : ParserWalker.t)
     (pinfo : PatternInfo.t) : ('a, String.t) Result.t =
   let* index =
-    optpl.ins |> ListExt.hd_opt
+    optpl.ins |> List.hd_opt
     |> Option.map (fun (x : VarNodeTpl.t) -> VarNodeTpl.get_offset x)
     |> Fun.flip Option.bind ConstTpl.try_real
     |> Option.map Int64.to_int
@@ -43,7 +40,7 @@ and dump (optpl : OpTpl.t) (operands : FixedHandle.t List.t)
     (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (PCode.core_t List.t, String.t) Result.t =
   let* pre_insts, inputs =
-    ResultExt.fold_left_M
+    Result.fold_left_M
       (fun (l, i) (x : VarNodeTpl.t) ->
         let* b = VarNodeTpl.is_dynamic x operands walker in
         let* nl, ni =
@@ -115,7 +112,7 @@ and dump (optpl : OpTpl.t) (operands : FixedHandle.t List.t)
 and build_nonempty (C c : Constructor.handle_t) (ctpl : ConstructTpl.t)
     (secnum : Int32.t) (walker : ParserWalker.t) (pinfo : PatternInfo.t) :
     (PCode.core_t List.t, String.t) Result.t =
-  ResultExt.fold_left_M
+  Result.fold_left_M
     (fun nplist (optpl : OpTpl.t) ->
       let* plist =
         match OpTpl.get_opc optpl with

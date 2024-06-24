@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = { ct : ConstructorPtr.t; offset : Int32.t }
 
 let get_constructor (v : t) : ConstructorPtr.t = v.ct

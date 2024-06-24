@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type ('triple_t, 'mapped_t, 'oper_artifact) poly_t =
   ('triple_t, 'mapped_t, 'oper_artifact) TypeDef.operand_poly_t
 

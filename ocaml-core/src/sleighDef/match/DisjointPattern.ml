@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t =
   | Context of ContextPattern.t
   | Instruction of InstructionPattern.t

@@ -1,2 +1,1 @@
-open StdlibExt
-include FlatD.Make (Int64Ext)
+include FlatD.Make (Int64)

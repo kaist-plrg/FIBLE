@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = {
   bigendian : Bool.t;
   signbit : Bool.t;
@@ -41,13 +38,13 @@ let get_value (v : t) (walker : ParserWalker.t) : (Int64.t, String.t) Result.t =
     else ParserWalker.getInstructionBytes walker v.bytestart size
   in
 
-  let res = if v.bigendian then res else Int64Ext.rev_bytes res size in
+  let res = if v.bigendian then res else Int64.rev_bytes res size in
   let res = Int64.shift_right_logical res (Int32.to_int v.shift) in
   [%log debug "res: %Lx" res];
   let* v =
     (if v.signbit then
-       Int64Ext.sext_bit res (Int32.succ (Int32.sub v.bitend v.bitstart)) 64l
-     else Int64Ext.zext_bit res (Int32.succ (Int32.sub v.bitend v.bitstart)) 64l)
+       Int64.sext_bit res (Int32.succ (Int32.sub v.bitend v.bitstart)) 64l
+     else Int64.zext_bit res (Int32.succ (Int32.sub v.bitend v.bitstart)) 64l)
     |> Result.ok
   in
   [%log debug "v: %Lx" v];

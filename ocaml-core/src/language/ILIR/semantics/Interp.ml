@@ -1,6 +1,4 @@
-open StdlibExt
 open Common
-open Notation
 open Inst
 open Sem
 

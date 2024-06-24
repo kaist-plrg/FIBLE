@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 (*
    Symbol
     - TripleSymbol

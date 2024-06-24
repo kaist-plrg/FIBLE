@@ -1,6 +1,4 @@
-open StdlibExt
 open Common
-open Notation
 open Sem
 
 let build_inputs_from_sig (f : Func.t) : VarNode.t List.t =

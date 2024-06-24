@@ -1,5 +1,3 @@
-open StdlibExt
-
 module Make (Ord : Map.OrderedType) (A : DomainSpec.JoinSemiLatitce) = struct
   module XMap = Map.Make (Ord)
   include XMap

@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type ('operand_t, 'constructor_t) poly_t =
   ('operand_t, 'constructor_t) TypeDef.subtable_poly_t
 
@@ -25,7 +22,7 @@ let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)
   in
   let* construct =
     List.map (fun xml -> Constructor.decode xml sleighInit) consts
-    |> ResultExt.join_list
+    |> Result.join_list
   in
   let constructMap = construct |> Fun.flip ConstructorMap.of_list header.id in
   let* decisiontree =
@@ -56,12 +53,12 @@ let lift_middle (construct : 'operand_t TypeDef.constructor_map_poly_t)
               let* nptr = ConstructorMap.get_constructor construct ptr in
               (p, nptr) |> Result.ok)
             f
-          |> ResultExt.join_list
+          |> Result.join_list
         in
 
         Ok (TypeDef.Leaf (n, nf))
     | Node (n, c) ->
-        let* nc = List.map lift_dec c |> ResultExt.join_list in
+        let* nc = List.map lift_dec c |> Result.join_list in
         Ok (TypeDef.Node (n, nc))
   in
   lift_dec s

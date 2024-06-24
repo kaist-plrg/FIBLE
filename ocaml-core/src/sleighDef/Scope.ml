@@ -1,5 +1,3 @@
-open StdlibExt
-
 type t = { tree : Int32Set.t; parent : Int32.t Option.t; id : Int32.t }
 
 let symbol_scope (parent : Int32.t Option.t) (id : Int32.t) =

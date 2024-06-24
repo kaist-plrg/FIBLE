@@ -5,7 +5,7 @@
  (preprocess
   (pps ppx_log ppx_cwd))
  (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
- (flags -w -20-33-3)
+ (flags -w -20-33-3 -open StdlibExt -open Notation)
  (libraries xml-light stdlibExt common)
  (modules
   XmlExt

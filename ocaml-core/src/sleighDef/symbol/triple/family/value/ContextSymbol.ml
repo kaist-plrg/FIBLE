@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = TypeDef.context_t
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) (header : SymbolHeader.t)

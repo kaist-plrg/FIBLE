@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 (*
      - SpecificSymbol
        x EndSymbol

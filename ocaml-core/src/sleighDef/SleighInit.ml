@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = {
   maxdelayslotbytes : Int32.t;
   unique_allocatemask : Int32.t;

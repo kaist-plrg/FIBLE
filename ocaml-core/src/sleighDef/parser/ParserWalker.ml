@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = { const_context : ParserContext.t; point : ConstructState.t }
 
 let getContextBytes (v : t) (startbyte : Int32.t) (bytesize : Int32.t) =

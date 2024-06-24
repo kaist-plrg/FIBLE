@@ -1,7 +1,5 @@
-open StdlibExt
 open SleighDef
 open World
-open Notation
 
 let usage_msg = "slaparser -i <ifile>"
 let ifile = ref ""

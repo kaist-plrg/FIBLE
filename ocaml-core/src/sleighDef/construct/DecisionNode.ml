@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type node_t = TypeDef.decision_node_t
 type 'constructor_t poly_t = 'constructor_t TypeDef.decision_poly_t
 type 'operand_t middle_t = 'operand_t TypeDef.decision_middle_t
@@ -18,7 +15,7 @@ let rec decode (xml : Xml.xml) (table_id : Int32.t) : (ptr_t, String.t) Result.t
   let* r =
     if List.for_all (String.equal "decision") tags then
       List.map (Fun.flip decode table_id) children
-      |> ResultExt.join_list |> Result.map Either.right
+      |> Result.join_list |> Result.map Either.right
     else if (List.for_all (String.equal "pair")) tags then
       List.map
         (fun xml ->
@@ -27,7 +24,7 @@ let rec decode (xml : Xml.xml) (table_id : Int32.t) : (ptr_t, String.t) Result.t
           let* pattern = DisjointPattern.decode c in
           Result.ok (pattern, ConstructorPtr.make constid table_id))
         children
-      |> ResultExt.join_list |> Result.map Either.left
+      |> Result.join_list |> Result.map Either.left
     else Error "Invalid children"
   in
   let node = ({ num; contextdecision; startbit; bitsize } : node_t) in

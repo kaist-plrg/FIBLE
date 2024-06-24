@@ -1,4 +1,3 @@
-open StdlibExt
 open Common
 
 type t = TopHoleMap of AbsVal.t RegIdMap.t | Bottom

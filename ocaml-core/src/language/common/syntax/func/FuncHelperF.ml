@@ -1,5 +1,3 @@
-open StdlibExt
-
 module Make (Jmp : sig
   type t_full
 

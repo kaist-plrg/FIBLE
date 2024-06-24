@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = { symId : TuplePtr.t; num : Int32.t; mask : Int32.t; flow : Bool.t }
 
 let decode (xml : Xml.xml) (sleightInit : SleighInit.t) : (t, String.t) Result.t

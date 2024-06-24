@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type ptr_t = {
   curScope : Scope.t;
   scopeMap : Scope.t Int32Map.t;
@@ -29,7 +26,7 @@ let partition_list (l : 'a List.t) (x : Int.t) (y : Int.t) :
 
 let add_scopes (scopes : Xml.xml List.t) :
     (Scope.t Int32Map.t, String.t) Result.t =
-  ResultExt.fold_left_M
+  Result.fold_left_M
     (fun acc smap ->
       let* () = XmlExt.check_tag smap "scope"
       and* id = XmlExt.attrib_int smap "id"
@@ -41,7 +38,7 @@ let add_scopes (scopes : Xml.xml List.t) :
 
 let add_symbolhds (symbolhds : Xml.xml List.t) (scopeMap : Scope.t Int32Map.t) :
     (SymbolHeader.t Int32Map.t * Scope.t Int32Map.t, String.t) Result.t =
-  ResultExt.fold_left_M
+  Result.fold_left_M
     (fun (symbolMap, scopeMap) smap ->
       let* symbolhd = SymbolHeader.decode smap in
       let* scope =
@@ -58,7 +55,7 @@ let add_symbolhds (symbolhds : Xml.xml List.t) (scopeMap : Scope.t Int32Map.t) :
 let add_symbols (symbols : Xml.xml List.t)
     (symbolHeaderMap : SymbolHeader.t Int32Map.t) (sleighInit : SleighInit.t) :
     (Symbol.ptr_t Int32Map.t, String.t) Result.t =
-  ResultExt.fold_left_M
+  Result.fold_left_M
     (fun symbolMap smap ->
       let* symbol = Symbol.decode smap symbolHeaderMap sleighInit in
       Int32Map.add (Symbol.get_id symbol) symbol symbolMap |> Result.ok)

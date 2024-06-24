@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = P of Int32.t * Int32.t
 
 let make (offset : Int32.t) (table_id : Int32.t) : t = P (offset, table_id)

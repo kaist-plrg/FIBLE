@@ -1,6 +1,3 @@
-open StdlibExt
-open Notation
-
 type t = { space : ConstTpl.t; offset : ConstTpl.t; size : ConstTpl.t }
 
 let decode (xml : Xml.xml) (sleighInit : SleighInit.t) : (t, String.t) Result.t

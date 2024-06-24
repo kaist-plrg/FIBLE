@@ -1,4 +1,3 @@
-open StdlibExt
 open Common
 
 let _ = Random.self_init ()
