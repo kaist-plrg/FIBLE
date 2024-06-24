@@ -12,23 +12,23 @@ end) (Block : sig
 end) (Func : sig
   type t
 
-  val get_blocks : t -> Block.t list
+  val blocks : t -> Block.t list
 end) =
 struct
   let get_bb (f : Func.t) (loc : Loc.t) : Block.t option =
     List.find_opt
       (fun (b : Block.t) -> compare (Block.get_loc b) loc = 0)
-      (Func.get_blocks f)
+      (Func.blocks f)
 
   let get_preds (f : Func.t) (b : Block.t) : Block.t list =
     List.filter
       (fun (b' : Block.t) -> List.mem (Block.get_loc b) (Block.succ b'))
-      (Func.get_blocks f)
+      (Func.blocks f)
 
   let get_ret_blocks (f : Func.t) : Block.t list =
     List.filter
       (fun (b : Block.t) -> Jmp.is_ret_full (Block.get_jmp b))
-      (Func.get_blocks f)
+      (Func.blocks f)
 
   let get_call_targets (f : Func.t) : Loc.t list =
     List.fold_left
@@ -36,5 +36,5 @@ struct
         match Jmp.get_call_target_full (Block.get_jmp b) with
         | Some target -> target :: acc
         | _ -> acc)
-      [] (Func.get_blocks f)
+      [] (Func.blocks f)
 end

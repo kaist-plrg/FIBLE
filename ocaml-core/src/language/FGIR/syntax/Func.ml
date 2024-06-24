@@ -1,28 +1,14 @@
-open Sexplib.Std
 open Common
 open Basic_domain
 
 module Inner = struct
   type t = {
-    nameo : string option;
+    nameo : String.t Option.t;
     entry : Loc.t;
     boundaries : LocSetD.t;
-    blocks : Block.t list;
+    blocks : Block.t List.t;
   }
-  [@@deriving sexp]
-
-  let get_entry (f : t) : Loc.t = f.entry
-  let get_blocks (f : t) : Block.t list = f.blocks
-
-  let pp fmt { nameo; entry; boundaries; blocks } =
-    Format.fprintf fmt
-      "@[<v 2>name: %a@,entry: %a@,boundaries: %a@,blocks: %a@]"
-      (Format.pp_print_option Format.pp_print_string)
-      nameo Loc.pp entry
-      (Format.pp_print_list Loc.pp)
-      (LocSetD.elements boundaries)
-      (Format.pp_print_list Block.pp)
-      blocks
+  [@@deriving sexp, show, fields]
 end
 
 include Inner

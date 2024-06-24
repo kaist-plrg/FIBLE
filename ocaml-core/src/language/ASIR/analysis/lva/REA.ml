@@ -217,7 +217,7 @@ let compute_dd_func (f : Func.t) (m : astate LocMap.t) : astate =
         else (m, RegAnalysisDomain.bot))
       (ICFG.to_graph f.blocks)
   in
-  Func.get_blocks f
+  Func.blocks f
   |> List.fold_left
        (fun a b ->
          RegAnalysisDomain.join_t a

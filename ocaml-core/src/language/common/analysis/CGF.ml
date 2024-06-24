@@ -1,7 +1,7 @@
 module Make (Func : sig
   type t
 
-  val get_entry : t -> Loc.t
+  val entry : t -> Loc.t
   val get_call_targets : t -> Loc.t List.t
 end) =
 struct
@@ -10,9 +10,9 @@ struct
   module CG_vertex = struct
     type t = cg_vertex_t
 
-    let compare (a : t) (b : t) = compare (Func.get_entry a) (Func.get_entry b)
-    let hash (a : t) = Hashtbl.hash (Func.get_entry a)
-    let equal (a : t) (b : t) = Func.get_entry a = Func.get_entry b
+    let compare (a : t) (b : t) = compare (Func.entry a) (Func.entry b)
+    let hash (a : t) = Hashtbl.hash (Func.entry a)
+    let equal (a : t) (b : t) = Func.entry a = Func.entry b
   end
 
   module CG = Graph.Persistent.Digraph.Concrete (CG_vertex)
@@ -21,7 +21,7 @@ struct
   let to_cg (flist : Func.t List.t) : CG.t =
     let fMap : Func.t LocMap.t =
       List.fold_left
-        (fun m (f : Func.t) -> LocMap.add (Func.get_entry f) f m)
+        (fun m (f : Func.t) -> LocMap.add (Func.entry f) f m)
         LocMap.empty flist
     in
     let g =

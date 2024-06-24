@@ -17,7 +17,7 @@ end) (Block : sig
 end) (Func : sig
   type t
 
-  val get_entry : t -> Loc.t
+  val entry : t -> Loc.t
   val get_bb : t -> Loc.t -> Block.t option
 end) (Prog : sig
   type t
@@ -52,11 +52,11 @@ struct
            ~none:(Format.asprintf "Function not found: %a" Loc.pp floc)
     in
     let* b =
-      Func.get_bb f (Func.get_entry f)
+      Func.get_bb f (Func.entry f)
       |> Option.to_result
            ~none:
              (Format.asprintf "Block not found: %a-%a" Loc.pp floc Loc.pp
-                (Func.get_entry f))
+                (Func.entry f))
     in
     Ok (of_block b)
 

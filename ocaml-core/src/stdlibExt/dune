@@ -2,7 +2,7 @@
  (name stdlibExt)
  (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
  (flags -w -20-33-3)
- (libraries unix)
+ (libraries unix sexplib)
  (modules
   Either3
   Either4
@@ -10,6 +10,10 @@
   Either6
   Either7
   Int64
+  Int32
+  Option
+  String
+  Unit
   Hashtbl
   Result
   IntMap

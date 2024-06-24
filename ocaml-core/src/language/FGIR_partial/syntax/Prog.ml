@@ -1,11 +1,12 @@
 open Common
 
 type t = {
-  funcs : Func.t list;
+  funcs : Func.t List.t;
   rom : DMem.t;
   rspec : Int32.t Int32Map.t;
   externs : String.t Byte8Map.t;
 }
+[@@deriving sexp]
 
 let get_externs (p : t) : String.t Byte8Map.t = p.externs
 let get_rom_byte (p : t) (addr : Byte8.t) : Char.t = DMem.get_byte p.rom addr
