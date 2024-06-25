@@ -1,6 +1,7 @@
 open Common
 open Basic_domain
 open Value_domain
+open Syn
 
 module UpperD = struct
   type t = Bounded of Int64.t | Top | Bot
@@ -415,7 +416,7 @@ let process_load (_ : DMem.t) (a : t) (outv : RegId.t_full)
   in
   retv |> rewrite_alias
 
-let process_assignment (a : t) (asn : Inst.Assignable.t) (outv : RegId.t_full) =
+let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_full) =
   (let na = clear_mr a outv.id in
    match asn with
    | Avar (Register r) -> add_single_eq na (KReg outv.id) (KReg r.id) 0L

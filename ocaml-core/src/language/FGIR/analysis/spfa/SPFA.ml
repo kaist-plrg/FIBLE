@@ -1,6 +1,7 @@
 open Common
 open Basic_domain
 open Value_domain
+open Syn
 
 module Immutable = struct
   type __ = { accesses : AccessD.t; states : FSAbsD.t }

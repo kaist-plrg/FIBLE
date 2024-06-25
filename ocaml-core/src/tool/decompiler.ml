@@ -13,7 +13,6 @@ type dump_flag_type = {
   rom : bool ref;
   cfa : bool ref;
   l1 : bool ref;
-  basic_block : bool ref;
   spfa : bool ref;
   l2 : bool ref;
   csa : bool ref;
@@ -26,7 +25,6 @@ let dump_flag =
     rom = ref true;
     cfa = ref false;
     l1 = ref false;
-    basic_block = ref false;
     spfa = ref false;
     l2 = ref false;
     csa = ref false;
@@ -42,7 +40,6 @@ let speclist =
     ("-dump-path", Arg.Set_string dump_path, ": dump path");
     ("-dump-cfa", Arg.Set dump_flag.cfa, ": dump cfa");
     ("-dump-l1", Arg.Set dump_flag.l1, ": dump l1");
-    ("-dump-basic-block", Arg.Set dump_flag.basic_block, ": dump basic block");
     ("-dump-spfa", Arg.Set dump_flag.spfa, ": dump spfa");
     ("-dump-l2", Arg.Set dump_flag.l2, ": dump l2");
     ("-dump-csa", Arg.Set dump_flag.csa, ": dump csa");
@@ -82,10 +79,10 @@ let dump_cfa (cfa_res : (String.t * Byte8.t * ILIR.Shallow_CFA.t) list)
     cfa_res;
   ()
 
-let dump_spfa (spfa_res : (FGIR.Func.t * FGIR.SPFA.Immutable.t) list)
+let dump_spfa (spfa_res : (FGIR.Syn.Func.t * FGIR.SPFA.Immutable.t) list)
     (dump_path : string) =
   List.iter
-    (fun ((func : FGIR.Func.t), x) ->
+    (fun ((func : FGIR.Syn.Func.t), x) ->
       let fname : String.t =
         Option.value func.nameo
           ~default:(Format.asprintf "%a" Loc.pp func.entry)
@@ -147,7 +144,7 @@ let main () =
       Util.DMemWrapper.read_file (!dump_path ^ "/" ^ ifile_base ^ ".dmem")
     in
     let c0 = Sys.time () in
-    let l0 : ILIR.Prog.t =
+    let l0 : ILIR.Syn.Prog.t =
       {
         ins_mem = server.instfunc;
         rom;
@@ -164,29 +161,29 @@ let main () =
     in
     let c2 = Sys.time () in
     [%log info "CFA time: %f" (c2 -. c1)];
-    let l1_init : FGIR_partial.Prog.t =
+    let l1_init : FGIR_partial.Syn.Prog.t =
       FGIR_partial.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
     in
     let c3 = Sys.time () in
     [%log info "L1 translation time: %f" (c3 -. c2)];
-    let l1_refine : FGIR_partial.Prog.t =
+    let l1_refine : FGIR_partial.Syn.Prog.t =
       FGIR_partial.Refine.apply_prog l0 l1_init
     in
     let c4 = Sys.time () in
     [%log info "L1 refinement time: %f" (c4 -. c3)];
-    let l1 : FGIR.Prog.t = l1_refine |> FGIR.Prog.from_partial in
+    let l1 : FGIR.Syn.Prog.t = l1_refine |> FGIR.Syn.Prog.from_partial in
     let c5 = Sys.time () in
     [%log info "L1 time: %f" (c5 -. c4)];
     let cnt : int =
       l1.funcs
       |> List.fold_left
-           (fun (a : Int64Set.t) (f : FGIR.Func.t) ->
+           (fun (a : Int64Set.t) (f : FGIR.Syn.Func.t) ->
              List.fold_left
-               (fun (a : Int64Set.t) (b : FGIR.Block.t) ->
+               (fun (a : Int64Set.t) (b : FGIR.Syn.Block.t) ->
                  Int64Set.add_seq
                    (List.to_seq
                       (List.map
-                         (fun (i : FGIR.Inst.t_full) -> Loc.get_addr i.loc)
+                         (fun (i : FGIR.Syn.Inst.t_full) -> Loc.get_addr i.loc)
                          b.body))
                    a)
                a f.blocks)
@@ -194,22 +191,22 @@ let main () =
       |> Int64Set.cardinal
     in
     [%log info "Total number of instructions: %d" cnt];
-    let spfa_res : (FGIR.Func.t * FGIR.SPFA.Immutable.t) list =
+    let spfa_res : (FGIR.Syn.Func.t * FGIR.SPFA.Immutable.t) list =
       l1.funcs |> List.map (fun x -> (x, FGIR.SPFA.Immutable.analyze x 32l 40l))
     in
     let c6 = Sys.time () in
     [%log info "SPFA time: %f" (c6 -. c5)];
-    let l2 : ASIR.Prog.t =
+    let l2 : ASIR.Syn.Prog.t =
       ASIR.L1toL2.translate_prog_from_spfa l1 spfa_res 32l 40l
     in
     let c7 = Sys.time () in
     [%log info "L2 translation time: %f" (c7 -. c6)];
-    let lva_res : (ASIR.Func.t * ASIR.REA.astate) List.t =
+    let lva_res : (ASIR.Syn.Func.t * ASIR.REA.astate) List.t =
       ASIR.REA.compute_all l2
     in
     let c8 = Sys.time () in
     [%log info "REA time: %f" (c8 -. c7)];
-    let l3 : IOIR.Prog.t = IOIR.L2toL3.translate_prog_from_rea l2 lva_res in
+    let l3 : IOIR.Syn.Prog.t = IOIR.L2toL3.translate_prog_from_rea l2 lva_res in
     let c9 = Sys.time () in
     [%log info "L3 translation time: %f" (c9 -. c8)];
     if
@@ -222,26 +219,24 @@ let main () =
           "Dump path is not specified. Please specify dump path with -dump-path"];
     if !(dump_flag.cfa) then dump_cfa cfa_res !dump_path else ();
     if !(dump_flag.l1) then (
-      FGIR.Prog.write_prog l1 (!dump_path ^ "/" ^ ifile_base ^ ".fgir");
-      Artifact.Dumper.dump (Artifact.Data.L1 l1)
-        (!dump_path ^ "/" ^ ifile_base ^ ".fgir_dump"))
-    else ();
-    if !(dump_flag.basic_block) then FGIR.Prog.write_basic_block l1 !dump_path
+      let dl1 : Artifact.Data.t = L1 l1 in
+      Artifact.Dumper.write_pp dl1 (!dump_path ^ "/" ^ ifile_base ^ ".fgir");
+      Artifact.Dumper.dump dl1 (!dump_path ^ "/" ^ ifile_base ^ ".fgir_dump"))
     else ();
     if !(dump_flag.spfa) then dump_spfa spfa_res !dump_path else ();
     if !(dump_flag.l2) then (
-      ASIR.Prog.write_prog l2 (!dump_path ^ "/" ^ ifile_base ^ ".asir");
-      Artifact.Dumper.dump (Artifact.Data.L2 l2)
-        (!dump_path ^ "/" ^ ifile_base ^ ".asir_dump"))
+      let dl2 : Artifact.Data.t = L2 l2 in
+      Artifact.Dumper.write_pp dl2 (!dump_path ^ "/" ^ ifile_base ^ ".asir");
+      Artifact.Dumper.dump dl2 (!dump_path ^ "/" ^ ifile_base ^ ".asir_dump"))
     else ();
     (* if !(dump_flag.csa) then
          dump_csa csa_res !dump_path
            (Filename.basename !ifile |> Filename.remove_extension)
        else (); *)
     if !(dump_flag.l3) then (
-      IOIR.Prog.write_prog l3 (!dump_path ^ "/" ^ ifile_base ^ ".ioir");
-      Artifact.Dumper.dump (Artifact.Data.L3 l3)
-        (!dump_path ^ "/" ^ ifile_base ^ ".ioir_dump"))
+      let dl3 : Artifact.Data.t = L3 l3 in
+      Artifact.Dumper.write_pp dl3 (!dump_path ^ "/" ^ ifile_base ^ ".ioir");
+      Artifact.Dumper.dump dl3 (!dump_path ^ "/" ^ ifile_base ^ ".ioir_dump"))
     else ();
     (* if !(dump_flag.rea) then
          dump_rea lva_res !dump_path

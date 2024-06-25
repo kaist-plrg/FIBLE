@@ -1,5 +1,7 @@
-let translate_jmp (j : FGIR.Jmp.t_full)
-    (alist : (FGIR.Func.t * FGIR.SPFA.Immutable.t) List.t)
+open Syn
+
+let translate_jmp (j : FGIR.Syn.Jmp.t_full)
+    (alist : (FGIR.Syn.Func.t * FGIR.SPFA.Immutable.t) List.t)
     (ga : FGIR.SPFA.Immutable.t) (la : FGIR.AbsState.t) : Jmp.t_full =
   let njmp : Jmp.t =
     match j.jmp with
@@ -8,7 +10,7 @@ let translate_jmp (j : FGIR.Jmp.t_full)
     | JC { target = Cdirect { target; attr }; fallthrough } ->
         let x =
           List.find_opt
-            (fun ((f, _) : FGIR.Func.t * _) -> f.entry = target)
+            (fun ((f, _) : FGIR.Syn.Func.t * _) -> f.entry = target)
             alist
           |> Option.map (fun ((_, a) : _ * FGIR.SPFA.Immutable.t) -> a.accesses)
         in
@@ -35,7 +37,7 @@ let translate_jmp (j : FGIR.Jmp.t_full)
     | JT { target = Cdirect { target; attr } } ->
         let x =
           List.find_opt
-            (fun ((f, _) : FGIR.Func.t * _) -> f.entry = target)
+            (fun ((f, _) : FGIR.Syn.Func.t * _) -> f.entry = target)
             alist
           |> Option.map (fun ((_, a) : _ * FGIR.SPFA.Immutable.t) -> a.accesses)
         in
@@ -66,10 +68,10 @@ let translate_jmp (j : FGIR.Jmp.t_full)
 
   { jmp = njmp; loc = j.loc; mnem = j.mnem }
 
-let translate_inst (i : FGIR.Inst.t_full) (ga : FGIR.SPFA.Immutable.t)
+let translate_inst (i : FGIR.Syn.Inst.t_full) (ga : FGIR.SPFA.Immutable.t)
     (la : FGIR.AbsState.t) : Inst.t_full =
   let nins : Inst.t =
-    (FGIR.Inst.fold : _ -> _ -> _ -> _ -> Inst.t)
+    (FGIR.Syn.Inst.fold : _ -> _ -> _ -> _ -> Inst.t)
       (function
         | Load { space; pointer; output } -> (
             match pointer with
@@ -91,8 +93,8 @@ let translate_inst (i : FGIR.Inst.t_full) (ga : FGIR.SPFA.Immutable.t)
   in
   { ins = nins; loc = i.loc; mnem = i.mnem }
 
-let translate_block (b : FGIR.Block.t)
-    (alist : (FGIR.Func.t * FGIR.SPFA.Immutable.t) List.t)
+let translate_block (b : FGIR.Syn.Block.t)
+    (alist : (FGIR.Syn.Func.t * FGIR.SPFA.Immutable.t) List.t)
     (ga : FGIR.SPFA.Immutable.t) : Block.t =
   let astate = FGIR.FSAbsD.AbsLocMapD.find_opt b.loc ga.states.pre_state in
   let body, final_a =
@@ -114,31 +116,34 @@ let translate_block (b : FGIR.Block.t)
     jmp = translate_jmp b.jmp alist ga final_a;
   }
 
-let translate_func (f : FGIR.Func.t)
-    (alist : (FGIR.Func.t * FGIR.SPFA.Immutable.t) List.t)
+let translate_func (f : FGIR.Syn.Func.t)
+    (alist : (FGIR.Syn.Func.t * FGIR.SPFA.Immutable.t) List.t)
     (a : FGIR.SPFA.Immutable.t) : Func.t =
   {
     nameo = f.nameo;
     entry = f.entry;
     blocks = List.map (fun b -> translate_block b alist a) f.blocks;
     boundaries = f.boundaries;
-    sp_diff = 8L;
-    sp_boundary =
-      (match a.accesses with
-      | Fin s ->
-          ( FGIR.AccessD.FinSet.min_elt s,
-            (Int64.mul
-               (Int64.div (Int64.add (FGIR.AccessD.FinSet.max_elt s) 7L) 8L))
-              8L )
-      | _ ->
-          [%log
-            raise
-              (Failure
-                 "SPFA.Immutable.analyze returned non-constant sp boundary")]);
+    attr =
+      {
+        sp_diff = 8L;
+        sp_boundary =
+          (match a.accesses with
+          | Fin s ->
+              ( FGIR.AccessD.FinSet.min_elt s,
+                (Int64.mul
+                   (Int64.div (Int64.add (FGIR.AccessD.FinSet.max_elt s) 7L) 8L))
+                  8L )
+          | _ ->
+              [%log
+                raise
+                  (Failure
+                     "SPFA.Immutable.analyze returned non-constant sp boundary")]);
+      };
   }
 
-let translate_prog (p1 : FGIR.Prog.t) (sp_num : Int32.t) (fp_num : Int32.t) :
-    Prog.t =
+let translate_prog (p1 : FGIR.Syn.Prog.t) (sp_num : Int32.t) (fp_num : Int32.t)
+    : Prog.t =
   let ares =
     List.map
       (fun f -> (f, FGIR.SPFA.Immutable.analyze f sp_num fp_num))
@@ -154,9 +159,9 @@ let translate_prog (p1 : FGIR.Prog.t) (sp_num : Int32.t) (fp_num : Int32.t) :
     externs = p1.externs;
   }
 
-let translate_prog_from_spfa (p1 : FGIR.Prog.t)
-    (spfa_res : (FGIR.Func.t * FGIR.SPFA.Immutable.t) list) (sp_num : Int32.t)
-    (fp_num : Int32.t) : Prog.t =
+let translate_prog_from_spfa (p1 : FGIR.Syn.Prog.t)
+    (spfa_res : (FGIR.Syn.Func.t * FGIR.SPFA.Immutable.t) list)
+    (sp_num : Int32.t) (fp_num : Int32.t) : Prog.t =
   let funcs = List.map (fun (f, a) -> translate_func f spfa_res a) spfa_res in
   {
     sp_num;

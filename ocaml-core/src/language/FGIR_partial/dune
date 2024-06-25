@@ -8,16 +8,7 @@
   (pps ppx_log ppx_deriving.show ppx_sexp_conv ppx_fields_conv))
  (libraries sexplib ppx_sexp_conv stdlibExt ppx_log common ILIR)
  (modules
-  VarNode
-  Inst
-  CallTarget
-  JCall
-  JTailCall
-  JRet
-  Jmp
-  Block
-  Func
-  Prog
+  Syn
   Sem
   Init
   Interp

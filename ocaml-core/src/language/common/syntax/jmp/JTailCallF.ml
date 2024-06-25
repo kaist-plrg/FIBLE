@@ -1,3 +1,9 @@
+type ('calltarget_t, 'attr_t) poly_t = {
+  target : 'calltarget_t;
+  attr : 'attr_t;
+}
+[@@deriving sexp]
+
 module Make (CallTarget : sig
   type t
 
@@ -15,7 +21,7 @@ end) =
 struct
   module Attr = Attr
 
-  type t = { target : CallTarget.t; attr : Attr.t } [@@deriving sexp]
+  type t = (CallTarget.t, Attr.t) poly_t [@@deriving sexp]
 
   let pp fmt ({ target; attr } : t) =
     Format.fprintf fmt "tailcall %a [%a];" CallTarget.pp target Attr.pp attr

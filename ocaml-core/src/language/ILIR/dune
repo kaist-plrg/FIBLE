@@ -7,4 +7,4 @@
  (preprocess
   (pps ppx_log))
  (libraries stdlibExt ppx_log common basic_domain value_domain world)
- (modules Inst Prog Sem Init Interp JumpG BoundaryPointD Shallow_CFA))
+ (modules Syn Sem Init Interp JumpG BoundaryPointD Shallow_CFA))

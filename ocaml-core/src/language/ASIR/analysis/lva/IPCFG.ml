@@ -1,4 +1,5 @@
 open Common
+open Syn
 
 type time_t = Pre | Post
 type vertex_t = { block : Block.t; time : time_t }

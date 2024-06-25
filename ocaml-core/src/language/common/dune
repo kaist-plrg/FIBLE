@@ -55,10 +55,17 @@
   JRetF
   JTailCallF
   JmpFullF
+  ;; syntax-annot
+  StackSpaceAnnot
+  StackBoundaryAnnot
+  SBAndIOAnnot
+  InputOutputAnnot
+  ReturnValueAnnot
+  IORAnnot
   ;; syntax-block
   BlockF
   ;; syntax-func
-  FuncHelperF
+  FuncF
   ;; semantics-timestamp
   TimeStampF
   Int64TimeStamp

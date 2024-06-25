@@ -1,5 +1,6 @@
 open Common
 open Basic_domain
+open Syn
 
 module ALoc = struct
   type t = ALoc of Loc.t | AStart
@@ -56,13 +57,13 @@ let update_reg_def_loc (a : abstr) (r : RegId.t) (l : Loc.t) : abstr =
 let update_store_loc (a : abstr) (l : Loc.t) : abstr =
   { a with store_locs = ALocSet.add (ALoc l) a.store_locs }
 
-let has_mem (a : Inst.Assignable.t) : bool =
+let has_mem (a : Assignable.t) : bool =
   match a with
   | Avar (Ram _) | Auop (_, Ram _) | Abop (_, _, Ram _) | Abop (_, Ram _, _) ->
       true
   | _ -> false
 
-let compute_ud_assignment (a : Inst.Assignable.t) : RegIdSet.t =
+let compute_ud_assignment (a : Assignable.t) : RegIdSet.t =
   match a with
   | Avar (Register r)
   | Auop (_, Register r)

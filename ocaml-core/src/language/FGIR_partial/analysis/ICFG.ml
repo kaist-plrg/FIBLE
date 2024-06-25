@@ -1,1 +1,1 @@
-include Common.ICFGF.Make (Block)
+include Common.ICFGF.Make (Syn.Block)

@@ -1,5 +1,6 @@
 open Common
 open Basic_domain
+open Syn
 
 type astate = {
   must_def_regs : RegIdSetD.t;
@@ -37,7 +38,7 @@ let default =
     dependent_regs = RegIdSetD.bot;
   }
 
-let compute_dr_assignment (a : Inst.Assignable.t) : RegIdSet.t =
+let compute_dr_assignment (a : Assignable.t) : RegIdSet.t =
   match a with
   | Avar (Register r)
   | Auop (_, Register r)

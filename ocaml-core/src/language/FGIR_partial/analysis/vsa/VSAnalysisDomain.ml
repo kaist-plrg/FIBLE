@@ -1,6 +1,7 @@
 open Common
 open Basic_domain
 open Value_domain
+open Syn
 
 type __ = {
   value_nonrel : NonRelStateD.t;

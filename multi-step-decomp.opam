@@ -14,7 +14,9 @@ depends: [
   "ctypes-foreign"
   "angstrom"
   "sexplib"
+  "ppx_deriving"
   "ppx_sexp_conv"
+  "ppx_fields_conv"
   "xml-light"
   "odoc" {with-doc}
 ]

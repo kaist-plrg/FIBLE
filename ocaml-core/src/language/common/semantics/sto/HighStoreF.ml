@@ -2,7 +2,7 @@ module Make
     (Prog : sig
       type t
 
-      val get_sp_num : t -> Int32.t
+      val sp_num : t -> Int32.t
     end)
     (Const : ConstF.S)
     (VarNode : VarNodeF.S with module Const = Const)
@@ -318,8 +318,7 @@ struct
       (Ok s) sides
 
   let get_sp_curr (s : t) (p : Prog.t) : Value.t =
-    get_reg s
-      { id = RegId.Register (Prog.get_sp_num p); offset = 0l; width = 8l }
+    get_reg s { id = RegId.Register (Prog.sp_num p); offset = 0l; width = 8l }
 
   let build_local_frame (s : t) (p : Prog.t) (bnd : Int64.t * Int64.t)
       (copydepth : Int64.t) =
@@ -356,7 +355,7 @@ struct
       8l
 
   let sp_extern (p : Prog.t) : RegId.t_full =
-    { id = RegId.Register (Prog.get_sp_num p); offset = 0l; width = 8l }
+    { id = RegId.Register (Prog.sp_num p); offset = 0l; width = 8l }
 
   let add_sp_extern (s : t) (p : Prog.t) : (Value.t, String.t) Result.t =
     Value.eval_bop Bop.Bint_add

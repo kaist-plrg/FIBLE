@@ -1,10 +1,11 @@
+open Syn
 module Cont = Common.ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)
 module Value = Common.NumericValue
 module StoreAction = Common.StoreActionF.Make (Value)
 module TimeStamp = Common.UnitTimeStamp
 module Cursor = Common.CursorF.Make (TimeStamp)
 module RegFile = Common.RegFileF.Make (Value)
-module Store = Common.LowStore.Make (VarNode) (Inst.Assignable)
+module Store = Common.LowStore.Make (VarNode) (Assignable)
 
 module SCallTarget =
   Common.SCallTargetF.Make (VarNode) (CallTarget) (Value) (Store)
@@ -68,7 +69,7 @@ module State =
   Common.HighStateF.Make (Func) (Prog) (VarNode) (CallTarget) (JCall)
     (JTailCall)
     (JRet)
-    (Jmp.JIntra)
+    (JIntra)
     (TimeStamp)
     (Value)
     (Store)

@@ -1,3 +1,5 @@
+type 'attr_t poly_t = { attr : 'attr_t } [@@deriving sexp]
+
 module Make (Attr : sig
   type t
 
@@ -8,7 +10,7 @@ end) =
 struct
   module Attr = Attr
 
-  type t = { attr : Attr.t } [@@deriving sexp]
+  type t = Attr.t poly_t [@@deriving sexp]
 
   let pp fmt ({ attr } : t) = Format.fprintf fmt "return [%a];" Attr.pp attr
   let succ (v : t) = []

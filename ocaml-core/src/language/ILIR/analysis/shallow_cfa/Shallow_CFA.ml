@@ -1,6 +1,7 @@
 open Common
 open Basic_domain
 open Value_domain
+open Syn
 
 type heuristic_result = HrStop | HrSound of LocSetD.t | HrExit | HrFallthrough
 

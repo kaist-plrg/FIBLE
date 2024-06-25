@@ -1,20 +1,21 @@
 open Common
+open Syn
 open Sem
 
 let build_inputs_from_sig (f : Func.t) : VarNode.t List.t =
-  f.inputs
+  f.attr.inputs
   |> List.map (fun v -> VarNodeF.Register { id = v; offset = 0l; width = 8l })
 
 let reg_build_from_values (sto : Store.t) (values : Value.t List.t) (f : Func.t)
     : (RegFile.t, String.t) Result.t =
   let* fv =
-    try Ok (List.combine f.inputs values)
+    try Ok (List.combine f.attr.inputs values)
     with Invalid_argument _ ->
       Error
         (Format.asprintf
            "Mismatched number of arguments for call inputs,\n\
            \                      %d for %s and %d for call instruction"
-           (List.length f.inputs)
+           (List.length f.attr.inputs)
            (f.nameo |> Option.value ~default:"noname")
            (List.length values))
   in
@@ -39,7 +40,7 @@ let step_call_internal (s : State.t) (p : Prog.t)
   let* currf = State.get_current_function s p |> StopEvent.of_str_res in
   let* f = State.get_func_from p calln |> StopEvent.of_str_res in
   let* _ =
-    if f.sp_diff = sp_diff then Ok ()
+    if f.attr.sp_diff = sp_diff then Ok ()
     else Error (StopEvent.FailStop "jcall_ind: spdiff not match")
   in
 
@@ -64,10 +65,11 @@ let step_call_internal (s : State.t) (p : Prog.t)
           reg_build_from_input s.sto (build_inputs_from_sig f) f
           |> StopEvent.of_str_res
         in
-        (snd f.sp_boundary, regs, f.outputs) |> Result.ok
+        (snd f.attr.sp_boundary, regs, f.attr.outputs) |> Result.ok
   in
   let* nlocal =
-    Store.build_local_frame s.sto p f.sp_boundary ndepth |> StopEvent.of_str_res
+    Store.build_local_frame s.sto p f.attr.sp_boundary ndepth
+    |> StopEvent.of_str_res
   in
   let regs =
     RegFile.add_reg regs

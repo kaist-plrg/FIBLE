@@ -1,4 +1,5 @@
 open Common
+open Syn
 module PC = Graph.Path.Check (ICFG.G)
 
 let gen_dep_locs (pdg : PDG.ALocSet.t LocMap.t) (init_locs : Loc.t List.t) :
@@ -74,7 +75,7 @@ let do_analysis (rom : DMem.t) (f : Func.t) (b : Block.t) : Int64Set.t option =
       VSAnalysisDomain.Lattice_noBot.try_concretize_vn a v
   | _ -> None
 
-let apply (p0 : ILIR.Prog.t) (f : Func.t) : Func.t =
+let apply (p0 : ILIR.Syn.Prog.t) (f : Func.t) : Func.t =
   let rec aux (f : Func.t) (known_addrs : LocSet.t LocMap.t) : Func.t =
     let b = Func.find_switchstop_opt f in
     match b with
@@ -105,7 +106,7 @@ let apply (p0 : ILIR.Prog.t) (f : Func.t) : Func.t =
   in
   aux f LocMap.empty
 
-let apply_prog (p0 : ILIR.Prog.t) (p : Prog.t) : Prog.t =
+let apply_prog (p0 : ILIR.Syn.Prog.t) (p : Prog.t) : Prog.t =
   let funcs = p.funcs in
   let funcs' = List.map (apply p0) funcs in
   { p with funcs = funcs' }

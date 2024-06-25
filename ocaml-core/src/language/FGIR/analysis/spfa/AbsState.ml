@@ -1,6 +1,7 @@
 open Common
 open Basic_domain
 open Value_domain
+open Syn
 
 type t = { regs : ARegFile.t; stack : AStack.t }
 
@@ -10,7 +11,7 @@ let eval_varnode (c : t) (vn : VarNode.t) : AbsVal.t =
   | Register r -> ARegFile.get c.regs r.id
   | Ram _ -> AbsVal.Top
 
-let process_assignment (c : t) (a : Inst.Assignable.t) (i : RegId.t_full) : t =
+let process_assignment (c : t) (a : Assignable.t) (i : RegId.t_full) : t =
   match a with
   | Avar vn -> { c with regs = ARegFile.add c.regs i.id (eval_varnode c vn) }
   | Auop (uop, vn) ->

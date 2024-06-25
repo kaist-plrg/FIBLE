@@ -1,4 +1,5 @@
 open Common
+open Syn
 open Sem
 
 let step_call_internal (s : State.t) (p : Prog.t)

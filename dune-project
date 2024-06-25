@@ -3,7 +3,7 @@
 (package
   (name multi-step-decomp)
   (synopsis "Multi-step decompilation for PCode")
-  (depends ppxlib zarith ocamlgraph ocaml-lsp-server ocamlformat ctypes ctypes-foreign angstrom sexplib ppx_sexp_conv xml-light)
+  (depends ppxlib zarith ocamlgraph ocaml-lsp-server ocamlformat ctypes ctypes-foreign angstrom sexplib ppx_deriving ppx_sexp_conv ppx_fields_conv xml-light)
   (authors
     "Jihee Park")
 )

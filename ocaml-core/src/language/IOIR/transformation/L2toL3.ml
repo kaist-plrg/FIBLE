@@ -1,4 +1,5 @@
 open Common
+open Syn
 
 let default_input =
   ASIR.REA.default.dependent_regs
@@ -10,7 +11,8 @@ let default_output =
   |> (function Top -> RegIdSet.empty | Set s -> s)
   |> RegIdSet.elements
 
-let translate_jmp (j : ASIR.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
+let translate_jmp (j : ASIR.Syn.Jmp.t_full)
+    (la : RegId.t List.t * RegId.t List.t)
     (fMap : (RegId.t List.t * RegId.t List.t) LocMap.t) : Jmp.t_full =
   let njmp : Jmp.t =
     match j.jmp with
@@ -109,36 +111,41 @@ let translate_jmp (j : ASIR.Jmp.t_full) (la : RegId.t List.t * RegId.t List.t)
 
   { jmp = njmp; loc = j.loc; mnem = j.mnem }
 
-let translate_inst (i : ASIR.Inst.t_full) (la : RegId.t List.t * RegId.t List.t)
+let translate_inst (i : ASIR.Syn.Inst.t_full)
+    (la : RegId.t List.t * RegId.t List.t)
     (fMap : (RegId.t List.t * RegId.t List.t) LocMap.t) : Inst.t_full =
   i
 
-let translate_block (b : ASIR.Block.t) (ga : RegId.t List.t * RegId.t List.t)
+let translate_block (b : ASIR.Syn.Block.t)
+    (ga : RegId.t List.t * RegId.t List.t)
     (fMap : (RegId.t List.t * RegId.t List.t) LocMap.t) : Block.t =
   let body =
     List.fold_left (fun acci i -> acci @ [ translate_inst i ga fMap ]) [] b.body
   in
   { fLoc = b.fLoc; loc = b.loc; body; jmp = translate_jmp b.jmp ga fMap }
 
-let translate_func (f : ASIR.Func.t) (a : RegId.t List.t * RegId.t List.t)
+let translate_func (f : ASIR.Syn.Func.t) (a : RegId.t List.t * RegId.t List.t)
     (fMap : (RegId.t List.t * RegId.t List.t) LocMap.t) : Func.t =
   {
     nameo = f.nameo;
     entry = f.entry;
     blocks = List.map (fun b -> translate_block b a fMap) f.blocks;
     boundaries = f.boundaries;
-    sp_diff = f.sp_diff;
-    sp_boundary = f.sp_boundary;
-    inputs = fst a;
-    outputs = snd a;
+    attr =
+      {
+        sp_diff = f.attr.sp_diff;
+        sp_boundary = f.attr.sp_boundary;
+        inputs = fst a;
+        outputs = snd a;
+      };
   }
 
-let translate_prog_from_rea (p1 : ASIR.Prog.t)
-    (rea_res : (ASIR.Func.t * ASIR.REA.astate) List.t) : Prog.t =
-  let signature_list : (ASIR.Func.t * (RegId.t List.t * RegId.t List.t)) List.t
-      =
+let translate_prog_from_rea (p1 : ASIR.Syn.Prog.t)
+    (rea_res : (ASIR.Syn.Func.t * ASIR.REA.astate) List.t) : Prog.t =
+  let signature_list :
+      (ASIR.Syn.Func.t * (RegId.t List.t * RegId.t List.t)) List.t =
     List.map
-      (fun ((f, s) : ASIR.Func.t * ASIR.REA.astate) ->
+      (fun ((f, s) : ASIR.Syn.Func.t * ASIR.REA.astate) ->
         ( f,
           ( s.dependent_regs
             |> (function Top -> RegIdSet.empty | Set s -> s)
@@ -151,7 +158,7 @@ let translate_prog_from_rea (p1 : ASIR.Prog.t)
   let fMap =
     LocMap.of_list
       (signature_list
-      |> List.map (fun ((f, s) : ASIR.Func.t * 'a) -> (f.entry, s)))
+      |> List.map (fun ((f, s) : ASIR.Syn.Func.t * 'a) -> (f.entry, s)))
   in
   let funcs = List.map (fun (f, a) -> translate_func f a fMap) signature_list in
   {
@@ -163,6 +170,6 @@ let translate_prog_from_rea (p1 : ASIR.Prog.t)
     externs = p1.externs;
   }
 
-let translate_prog (p1 : ASIR.Prog.t) : Prog.t =
+let translate_prog (p1 : ASIR.Syn.Prog.t) : Prog.t =
   let rea_res = ASIR.REA.compute_all p1 in
   translate_prog_from_rea p1 rea_res

@@ -1,3 +1,10 @@
+type ('calltarget_t, 'attr_t) poly_t = {
+  target : 'calltarget_t;
+  fallthrough : Loc.t;
+  attr : 'attr_t;
+}
+[@@deriving sexp]
+
 module Make (CallTarget : sig
   type t
 
@@ -15,8 +22,7 @@ end) =
 struct
   module Attr = Attr
 
-  type t = { target : CallTarget.t; fallthrough : Loc.t; attr : Attr.t }
-  [@@deriving sexp]
+  type t = (CallTarget.t, Attr.t) poly_t [@@deriving sexp]
 
   let pp fmt (p : t) =
     Format.fprintf fmt "call %a [%a]; -> %a" CallTarget.pp p.target Loc.pp

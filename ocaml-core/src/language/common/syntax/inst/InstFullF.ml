@@ -1,3 +1,6 @@
+type 'inst_t poly_t_full = { ins : 'inst_t; loc : Loc.t; mnem : Mnemonic.t }
+[@@deriving sexp]
+
 module Make (Inst : sig
   type t
 
@@ -7,8 +10,7 @@ module Make (Inst : sig
   val sexp_of_t : t -> Sexplib.Sexp.t
 end) =
 struct
-  type t_full = { ins : Inst.t; loc : Loc.t; mnem : Mnemonic.t }
-  [@@deriving sexp]
+  type t_full = Inst.t poly_t_full [@@deriving sexp]
 
   let pp_full (fmt : Format.formatter) (p : t_full) =
     Format.fprintf fmt "%a: %a [%a]" Loc.pp p.loc Inst.pp p.ins Mnemonic.pp

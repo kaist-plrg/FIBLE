@@ -1,5 +1,5 @@
 open Common
-open Inst
+open Syn
 open Sem
 
 let fallthrough (p : Prog.t) (pc : Loc.t) (s : (Store.t, String.t) Result.t) :
@@ -12,15 +12,15 @@ let step_jump (p : Prog.t) (s : State.t) ({ target } : IJump.t) :
   | None -> Ok (Action.jmp target)
   | Some name -> Ok (Action.externcall target)
 
-let step_cbranch (p : Prog.t) (s : State.t) ({ condition; target } : ICbranch.t)
-    : (Action.t, String.t) Result.t =
+let step_cbranch (p : Prog.t) (s : State.t)
+    ({ condition; target } : Inst.ICbranch.t) : (Action.t, String.t) Result.t =
   let* v = Store.eval_vn s.sto condition in
   match Value.try_isZero v with
   | Ok true -> Ok (Action.jmp (Prog.fallthru p s.pc))
   | Ok false -> Ok (Action.jmp target)
   | Error e -> Error e
 
-let step_jump_ind (p : Prog.t) (s : State.t) ({ target } : IJumpInd.t) :
+let step_jump_ind (p : Prog.t) (s : State.t) ({ target } : Inst.IJumpInd.t) :
     (Action.t, String.t) Result.t =
   let* l = Store.eval_vn s.sto target in
   let* l = Value.try_addr l in
@@ -28,8 +28,8 @@ let step_jump_ind (p : Prog.t) (s : State.t) ({ target } : IJumpInd.t) :
   | None -> Ok (Action.jmp (Loc.of_addr l))
   | Some name -> Ok (Action.externcall (Loc.of_addr l))
 
-let step_unimplemented (p : Prog.t) (s : State.t) (ins : IUnimplemented.t) :
-    (Action.t, String.t) Result.t =
+let step_unimplemented (p : Prog.t) (s : State.t) (ins : Inst.IUnimplemented.t)
+    : (Action.t, String.t) Result.t =
   Error "Unimplemented instruction"
 
 let storeaction_to_action (p : Prog.t) (s : State.t) (a : Store.Action.t) :

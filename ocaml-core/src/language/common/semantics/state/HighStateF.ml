@@ -4,7 +4,7 @@ end) (Prog : sig
   type t
 
   val get_func_opt : t -> Loc.t -> Func.t option
-  val get_externs : t -> String.t Byte8Map.t
+  val externs : t -> String.t Byte8Map.t
 end) (VarNode : sig
   type t
 

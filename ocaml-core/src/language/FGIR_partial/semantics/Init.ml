@@ -1,4 +1,5 @@
 open Common
+open Syn
 open Sem
 
 let init_sp = 0x7FFFFFFFC000L

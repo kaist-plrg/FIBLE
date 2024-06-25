@@ -1,5 +1,6 @@
 open Common
 open Basic_domain
+open Syn
 
 module A = struct
   include TupleD.MakeJoinSemiLatticeWithTop (OctagonD) (OctagonD)
@@ -31,7 +32,7 @@ let clear_mr a (r : RegId.t) =
   Map.clear_mr a r
   |> Map.map (fun (vt, vf) -> (OctagonD.clear_mr vt r, OctagonD.clear_mr vf r))
 
-let process_assignment (a : t) (d : OctagonD.t) (asn : Inst.Assignable.t)
+let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
     (outv : RegId.t_full) =
   let outmr : Key.t = KReg outv.id in
   let a =

@@ -1,3 +1,25 @@
+type 'jmp_t poly_t_full = { jmp : 'jmp_t; loc : Loc.t; mnem : Mnemonic.t }
+[@@deriving sexp]
+
+module type S = sig
+  type t
+  type t_full
+
+  val pp : Format.formatter -> t -> unit
+  val pp_full : Format.formatter -> t_full -> unit
+  val succ : t -> Loc.t List.t
+  val succ_full : t_full -> Loc.t List.t
+  val is_ret : t -> bool
+  val is_ret_full : t_full -> bool
+  val resolve_calltarget_opt : t -> Loc.t option
+  val get_call_target_full : t_full -> Loc.t option
+  val get_loc : t_full -> Loc.t
+  val t_of_sexp : Sexplib.Sexp.t -> t
+  val sexp_of_t : t -> Sexplib.Sexp.t
+  val t_full_of_sexp : Sexplib.Sexp.t -> t_full
+  val sexp_of_t_full : t_full -> Sexplib.Sexp.t
+end
+
 module type JumpSig = sig
   type t
 
@@ -10,8 +32,7 @@ module type JumpSig = sig
 end
 
 module Make (Jmp : JumpSig) = struct
-  type t_full = { jmp : Jmp.t; loc : Loc.t; mnem : Mnemonic.t }
-  [@@deriving sexp]
+  type t_full = Jmp.t poly_t_full [@@deriving sexp]
 
   let pp_full (fmt : Format.formatter) (a : t_full) =
     Format.fprintf fmt "%a: %a [%a]" Loc.pp a.loc Jmp.pp a.jmp Mnemonic.pp

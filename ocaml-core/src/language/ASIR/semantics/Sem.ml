@@ -1,3 +1,4 @@
+open Syn
 module NonNumericValue = NonNumericValue
 module Cont = Common.ContF.Make (Inst) (Jmp) (Block) (Func) (Prog)
 module Pointer = Common.GlobalAndStackPointer.Make (Common.Byte8) (Common.SPVal)
@@ -91,7 +92,7 @@ module State =
   Common.HighStateF.Make (Func) (Prog) (VarNode) (CallTarget) (JCall)
     (JTailCall)
     (JRet)
-    (Jmp.JIntra)
+    (JIntra)
     (TimeStamp)
     (Value)
     (Store)

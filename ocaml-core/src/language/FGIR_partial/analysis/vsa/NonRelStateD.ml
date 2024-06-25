@@ -1,6 +1,7 @@
 open Common
 open Basic_domain
 open Value_domain
+open Syn
 module Map = KeyMap.Make (AbsNumeric)
 
 type t = Map.t
@@ -47,13 +48,13 @@ let process_load (rom : DMem.t) (a : t) (d : OctagonD.t) (outv : RegId.t_full)
               (Int64Set.map
                  (fun x ->
                    Sem.Value.value_64
-                     (Prog.get_rom_raw rom x (RegId.width outv))
+                     (DMem.get_numeric rom x (RegId.width outv))
                    |> Result.get_ok)
                  vset)))
         a
   | None -> clear_mr a outv.id
 
-let process_assignment (a : t) (d : OctagonD.t) (asn : Inst.Assignable.t)
+let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
     (outv : RegId.t_full) =
   let na = clear_mr a outv.id in
   match asn with

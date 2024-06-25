@@ -1,13 +1,14 @@
 open Common
 open Basic_domain
+open Syn
 
-let translate_stmt (loc : Loc.t) (i : ILIR.Inst.t_full) : Inst.t_full =
+let translate_stmt (loc : Loc.t) (i : ILIR.Syn.Inst.t_full) : Inst.t_full =
   match i.ins with
   | First x -> { loc; ins = First x; mnem = i.mnem }
   | Second x -> { loc; ins = Second x; mnem = i.mnem }
   | _ -> { loc; ins = Third INop; mnem = i.mnem }
 
-let translate_jmp (p : ILIR.Prog.t) (loc : Loc.t) (i : ILIR.Inst.t_full)
+let translate_jmp (p : ILIR.Syn.Prog.t) (loc : Loc.t) (i : ILIR.Syn.Inst.t_full)
     (next : Loc.t) (jmps : Loc.t List.t) (known_addrs : LocSet.t LocMap.t) :
     Jmp.t_full =
   match i.ins with
@@ -20,7 +21,7 @@ let translate_jmp (p : ILIR.Prog.t) (loc : Loc.t) (i : ILIR.Inst.t_full)
              && (String.starts_with ~prefix:"J" i.mnem
                 || String.starts_with ~prefix:"M" i.mnem)
            then JI (Jjump target)
-           else if ILIR.Prog.get_ins p target |> Option.is_some then
+           else if ILIR.Syn.Prog.get_ins p target |> Option.is_some then
              JC
                {
                  target = Cdirect { target; attr = () };
@@ -58,11 +59,11 @@ let translate_jmp (p : ILIR.Prog.t) (loc : Loc.t) (i : ILIR.Inst.t_full)
   | Seventh _ -> { loc; jmp = JI Junimplemented; mnem = i.mnem }
   | _ -> { loc; jmp = JI (Jfallthrough next); mnem = i.mnem }
 
-let translate_block (p0 : ILIR.Prog.t) (fentry : Loc.t) (entry : Loc.t)
+let translate_block (p0 : ILIR.Syn.Prog.t) (fentry : Loc.t) (entry : Loc.t)
     (cf : ILIR.Shallow_CFA.t) (entries : LocSetD.t)
     (known_addrs : LocSet.t LocMap.t) : Block.t =
   let rec aux (loc : Loc.t) (acc : Inst.t_full list) : Block.t =
-    let ninst = ILIR.Prog.get_ins_full p0 loc in
+    let ninst = ILIR.Syn.Prog.get_ins_full p0 loc in
     match ninst with
     | None ->
         {
@@ -90,7 +91,7 @@ let translate_block (p0 : ILIR.Prog.t) (fentry : Loc.t) (entry : Loc.t)
                 body = List.rev (translate_stmt loc i :: acc);
                 jmp =
                   translate_jmp p0 loc i
-                    (ILIR.Prog.fallthru p0 loc)
+                    (ILIR.Syn.Prog.fallthru p0 loc)
                     jmps known_addrs;
               }
         else
@@ -104,7 +105,7 @@ let translate_block (p0 : ILIR.Prog.t) (fentry : Loc.t) (entry : Loc.t)
 
   aux entry []
 
-let translate_func (p0 : ILIR.Prog.t) (nameo : String.t option)
+let translate_func (p0 : ILIR.Syn.Prog.t) (nameo : String.t option)
     (entry : Byte8.t) (cf : ILIR.Shallow_CFA.t)
     (known_addrs : LocSet.t LocMap.t) : Func.t =
   let boundary_entries = fst cf.boundary_point in
@@ -125,9 +126,15 @@ let translate_func (p0 : ILIR.Prog.t) (nameo : String.t option)
            translate_block p0 (Loc.of_addr entry) e cf entries known_addrs)
     |> List.of_seq
   in
-  { nameo; entry = Loc.of_addr entry; boundaries = boundary_entries; blocks }
+  {
+    nameo;
+    entry = Loc.of_addr entry;
+    boundaries = boundary_entries;
+    blocks;
+    attr = ();
+  }
 
-let translate_prog (p0 : ILIR.Prog.t) (entries : Byte8.t list) : Prog.t =
+let translate_prog (p0 : ILIR.Syn.Prog.t) (entries : Byte8.t list) : Prog.t =
   let funcs =
     List.map
       (fun e ->
@@ -138,7 +145,7 @@ let translate_prog (p0 : ILIR.Prog.t) (entries : Byte8.t list) : Prog.t =
   in
   { funcs; rom = p0.rom; rspec = p0.rspec; externs = p0.externs }
 
-let translate_prog_from_cfa (p0 : ILIR.Prog.t)
+let translate_prog_from_cfa (p0 : ILIR.Syn.Prog.t)
     (cfa_res : (String.t * Byte8.t * ILIR.Shallow_CFA.t) list) : Prog.t =
   let funcs =
     List.map

@@ -1,4 +1,5 @@
 open Common
+open Syn
 open Sem
 
 let step_call_internal (s : State.t) (p : Prog.t)
@@ -11,7 +12,7 @@ let step_call_internal (s : State.t) (p : Prog.t)
   let* currf = State.get_current_function s p |> StopEvent.of_str_res in
   let* f = State.get_func_from p calln |> StopEvent.of_str_res in
   let* _ =
-    if f.sp_diff = sp_diff then Ok ()
+    if f.attr.sp_diff = sp_diff then Ok ()
     else Error (StopEvent.FailStop "jcall_ind: spdiff not match")
   in
 
@@ -25,10 +26,11 @@ let step_call_internal (s : State.t) (p : Prog.t)
     Store.build_saved_sp s.sto p sp_diff |> StopEvent.of_str_res
   in
   let ndepth =
-    match attr with Some () -> copydepth | None -> snd f.sp_boundary
+    match attr with Some () -> copydepth | None -> snd f.attr.sp_boundary
   in
   let* nlocal =
-    Store.build_local_frame s.sto p f.sp_boundary ndepth |> StopEvent.of_str_res
+    Store.build_local_frame s.sto p f.attr.sp_boundary ndepth
+    |> StopEvent.of_str_res
   in
   let regs =
     RegFile.add_reg s.sto.regs

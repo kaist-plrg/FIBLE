@@ -1,6 +1,7 @@
 open Common
 open IOIR
-open IOIR.Sem
+open Syn
+open Sem
 open State
 
 type show_type =
@@ -183,18 +184,18 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
         (match s.cont.remaining with
         | [] ->
             Format.fprintf out_formatter "Current instruction: %a\n%!"
-              IOIR.Jmp.pp_full s.cont.jmp
+              IOIR.Syn.Jmp.pp_full s.cont.jmp
         | i :: _ ->
             Format.fprintf out_formatter "Current instruction: %a\n%!"
-              IOIR.Inst.pp_full i);
+              IOIR.Syn.Inst.pp_full i);
         aux s bs continue
     | Show ShowCont ->
         Format.fprintf out_formatter "Current continuation: %a\n%!"
           (Format.pp_print_list
              ~pp_sep:(fun fmt _ -> Format.fprintf fmt "\n")
-             IOIR.Inst.pp_full)
+             IOIR.Syn.Inst.pp_full)
           s.cont.remaining;
-        Format.fprintf out_formatter "%a\n%!" IOIR.Jmp.pp_full s.cont.jmp;
+        Format.fprintf out_formatter "%a\n%!" IOIR.Syn.Jmp.pp_full s.cont.jmp;
         aux s bs continue
     | Show (ShowBlock l) ->
         let bo =
@@ -207,9 +208,9 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
         | Some b ->
             (Format.pp_print_list
                ~pp_sep:(fun fmt _ -> Format.fprintf fmt "\n")
-               IOIR.Inst.pp_full)
+               IOIR.Syn.Inst.pp_full)
               out_formatter b.body;
-            Format.fprintf out_formatter "%a\n%!" IOIR.Jmp.pp_full b.jmp
+            Format.fprintf out_formatter "%a\n%!" IOIR.Syn.Jmp.pp_full b.jmp
         | None -> Format.fprintf out_formatter "Block %a not found\n%!" Loc.pp l);
         aux s bs continue
     | Show (ShowMem (n, v)) ->
@@ -263,7 +264,7 @@ let repl_in in_chan out_formatter p s si (bs : Loc.t List.t) (continue : Bool.t)
   in
   aux s bs continue
 
-let repl ((in_chan, out_chan) : In_channel.t * Out_channel.t) (p : IOIR.Prog.t)
-    (s : State.t) : (Unit.t, String.t) Result.t =
+let repl ((in_chan, out_chan) : In_channel.t * Out_channel.t)
+    (p : IOIR.Syn.Prog.t) (s : State.t) : (Unit.t, String.t) Result.t =
   repl_in in_chan (Format.formatter_of_out_channel out_chan) p s s [] false;
   Ok ()

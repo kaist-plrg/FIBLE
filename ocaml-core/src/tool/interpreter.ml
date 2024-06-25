@@ -23,7 +23,7 @@ let interp_l1 l1 =
     FGIR.Interp.interp l1
       (FGIR.Init.from_signature l1
          ((List.find
-             (fun (x : FGIR.Func.t) ->
+             (fun (x : FGIR.Syn.Func.t) ->
                String.equal (Option.value x.nameo ~default:"") "main")
              l1.funcs)
             .entry |> Loc.get_addr))
@@ -36,7 +36,7 @@ let interp_l2 l2 =
     ASIR.Interp.interp l2
       (ASIR.Init.from_signature l2
          ((List.find
-             (fun (x : ASIR.Func.t) ->
+             (fun (x : ASIR.Syn.Func.t) ->
                String.equal (Option.value x.nameo ~default:"") "main")
              l2.funcs)
             .entry |> Loc.get_addr))

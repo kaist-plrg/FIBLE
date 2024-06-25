@@ -1,4 +1,5 @@
 open Common
+open Syn
 open Sem
 
 let from_signature (p : Prog.t) (a : Byte8.t) : State.t =
@@ -18,7 +19,7 @@ let from_signature (p : Prog.t) (a : Byte8.t) : State.t =
           Memory.of_global_memory (GlobalMemory.from_rom p.rom)
           |> Memory.add_local_frame
                (Loc.of_addr a, 0L)
-               (Frame.empty (fst f.sp_boundary) (snd f.sp_boundary));
+               (Frame.empty (fst f.attr.sp_boundary) (snd f.attr.sp_boundary));
       };
     cursor = { func = Loc.of_addr a; tick = 0L };
     cont = Cont.of_func_entry_loc p (Loc.of_addr a) |> Result.get_ok;

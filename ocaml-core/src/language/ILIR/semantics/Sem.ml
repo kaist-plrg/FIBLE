@@ -1,5 +1,6 @@
+open Syn
 module Value = Common.NumericValue
-module Store = Common.LowStore.Make (Inst.VarNode) (Inst.Assignable)
+module Store = Common.LowStore.Make (VarNode) (Inst.Assignable)
 module StoreAction = Common.StoreActionF.Make (Value)
 module Action = Common.LowActionF.Make (Value) (StoreAction)
 

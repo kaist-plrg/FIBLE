@@ -43,7 +43,7 @@ let main () =
     in
     let main =
       (List.find
-         (fun (x : FGIR.Func.t) ->
+         (fun (x : FGIR.Syn.Func.t) ->
            String.equal (Option.value x.nameo ~default:"") "main")
          l1.funcs)
         .entry |> Loc.get_addr
