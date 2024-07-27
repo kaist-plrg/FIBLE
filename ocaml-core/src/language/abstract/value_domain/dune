@@ -1,6 +1,8 @@
 (library
  (name value_domain)
  (flags -w -20-33-3 -open StdlibExt -open Notation)
+ (preprocess
+  (pps ppx_log))
  (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
  (libraries common)
  (modules LimSetD Mod8D IntervalD AbsNumeric))

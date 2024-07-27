@@ -395,17 +395,19 @@ let request_interval (a : t) (r : RegId.t) =
     Map.find_opt (KZero, KReg r) a
     |> Option.map (fun v ->
            match v with
-           | UpperD.Bounded i -> IntervalD.EInt (Int64.neg i)
-           | _ -> ETop)
-    |> Option.value ~default:IntervalD.ETop
+           | UpperD.Bounded i -> IntervalD.LE (Int64.neg i)
+           | _ -> MInf)
+    |> Option.value ~default:IntervalD.MInf
   in
   let maxv =
     Map.find_opt (KReg r, KZero) a
     |> Option.map (fun v ->
-           match v with UpperD.Bounded i -> IntervalD.EInt i | _ -> ETop)
-    |> Option.value ~default:IntervalD.ETop
+           match v with
+           | UpperD.Bounded i -> IntervalD.RE i
+           | _ -> IntervalD.Inf)
+    |> Option.value ~default:IntervalD.Inf
   in
-  (minv, maxv)
+  IntervalD.make minv maxv
 
 let process_load (_ : DMem.t) (a : t) (outv : RegId.t_full)
     (addrSet : AExprSet.t) =
