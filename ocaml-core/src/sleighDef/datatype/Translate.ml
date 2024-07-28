@@ -35,7 +35,11 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
         target =
           (match inputs 0 with
           | Ram { value = a; _ } -> Common.Loc.of_addr a
-          | _ -> [%log fatal "Jump target is not a constant"]);
+          | Const { value = offset; _ } ->
+              Common.Loc.of_addr_seq (addr, seqn + Int64.to_int offset)
+          | _ ->
+              [%log
+                fatal "%a: Jump target is not a constant or address" PCode.pp p]);
       }
   in
   let mkJIump _ = Common.RawInst.sixth { target = inputs 0 } in
@@ -61,7 +65,7 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
                    pointer = Const { value = a; width = 8l };
                    value = inputs 0;
                  })
-        | _ -> [%log fatal "Output is not a register or ram"])
+        | _ -> [%log fatal "%a: Output is not a register or ram" PCode.pp p])
     | 2l ->
         Common.RawInst.first
           (Load { space = inputs 0; pointer = inputs 1; output = output () })
@@ -76,7 +80,12 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
             target =
               (match inputs 0 with
               | Ram { value = a; _ } -> Common.Loc.of_addr a
-              | _ -> [%log fatal "Jump target is not a constant"]);
+              | Const { value = offset; _ } ->
+                  Common.Loc.of_addr_seq (addr, seqn + Int64.to_int offset)
+              | _ ->
+                  [%log
+                    fatal "%a: Jump target is not a constant or address"
+                      PCode.pp p]);
           }
     | 6l -> mkJIump ()
     | 7l -> mkJump ()
