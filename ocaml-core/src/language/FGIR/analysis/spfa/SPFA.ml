@@ -90,7 +90,12 @@ module Immutable = struct
     let bb =
       (Func.get_bb f l |> Option.map Fun.const
       |> Option.value ~default:(fun () ->
-             [%log raise (Invalid_argument "option is None")]))
+             [%log
+               raise
+                 (Invalid_argument
+                    (Format.asprintf "%s:%a option is None"
+                       (Option.value (Func.nameo f) ~default:"noname")
+                       Loc.pp l))]))
         ()
     in
     let na, propagated = post_single_block f bb c sp_num fp_num in

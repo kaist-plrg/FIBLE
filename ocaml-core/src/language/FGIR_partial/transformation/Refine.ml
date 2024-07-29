@@ -77,6 +77,9 @@ let do_analysis (rom : DMem.t) (f : Func.t) (b : Block.t) : Int64Set.t option =
 
 let apply (p0 : ILIR.Syn.Prog.t) (f : Func.t) : Func.t =
   let rec aux (f : Func.t) (known_addrs : LocSet.t LocMap.t) : Func.t =
+    (match f.nameo with
+    | None -> [%log info "Working on function %a" Loc.pp f.entry]
+    | Some name -> [%log info "Working on function %s" name]);
     let b = Func.find_switchstop_opt f in
     match b with
     | None -> f

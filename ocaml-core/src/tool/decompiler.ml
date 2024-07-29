@@ -113,6 +113,13 @@ let main () =
   Arg.parse speclist
     (fun x -> raise (Arg.Bad ("Bad argument : " ^ x)))
     usage_msg;
+  if
+    (!(dump_flag.cfa) || !(dump_flag.l1) || !(dump_flag.spfa) || !(dump_flag.l2))
+    && !dump_path = ""
+  then
+    [%log
+      fatal
+        "Dump path is not specified. Please specify dump path with -dump-path"];
   if !ifile = "" then raise (Arg.Bad "No input file")
   else
     let target_funcs =
@@ -121,22 +128,22 @@ let main () =
         let rec read_lines acc =
           try
             let line = input_line ic in
-            if line <> "" then read_lines (line :: acc) else read_lines acc
+            if line <> "" then
+              let addr, name = Scanf.sscanf line "%Lx %s" (fun x y -> (x, y)) in
+              read_lines ((name, addr) :: acc)
+            else read_lines acc
           with End_of_file -> acc
         in
         let lines = read_lines [] in
         close_in ic;
         lines)
-      else [ "main" ]
+      else raise (Arg.Bad "No target function file")
     in
     let tmp_path = Filename.concat cwd "tmp" in
     if not (Sys.file_exists tmp_path) then Unix.mkdir tmp_path 0o777;
     [%log debug "Input file is %s" !ifile];
     let server = Ghidra.make_server !ifile !ghidra_path tmp_path cwd in
-    List.iter (fun x -> [%log debug "func %s" x]) target_funcs;
-    let func_with_addrs =
-      List.map (fun x -> (x, Ghidra.get_func_addr server x)) target_funcs
-    in
+    let func_with_addrs = target_funcs in
     let ifile_base = Filename.basename !ifile |> Filename.remove_extension in
     let _ = server.dump_rom (!dump_path ^ "/" ^ ifile_base ^ ".dmem") in
 
@@ -160,6 +167,7 @@ let main () =
              (fname, e, ILIR.Shallow_CFA.follow_flow l0 e))
     in
     let c2 = Sys.time () in
+    if !(dump_flag.cfa) then dump_cfa cfa_res !dump_path else ();
     [%log info "CFA time: %f" (c2 -. c1)];
     let l1_init : FGIR_partial.Syn.Prog.t =
       FGIR_partial.L0toL1_shallow.translate_prog_from_cfa l0 cfa_res
@@ -174,6 +182,12 @@ let main () =
     let l1 : FGIR.Syn.Prog.t = l1_refine |> FGIR.Syn.Prog.from_partial in
     let c5 = Sys.time () in
     [%log info "L1 time: %f" (c5 -. c4)];
+    if !(dump_flag.l1) then (
+      let dl1 : Artifact.Data.t = L1 l1 in
+      Artifact.Dumper.write_pp dl1 (!dump_path ^ "/" ^ ifile_base ^ ".fgir");
+      Artifact.Dumper.dump dl1 (!dump_path ^ "/" ^ ifile_base ^ ".fgir_dump"))
+    else ();
+
     let cnt : int =
       l1.funcs
       |> List.fold_left
@@ -196,11 +210,19 @@ let main () =
     in
     let c6 = Sys.time () in
     [%log info "SPFA time: %f" (c6 -. c5)];
+    if !(dump_flag.spfa) then dump_spfa spfa_res !dump_path else ();
+
     let l2 : ASIR.Syn.Prog.t =
       ASIR.L1toL2.translate_prog_from_spfa l1 spfa_res 32l 40l
     in
     let c7 = Sys.time () in
     [%log info "L2 translation time: %f" (c7 -. c6)];
+    if !(dump_flag.l2) then (
+      let dl2 : Artifact.Data.t = L2 l2 in
+      Artifact.Dumper.write_pp dl2 (!dump_path ^ "/" ^ ifile_base ^ ".asir");
+      Artifact.Dumper.dump dl2 (!dump_path ^ "/" ^ ifile_base ^ ".asir_dump"))
+    else ();
+
     let lva_res : (ASIR.Syn.Func.t * ASIR.REA.astate) List.t =
       ASIR.REA.compute_all l2
     in
@@ -209,26 +231,6 @@ let main () =
     let l3 : IOIR.Syn.Prog.t = IOIR.L2toL3.translate_prog_from_rea l2 lva_res in
     let c9 = Sys.time () in
     [%log info "L3 translation time: %f" (c9 -. c8)];
-    if
-      (!(dump_flag.cfa) || !(dump_flag.l1) || !(dump_flag.spfa)
-     || !(dump_flag.l2))
-      && !dump_path = ""
-    then
-      [%log
-        fatal
-          "Dump path is not specified. Please specify dump path with -dump-path"];
-    if !(dump_flag.cfa) then dump_cfa cfa_res !dump_path else ();
-    if !(dump_flag.l1) then (
-      let dl1 : Artifact.Data.t = L1 l1 in
-      Artifact.Dumper.write_pp dl1 (!dump_path ^ "/" ^ ifile_base ^ ".fgir");
-      Artifact.Dumper.dump dl1 (!dump_path ^ "/" ^ ifile_base ^ ".fgir_dump"))
-    else ();
-    if !(dump_flag.spfa) then dump_spfa spfa_res !dump_path else ();
-    if !(dump_flag.l2) then (
-      let dl2 : Artifact.Data.t = L2 l2 in
-      Artifact.Dumper.write_pp dl2 (!dump_path ^ "/" ^ ifile_base ^ ".asir");
-      Artifact.Dumper.dump dl2 (!dump_path ^ "/" ^ ifile_base ^ ".asir_dump"))
-    else ();
     (* if !(dump_flag.csa) then
          dump_csa csa_res !dump_path
            (Filename.basename !ifile |> Filename.remove_extension)

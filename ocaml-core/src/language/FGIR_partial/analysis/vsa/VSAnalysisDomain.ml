@@ -186,6 +186,7 @@ let analyze_noBot (e : edge) (a : Lattice_noBot.t) (rom : DMem.t) :
     Lattice_noBot.t =
   match ICFG.G.E.label e with
   | Inner ->
+      [%log debug "Analyzing edge %a" Loc.pp (ICFG.G.E.src e).block.loc];
       List.fold_left
         (fun a (i : Inst.t_full) -> Lattice_noBot.post_single rom i.loc a i.ins)
         a (ICFG.G.E.src e).block.body
