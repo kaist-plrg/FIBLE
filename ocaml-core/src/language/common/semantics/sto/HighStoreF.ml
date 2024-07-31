@@ -170,6 +170,9 @@ struct
   let step_IN (s : t) (_ : INop.t) : (Action.t, String.t) Result.t =
     Ok Action.nop
 
+  let step_SP (s : t) (_ : ISpecial.t) : (Action.t, String.t) Result.t =
+    Ok Action.nop
+
   let action_assign (s : t) (r : RegId.t_full) (v : Value.t) :
       (t, String.t) Result.t =
     add_reg s r v |> Result.ok

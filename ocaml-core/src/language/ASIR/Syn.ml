@@ -5,7 +5,10 @@ module ISLoadStore = ISLoadStore.Make (VarNode)
 module ILoadStore = ILoadStore.Make (VarNode)
 module IAssignment = IAssignment.Make (VarNode) (Assignable)
 module INop = INop
-module Inst_ = InstF.Make4 (ILoadStore) (ISLoadStore) (IAssignment) (INop)
+module ISpecial = ISpecial
+
+module Inst_ =
+  InstF.Make5 (ILoadStore) (ISLoadStore) (IAssignment) (INop) (ISpecial)
 
 module Inst = struct
   include Inst_

@@ -71,7 +71,7 @@ let translate_jmp (j : FGIR.Syn.Jmp.t_full)
 let translate_inst (i : FGIR.Syn.Inst.t_full) (ga : FGIR.SPFA.Immutable.t)
     (la : FGIR.AbsState.t) : Inst.t_full =
   let nins : Inst.t =
-    (FGIR.Syn.Inst.fold : _ -> _ -> _ -> _ -> Inst.t)
+    (FGIR.Syn.Inst.fold : _ -> _ -> _ -> _ -> _ -> Inst.t)
       (function
         | Load { space; pointer; output } -> (
             match pointer with
@@ -89,6 +89,7 @@ let translate_inst (i : FGIR.Syn.Inst.t_full) (ga : FGIR.SPFA.Immutable.t)
             | _ -> First (Store { space; pointer; value })))
       (fun v -> Third v)
       (fun v -> Fourth v)
+      (fun v -> Fifth v)
       i.ins
   in
   { ins = nins; loc = i.loc; mnem = i.mnem }

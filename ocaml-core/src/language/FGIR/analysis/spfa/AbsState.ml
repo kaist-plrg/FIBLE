@@ -56,6 +56,7 @@ let post_single_instr (i : Inst.t) (c : t) : AccessD.t * t =
             process_store c pointer value' ))
     (fun { expr; output } -> (AccessD.bottom, process_assignment c expr output))
     (fun _ -> (AccessD.bottom, c))
+    (fun _ -> (AccessD.bottom, c)) (*TODO: handle ISpecial *)
     i
 
 let post_single_jmp (i : Jmp.t) (c : t) (sp_num : Int32.t) (fp_num : Int32.t) :

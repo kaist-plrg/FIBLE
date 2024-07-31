@@ -109,6 +109,7 @@ module Lattice_noBot = struct
               addrSet;
         }
     | Third _ -> a
+    | Fourth _ -> a (* TODO: handle special instruction *)
 
   let filter_branch (a : t) (condv : VarNode.t) (trueloc : Loc.t)
       (targetloc : Loc.t) : t =

@@ -145,7 +145,7 @@ let action_JR = State.mk_action_JR step_ret
 let step_ins (p : Prog.t) (s : Store.t) (curr : Cursor.t) (ins : Inst.t) :
     (StoreAction.t, String.t) Result.t =
   Inst.fold (Store.step_ILS s) (Store.step_ISLS s curr) (Store.step_IA s)
-    (Store.step_IN s) ins
+    (Store.step_IN s) (Store.step_SP s) ins
 
 let step_jmp (p : Prog.t) (jmp : Jmp.t) (s : State.t) :
     (Action.t, String.t) Result.t =

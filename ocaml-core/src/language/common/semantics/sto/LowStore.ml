@@ -112,6 +112,9 @@ struct
   let step_IN (s : t) (_ : INop.t) : (Action.t, String.t) Result.t =
     Ok Action.Nop
 
+  let step_SP (s : t) (_ : ISpecial.t) : (Action.t, String.t) Result.t =
+    Ok Action.Nop
+
   let action_assign (s : t) (r : RegId.t_full) (v : Value.t) :
       (t, String.t) Result.t =
     Ok { s with regs = RegFile.add_reg s.regs r v }

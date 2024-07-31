@@ -6,13 +6,15 @@ let translate_stmt (loc : Loc.t) (i : ILIR.Syn.Inst.t_full) : Inst.t_full =
   match i.ins with
   | First x -> { loc; ins = First x; mnem = i.mnem }
   | Second x -> { loc; ins = Second x; mnem = i.mnem }
+  | Third x -> { loc; ins = Third x; mnem = i.mnem }
+  | Fourth x -> { loc; ins = Fourth x; mnem = i.mnem }
   | _ -> { loc; ins = Third INop; mnem = i.mnem }
 
 let translate_jmp (p : ILIR.Syn.Prog.t) (loc : Loc.t) (i : ILIR.Syn.Inst.t_full)
     (next : Loc.t) (jmps : Loc.t List.t) (known_addrs : LocSet.t LocMap.t) :
     Jmp.t_full =
   match i.ins with
-  | Fifth { target } ->
+  | Sixth { target } ->
       {
         loc;
         jmp =
@@ -32,7 +34,7 @@ let translate_jmp (p : ILIR.Syn.Prog.t) (loc : Loc.t) (i : ILIR.Syn.Inst.t_full)
            else JT { target = Cdirect { target; attr = () }; attr = () });
         mnem = i.mnem;
       }
-  | Sixth { target } ->
+  | Seventh { target } ->
       {
         loc;
         jmp =
@@ -50,14 +52,14 @@ let translate_jmp (p : ILIR.Syn.Prog.t) (loc : Loc.t) (i : ILIR.Syn.Inst.t_full)
            else JswitchStop target);
         mnem = i.mnem;
       }
-  | Fourth { condition; target } ->
+  | Fifth { condition; target } ->
       {
         loc;
         jmp =
           JI (Jcbranch { condition; target_true = target; target_false = next });
         mnem = i.mnem;
       }
-  | Seventh _ -> { loc; jmp = JI Junimplemented; mnem = i.mnem }
+  | Eighth _ -> { loc; jmp = JI Junimplemented; mnem = i.mnem }
   | _ -> { loc; jmp = JI (Jfallthrough next); mnem = i.mnem }
 
 let translate_block (p0 : ILIR.Syn.Prog.t) (fentry : Loc.t) (entry : Loc.t)

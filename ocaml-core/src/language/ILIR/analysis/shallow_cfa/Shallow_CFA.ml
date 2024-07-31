@@ -36,7 +36,7 @@ let nonjumpv (fallthru : Loc.t) (_ : 'a) = HrSound (LocSetD.singleton fallthru)
 let flow_heuristic_simple (p : Prog.t) (l : Loc.t) (i : Inst.t) (m : Mnemonic.t)
     (known_addrs : LocSet.t LocMap.t) : heuristic_result =
   let ft = Prog.fallthru p l in
-  Inst.fold (nonjumpv ft) (nonjumpv ft) (nonjumpv ft)
+  Inst.fold (nonjumpv ft) (nonjumpv ft) (nonjumpv ft) (nonjumpv ft)
     (fun { target; _ } -> HrSound (LocSetD.of_list [ target; ft ]))
     (fun { target } ->
       match m with

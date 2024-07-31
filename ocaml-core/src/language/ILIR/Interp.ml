@@ -28,6 +28,10 @@ let step_jump_ind (p : Prog.t) (s : State.t) ({ target } : Inst.IJumpInd.t) :
   | None -> Ok (Action.jmp (Loc.of_addr l))
   | Some name -> Ok (Action.externcall (Loc.of_addr l))
 
+let step_special (p : Prog.t) (s : State.t) (ins : Inst.ISpecial.t) :
+    (Action.t, String.t) Result.t =
+  Error "Unimplemented instruction"
+
 let step_unimplemented (p : Prog.t) (s : State.t) (ins : Inst.IUnimplemented.t)
     : (Action.t, String.t) Result.t =
   Error "Unimplemented instruction"
@@ -42,7 +46,7 @@ let step_ins (p : Prog.t) (s : State.t) (ins : Inst.t) :
     (fun i -> Store.step_ILS s.sto i |> Result.map (storeaction_to_action p s))
     (fun i -> Store.step_IA s.sto i |> Result.map (storeaction_to_action p s))
     (fun i -> Store.step_IN s.sto i |> Result.map (storeaction_to_action p s))
-    (step_cbranch p s) (step_jump p s) (step_jump_ind p s)
+    (step_special p s) (step_cbranch p s) (step_jump p s) (step_jump_ind p s)
     (step_unimplemented p s) ins
 
 let handle_extern (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
