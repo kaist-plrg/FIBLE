@@ -28,10 +28,6 @@ let step_jump_ind (p : Prog.t) (s : State.t) ({ target } : Inst.IJumpInd.t) :
   | None -> Ok (Action.jmp (Loc.of_addr l))
   | Some name -> Ok (Action.externcall (Loc.of_addr l))
 
-let step_special (p : Prog.t) (s : State.t) (ins : Inst.ISpecial.t) :
-    (Action.t, String.t) Result.t =
-  Error "Unimplemented instruction"
-
 let step_unimplemented (p : Prog.t) (s : State.t) (ins : Inst.IUnimplemented.t)
     : (Action.t, String.t) Result.t =
   Error "Unimplemented instruction"
@@ -46,7 +42,8 @@ let step_ins (p : Prog.t) (s : State.t) (ins : Inst.t) :
     (fun i -> Store.step_ILS s.sto i |> Result.map (storeaction_to_action p s))
     (fun i -> Store.step_IA s.sto i |> Result.map (storeaction_to_action p s))
     (fun i -> Store.step_IN s.sto i |> Result.map (storeaction_to_action p s))
-    (step_special p s) (step_cbranch p s) (step_jump p s) (step_jump_ind p s)
+    (fun i -> Store.step_SP s.sto i |> Result.map (storeaction_to_action p s))
+    (step_cbranch p s) (step_jump p s) (step_jump_ind p s)
     (step_unimplemented p s) ins
 
 let handle_extern (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
@@ -79,11 +76,20 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
           in
           { State.pc = retaddr; sto = sto' } |> Result.ok)
 
+let action_store (p : Prog.t) (sto : Store.t) (a : StoreAction.t) :
+    (Store.t, StopEvent.t) Result.t =
+  match a with
+  | Special v -> Store.action_nop sto |> StopEvent.of_str_res
+  | Assign (p, v) -> Store.action_assign sto p v |> StopEvent.of_str_res
+  | Load (r, p, v) -> Store.action_load sto r p v |> StopEvent.of_str_res
+  | Store (p, v) -> Store.action_store sto p v |> StopEvent.of_str_res
+  | Nop -> Store.action_nop sto |> StopEvent.of_str_res
+
 let action (p : Prog.t) (s : State.t) (a : Action.t) :
     (State.t, StopEvent.t) Result.t =
   match a with
   | StoreAction (a, l) ->
-      let* sto = Store.action s.sto a |> StopEvent.of_str_res in
+      let* sto = action_store p s.sto a in
       { State.sto; pc = l } |> Result.ok
   | Jmp l -> { s with pc = l } |> Result.ok
   | ExternCall l -> handle_extern p s

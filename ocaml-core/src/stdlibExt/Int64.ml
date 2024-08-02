@@ -2,6 +2,15 @@ include Stdlib.Int64
 
 let ( let* ) = Result.bind
 
+let to_string_le (x : t) : String.t =
+  let rec loop acc i v =
+    if i < 0 then acc
+    else
+      let c = Char.chr (to_int (logand v 0xffL)) in
+      loop (c :: acc) (i - 1) (shift_right_logical v 8)
+  in
+  List.rev (loop [] 7 x) |> List.to_seq |> String.of_seq
+
 let rev_bytes (v : t) (width : int32) : t =
   let rec aux acc v i =
     if i = width then acc

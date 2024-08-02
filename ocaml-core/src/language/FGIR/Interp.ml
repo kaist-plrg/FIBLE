@@ -60,11 +60,76 @@ let step (p : Prog.t) (s : State.t) : (Action.t, StopEvent.t) Result.t =
         let* a = step_ins p i.ins s.sto s.cursor |> StopEvent.of_str_res in
         Action.of_store a None |> Result.ok
 
+let action_store (p : Prog.t) (sto : Store.t) (a : StoreAction.t) (s : State.t)
+    : (Store.t, StopEvent.t) Result.t =
+  match a with
+  | Special "SYSCALL" -> (
+      let* rax =
+        Store.get_reg sto { id = RegId.Register 0l; offset = 0l; width = 8l }
+        |> Value.value_64 |> StopEvent.of_str_res
+      in
+      [%log info "SYSCALL NUM: %Ld" rax];
+      match rax with
+      | 20L ->
+          let* rdi =
+            Store.get_reg sto
+              { id = RegId.Register 56l; offset = 0l; width = 8l }
+            |> Value.value_64 |> StopEvent.of_str_res
+          in
+          let rsi =
+            Store.get_reg sto
+              { id = RegId.Register 48l; offset = 0l; width = 8l }
+          in
+          let* rdx =
+            Store.get_reg sto
+              { id = RegId.Register 16l; offset = 0l; width = 8l }
+            |> Value.value_64 |> StopEvent.of_str_res
+          in
+          [%log
+            info "%a: SYSCALL ARG: %Ld %a %Ld" Loc.pp
+              (Cont.get_loc (State.get_cont s))
+              rdi Value.pp rsi rdx];
+          let* writestr =
+            Result.fold_left_M
+              (fun strr n ->
+                let* ptr_1 =
+                  NumericBop.eval Bint_add rsi
+                    (Value.of_int64 (n * 16 |> Int64.of_int) 8l)
+                    8l
+                in
+                let* ptr_2 =
+                  NumericBop.eval Bint_add rsi
+                    (Value.of_int64 ((n * 16) + 8 |> Int64.of_int) 8l)
+                    8l
+                in
+                let* v1 = Store.load_mem sto ptr_1 8l in
+                let* v2 = Store.load_mem sto ptr_2 8l in
+                let* len = Value.value_32 v2 in
+                let* strra = Store.load_bytes sto v1 len in
+                Ok (strr ^ strra))
+              ""
+              (List.init (Int64.to_int rdx) Fun.id)
+            |> StopEvent.of_str_res
+          in
+          [%log info "%s" writestr];
+          Store.add_reg sto
+            { id = RegId.Register 0l; offset = 0l; width = 8l }
+            (Value.of_int64 (String.length writestr |> Int64.of_int) 8l)
+          |> Result.ok
+      | _ ->
+          [%log info "%a" Stack.pp s.stack];
+          Error "unimplemented syscall" |> StopEvent.of_str_res)
+  | Special _ -> Error "unimplemented special" |> StopEvent.of_str_res
+  | Assign (p, v) -> Store.action_assign sto p v |> StopEvent.of_str_res
+  | Load (r, p, v) -> Store.action_load sto r p v |> StopEvent.of_str_res
+  | Store (p, v) -> Store.action_store sto p v |> StopEvent.of_str_res
+  | Nop -> Store.action_nop sto |> StopEvent.of_str_res
+
 let action (p : Prog.t) (s : State.t) (a : Action.t) :
     (State.t, StopEvent.t) Result.t =
   match a with
   | StoreAction (a, lo) -> (
-      let* sto = Store.action s.sto a |> StopEvent.of_str_res in
+      let* sto = action_store p s.sto a s in
       match (lo, s.cont) with
       | None, { remaining = _ :: res; jmp } ->
           Ok { s with sto; cont = { remaining = res; jmp } }
@@ -88,7 +153,7 @@ let action_with_computed_extern (p : Prog.t) (s : State.t) (a : Action.t)
     (State.t, StopEvent.t) Result.t =
   match a with
   | StoreAction (a, lo) -> (
-      let* sto = Store.action s.sto a |> StopEvent.of_str_res in
+      let* sto = action_store p s.sto a s in
       match (lo, s.cont) with
       | None, { remaining = _ :: res; jmp } ->
           Ok { s with sto; cont = { remaining = res; jmp } }

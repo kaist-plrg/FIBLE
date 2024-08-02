@@ -19,15 +19,17 @@ module Make
       val of_assign : RegId.t_full -> Value.t -> t
       val of_load : RegId.t_full -> Value.t -> Value.t -> t
       val of_store : Value.t -> Value.t -> t
+      val of_special : String.t -> t
       val nop : t
 
-      val to_either4 :
+      val to_either5 :
         t ->
         ( RegId.t_full * Value.t,
           RegId.t_full * Value.t * Value.t,
           Value.t * Value.t,
+          String.t,
           Unit.t )
-        Either4.t
+        Either5.t
     end)
     (HighCursor : sig
       type t
@@ -170,8 +172,8 @@ struct
   let step_IN (s : t) (_ : INop.t) : (Action.t, String.t) Result.t =
     Ok Action.nop
 
-  let step_SP (s : t) (_ : ISpecial.t) : (Action.t, String.t) Result.t =
-    Ok Action.nop
+  let step_SP (s : t) (name : ISpecial.t) : (Action.t, String.t) Result.t =
+    Ok (Action.of_special name)
 
   let action_assign (s : t) (r : RegId.t_full) (v : Value.t) :
       (t, String.t) Result.t =
@@ -186,13 +188,6 @@ struct
     store_mem s p v
 
   let action_nop (s : t) : (t, String.t) Result.t = Ok s
-
-  let action (s : t) (a : Action.t) =
-    match Action.to_either4 a with
-    | First (r, v) -> action_assign s r v
-    | Second (r, p, v) -> action_load s r p v
-    | Third (p, v) -> action_store s p v
-    | Fourth () -> action_nop s
 
   let build_arg (s : t) (tagv : Interop.tag) (v : Value.t) :
       (Interop.t, String.t) Result.t =

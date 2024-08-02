@@ -176,11 +176,20 @@ let step (p : Prog.t) (s : State.t) : (Action.t, StopEvent.t) Result.t =
         let* a = step_ins p s.sto s.cursor i.ins |> StopEvent.of_str_res in
         Action.of_store a None |> Result.ok
 
+let action_store (p : Prog.t) (sto : Store.t) (a : StoreAction.t) :
+    (Store.t, StopEvent.t) Result.t =
+  match a with
+  | Special v -> Store.action_nop sto |> StopEvent.of_str_res
+  | Assign (p, v) -> Store.action_assign sto p v |> StopEvent.of_str_res
+  | Load (r, p, v) -> Store.action_load sto r p v |> StopEvent.of_str_res
+  | Store (p, v) -> Store.action_store sto p v |> StopEvent.of_str_res
+  | Nop -> Store.action_nop sto |> StopEvent.of_str_res
+
 let action (p : Prog.t) (s : State.t) (a : Action.t) :
     (State.t, StopEvent.t) Result.t =
   match a with
   | StoreAction (a, lo) -> (
-      let* sto = Store.action s.sto a |> StopEvent.of_str_res in
+      let* sto = action_store p s.sto a in
       match (lo, s.cont) with
       | None, { remaining = _ :: res; jmp } ->
           Ok { s with sto; cont = { remaining = res; jmp } }
@@ -204,7 +213,7 @@ let action_with_computed_extern (p : Prog.t) (s : State.t) (a : Action.t)
     (State.t, StopEvent.t) Result.t =
   match a with
   | StoreAction (a, lo) -> (
-      let* sto = Store.action s.sto a |> StopEvent.of_str_res in
+      let* sto = action_store p s.sto a in
       match (lo, s.cont) with
       | None, { remaining = _ :: res; jmp } ->
           Ok { s with sto; cont = { remaining = res; jmp } }

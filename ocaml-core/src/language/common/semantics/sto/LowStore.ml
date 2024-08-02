@@ -112,8 +112,8 @@ struct
   let step_IN (s : t) (_ : INop.t) : (Action.t, String.t) Result.t =
     Ok Action.Nop
 
-  let step_SP (s : t) (_ : ISpecial.t) : (Action.t, String.t) Result.t =
-    Ok Action.Nop
+  let step_SP (s : t) (name : ISpecial.t) : (Action.t, String.t) Result.t =
+    Ok (Action.Special name)
 
   let action_assign (s : t) (r : RegId.t_full) (v : Value.t) :
       (t, String.t) Result.t =
@@ -129,13 +129,6 @@ struct
     Ok { s with mem = Memory.store_mem s.mem p v }
 
   let action_nop (s : t) : (t, String.t) Result.t = Ok s
-
-  let action (s : t) (a : Action.t) =
-    match a with
-    | Assign (r, v) -> action_assign s r v
-    | Load (r, p, v) -> action_load s r p v
-    | Store (p, v) -> action_store s p v
-    | Nop -> action_nop s
 
   let build_arg (s : t) (tagv : Interop.tag) (v : Value.t) :
       (Interop.t, String.t) Result.t =
