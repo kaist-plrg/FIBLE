@@ -6,7 +6,7 @@ open World
 let usage_msg = "pcert <ifile>"
 let ghidra_path = ref ""
 let ifile = ref ""
-let dump_path = ref "./"
+let dump_path = ref ""
 let func_path = ref ""
 
 type dump_flag_type = {
@@ -246,6 +246,7 @@ let main () =
   if !ifile = "" then raise (Arg.Bad "No input file")
   else
     let ifile_base = Filename.basename !ifile |> Filename.remove_extension in
+    if (!dump_path = "") then dump_path := Filename.dirname !ifile;
     let input_data = classify_input !ifile in
     let input_data =
       match input_data with
