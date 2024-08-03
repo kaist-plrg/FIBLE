@@ -8,6 +8,7 @@ module Prog = struct
     rom : DMem.t;
     rspec : Int32.t Int32Map.t;
     externs : String.t Byte8Map.t;
+    objects : (Int64.t * String.t) List.t;
   }
 
   let get_ins (p : t) (loc : Loc.t) : Inst.t option =

@@ -32,6 +32,7 @@ module Prog = struct
     rom : DMem.t; [@opaque]
     rspec : Int32.t Int32Map.t; [@opaque]
     externs : String.t Byte8Map.t; [@opaque]
+    objects : (Int64.t * String.t) List.t; [@opaque]
   }
   [@@deriving sexp, show, fields]
 

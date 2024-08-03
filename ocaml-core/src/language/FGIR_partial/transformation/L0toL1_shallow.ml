@@ -146,7 +146,13 @@ let translate_prog (p0 : ILIR.Syn.Prog.t) (entries : Byte8.t list) : Prog.t =
           LocMap.empty)
       entries
   in
-  { funcs; rom = p0.rom; rspec = p0.rspec; externs = p0.externs }
+  {
+    funcs;
+    rom = p0.rom;
+    rspec = p0.rspec;
+    externs = p0.externs;
+    objects = p0.objects;
+  }
 
 let translate_prog_from_cfa (p0 : ILIR.Syn.Prog.t)
     (cfa_res : (String.t * Byte8.t * ILIR.Shallow_CFA.t) list) : Prog.t =
@@ -155,4 +161,10 @@ let translate_prog_from_cfa (p0 : ILIR.Syn.Prog.t)
       (fun (fname, e, cf) -> translate_func p0 (Some fname) e cf LocMap.empty)
       cfa_res
   in
-  { funcs; rom = p0.rom; rspec = p0.rspec; externs = p0.externs }
+  {
+    funcs;
+    rom = p0.rom;
+    rspec = p0.rspec;
+    externs = p0.externs;
+    objects = p0.objects;
+  }

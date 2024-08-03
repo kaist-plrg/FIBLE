@@ -147,6 +147,7 @@ let make_l1 (ifile : String.t) (symtab : Artifact.Data.symbol_table)
       rom;
       rspec = server.regspec.base_size;
       externs = Util.ExternalFunction.to_addrMap server.external_function;
+      objects = symtab.objects;
     }
   in
   let c1 = Sys.time () in

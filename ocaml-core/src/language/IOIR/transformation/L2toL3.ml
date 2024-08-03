@@ -168,6 +168,7 @@ let translate_prog_from_rea (p1 : ASIR.Syn.Prog.t)
     rom = p1.rom;
     rspec = p1.rspec;
     externs = p1.externs;
+    objects = p1.objects;
   }
 
 let translate_prog (p1 : ASIR.Syn.Prog.t) : Prog.t =

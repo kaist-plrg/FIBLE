@@ -158,6 +158,7 @@ let translate_prog (p1 : FGIR.Syn.Prog.t) (sp_num : Int32.t) (fp_num : Int32.t)
     rom = p1.rom;
     rspec = p1.rspec;
     externs = p1.externs;
+    objects = p1.objects;
   }
 
 let translate_prog_from_spfa (p1 : FGIR.Syn.Prog.t)
@@ -171,4 +172,5 @@ let translate_prog_from_spfa (p1 : FGIR.Syn.Prog.t)
     rom = p1.rom;
     rspec = p1.rspec;
     externs = p1.externs;
+    objects = p1.objects;
   }
