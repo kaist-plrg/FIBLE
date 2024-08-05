@@ -246,7 +246,7 @@ let main () =
   if !ifile = "" then raise (Arg.Bad "No input file")
   else
     let ifile_base = Filename.basename !ifile |> Filename.remove_extension in
-    if (!dump_path = "") then dump_path := Filename.dirname !ifile;
+    if !dump_path = "" then dump_path := Filename.dirname !ifile;
     let input_data = classify_input !ifile in
     let input_data =
       match input_data with
