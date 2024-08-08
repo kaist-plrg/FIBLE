@@ -136,6 +136,8 @@ struct
 
   let get_store (s : t) : Store.t = s.sto
   let set_store (s : t) (sto : Store.t) : t = { s with sto }
+  let get_stack (s : t) : Stack.t = s.stack
+  let set_stack (s : t) (stack : Stack.t) : t = { s with stack }
   let get_cont (s : t) : Cont.t = s.cont
   let set_cont (s : t) (cont : Cont.t) : t = { s with cont }
   let get_timestamp (s : t) : TimeStamp.t = s.timestamp

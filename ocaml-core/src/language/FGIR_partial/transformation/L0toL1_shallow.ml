@@ -20,9 +20,7 @@ let translate_jmp (p : ILIR.Syn.Prog.t) (loc : Loc.t) (i : ILIR.Syn.Inst.t_full)
         jmp =
           (if
              (not (Byte8Map.mem (Loc.get_addr target) p.externs))
-             && (String.starts_with ~prefix:"J" i.mnem
-                || String.starts_with ~prefix:"M" i.mnem
-                || String.starts_with ~prefix:"HLT" i.mnem)
+             && ILIR.Shallow_CFA.determine_jump_by_mnemonic i.mnem
            then JI (Jjump target)
            else if ILIR.Syn.Prog.get_ins p target |> Option.is_some then
              JC

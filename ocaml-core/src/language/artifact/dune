@@ -17,4 +17,4 @@
   FGIR
   ASIR
   IOIR)
- (modules Data Dumper Loader IOIR_repl))
+ (modules Data Dumper Loader Repl))

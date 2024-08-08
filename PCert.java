@@ -18,6 +18,8 @@ import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.pcode.PcodeOp;
 import ghidra.program.model.pcode.Varnode;
 import ghidra.program.model.symbol.Symbol;
+import ghidra.app.plugin.processors.sleigh.SleighLanguage;
+import ghidra.app.plugin.processors.sleigh.symbol.SymbolTable;
 import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.script.GhidraScript;
 import ghidra.framework.options.OptionType;
@@ -83,12 +85,18 @@ public class PCert extends GhidraScript {
         if (instruction == null) {
             out.writeInt(0);
         } else {
+            SymbolTable symbolTable = ((SleighLanguage) currentProgram.getLanguage()).getSymbolTable();
             PcodeOp[] pcode = instruction.getPcode();
             int instruction_length = instruction.getLength();
             out.writeInt(instruction_length);
             out.writeInt(pcode.length);
             for (int i = 0; i < pcode.length; i++) {
-                putPcode(out, instruction.getMnemonicString(), pcode[i]);
+                String mnemonic = instruction.getMnemonicString();
+                String extra = "0";
+                if (pcode[i].getOpcode() == PcodeOp.CALLOTHER) {
+                    extra = symbolTable.getUserDefinedOpName((int) pcode[i].getInput(0).getOffset());
+                }
+                putPcode(out, mnemonic + ":" + extra, pcode[i]);
                 println(pcode[i].toString());
             }
         }
@@ -243,7 +251,7 @@ public class PCert extends GhidraScript {
 
     void initializeRef() {
         Options o = currentProgram.getOptions("Analyzers");
-        for (Options sub: o.getChildOptions()) {
+        for (Options sub : o.getChildOptions()) {
             if (o.getType(sub.getName()) == OptionType.BOOLEAN_TYPE) {
                 o.setBoolean(sub.getName(), false);
             }
@@ -256,7 +264,6 @@ public class PCert extends GhidraScript {
         mgr.reAnalyzeAll(null);
         mgr.startAnalysis(monitor);
     }
-
 
     @Override
     protected void run() throws Exception {

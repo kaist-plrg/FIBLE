@@ -12,10 +12,17 @@ let varnode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t) (v : VarNode.t) :
   else if v.space = si.ram then Ram { value = v.offset; width = v.size }
   else [%log fatal "Unknown space %ld" v.space]
 
+let parse_mnemonic (s : String.t) : String.t * String.t =
+  let parts = String.rindex s ':' in
+  let mnem = String.sub s 0 parts in
+  let rest = String.sub s (parts + 1) (String.length s - parts - 1) in
+  (mnem, rest)
+
 let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
     (addr : Common.Byte8.t) (seqn : Int.t) (p : PCode.t) : Common.RawInst.t_full
     =
   [%log debug "Converting %a" PCode.pp p];
+  let mnem, rest = parse_mnemonic p.mnemonic in
   let inputs i = varnode_to_common si rspec p.inputs.(i) in
   let output_raw () =
     varnode_to_common si rspec
@@ -90,7 +97,7 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
     | 6l -> mkJIump ()
     | 7l -> mkJump ()
     | 8l -> mkJIump ()
-    | 9l -> Common.RawInst.fourth p.mnemonic
+    | 9l -> Common.RawInst.fourth rest
     | 10l -> mkJIump ()
     | 11l -> mkBop Bint_equal
     | 12l -> mkBop Bint_notequal
@@ -149,4 +156,4 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
         [%log debug "unimpl %ld" p.opcode];
         Common.RawInst.eighth IUnimplemented
   in
-  { ins = inst; mnem = p.mnemonic; loc = Common.Loc.of_addr_seq (addr, seqn) }
+  { ins = inst; mnem; loc = Common.Loc.of_addr_seq (addr, seqn) }

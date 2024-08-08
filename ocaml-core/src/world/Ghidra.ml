@@ -56,7 +56,7 @@ let get_pcode_list (fd : Unix.file_descr) : PCode_Raw.t list =
   let num_pcodes = Interaction.get_int fd in
   [%log debug "Number of pcodes: %ld" num_pcodes];
   if num_pcodes = 0l then
-    [ { mnemonic = "NOP"; opcode = 999l; inputs = [||]; output = None } ]
+    [ { mnemonic = "NOP:0"; opcode = 999l; inputs = [||]; output = None } ]
   else
     let rec loop acc = function
       | 0 -> acc

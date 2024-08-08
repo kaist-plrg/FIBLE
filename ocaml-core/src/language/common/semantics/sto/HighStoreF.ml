@@ -360,4 +360,6 @@ struct
       (get_reg s (sp_extern p))
       (Value.of_num (NumericValue.of_int64 8L 8l))
       8l
+
+  let get_regfile (s : t) : RegFile.t = s.regs
 end

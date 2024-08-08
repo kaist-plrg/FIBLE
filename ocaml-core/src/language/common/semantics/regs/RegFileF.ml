@@ -1,3 +1,24 @@
+module type S = sig
+  module Value : sig
+    type t
+
+    val zero : Int32.t -> t
+    val undefined : Int32.t -> t
+    val get : t -> Int32.t -> Int32.t -> t
+    val extend : t -> Int32.t -> t
+    val extend_undef : t -> Int32.t -> t
+    val set : t -> t -> Int32.t -> t
+    val pp : Format.formatter -> t -> unit
+  end
+
+  type t
+
+  val empty : Int32.t Int32Map.t -> t
+  val get_reg : t -> RegId.t_full -> Value.t
+  val add_reg : t -> RegId.t_full -> Value.t -> t
+  val pp : Format.formatter -> t -> unit
+end
+
 module Make (Value : sig
   type t
 
@@ -11,6 +32,7 @@ module Make (Value : sig
 end) =
 struct
   include RegIdMap
+  module Value = Value
 
   type t = Value.t RegIdMap.t
 

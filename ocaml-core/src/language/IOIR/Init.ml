@@ -26,9 +26,8 @@ let from_signature (p : Prog.t) (a : Byte8.t) : State.t =
     stack = [];
   }
 
-let default (p : Prog.t) : State.t =
+let default (p : Prog.t) (args : String.t List.t) : State.t =
   (List.find
-     (fun (x : Func.t) ->
-       String.equal (Option.value x.nameo ~default:"") "main")
+     (fun (x : Func.t) -> Option.equal String.equal x.nameo (Some "main"))
      p.funcs)
     .entry |> Loc.get_addr |> from_signature p

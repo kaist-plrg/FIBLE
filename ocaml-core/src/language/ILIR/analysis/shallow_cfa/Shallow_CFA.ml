@@ -33,6 +33,12 @@ let gen_jump_single (h : flow_heurstic_type) (p : Prog.t) (l : Loc.t)
 
 let nonjumpv (fallthru : Loc.t) (_ : 'a) = HrSound (LocSetD.singleton fallthru)
 
+let determine_jump_by_mnemonic (m : Mnemonic.t) : bool =
+  (not (String.starts_with ~prefix:"CALL" m))
+  && not (String.starts_with ~prefix:"RET" m)
+(* String.starts_with ~prefix:"J" m || String.starts_with ~prefix:"M" m ||
+   String.starts_with ~prefix:"HLT" m || String.ends_with ~suffix:".REP") *)
+
 let flow_heuristic_simple (p : Prog.t) (l : Loc.t) (i : Inst.t) (m : Mnemonic.t)
     (known_addrs : LocSet.t LocMap.t) : heuristic_result =
   let ft = Prog.fallthru p l in
@@ -40,12 +46,12 @@ let flow_heuristic_simple (p : Prog.t) (l : Loc.t) (i : Inst.t) (m : Mnemonic.t)
     (fun { target; _ } -> HrSound (LocSetD.of_list [ target; ft ]))
     (fun { target } ->
       match m with
+      | "RET" -> HrExit
       | "CALL" -> HrFallthrough
       | m ->
           if Byte8Map.mem (Loc.get_addr target) p.externs then HrFallthrough
-          else if
-            String.starts_with ~prefix:"J" m || String.starts_with ~prefix:"M" m
-          then HrSound (LocSetD.singleton target)
+          else if determine_jump_by_mnemonic m then
+            HrSound (LocSetD.singleton target)
           else HrExit)
     (fun { target } ->
       match m with

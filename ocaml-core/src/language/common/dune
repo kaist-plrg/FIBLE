@@ -9,6 +9,7 @@
  (libraries
   sexplib
   ppx_sexp_conv
+  zarith
   ocamlgraph
   ctypes
   ctypes-foreign
@@ -83,6 +84,7 @@
   NonNumericValueF
   Storable
   NumericValue
+  UndefableValue
   NumericBop
   NumericUop
   SPVal

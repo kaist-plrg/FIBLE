@@ -1,3 +1,31 @@
+module type S = sig
+  module Jmp : JmpFullF.S
+  module Block : BlockF.S
+
+  module Attr : sig
+    type t
+
+    val pp : Format.formatter -> t -> unit
+    val t_of_sexp : Sexplib.Sexp.t -> t
+    val sexp_of_t : t -> Sexplib.Sexp.t
+  end
+
+  type t
+
+  val pp : Format.formatter -> t -> unit
+  val t_of_sexp : Sexplib.Sexp.t -> t
+  val sexp_of_t : t -> Sexplib.Sexp.t
+  val get_bb : t -> Loc.t -> Block.t option
+  val get_preds : t -> Block.t -> Block.t list
+  val get_ret_blocks : t -> Block.t list
+  val get_call_targets : t -> Loc.t list
+  val nameo : t -> String.t Option.t
+  val entry : t -> Loc.t
+  val boundaries : t -> LocSet.t
+  val blocks : t -> Block.t List.t
+  val attr : t -> Attr.t
+end
+
 module Make
     (Jmp : JmpFullF.S)
     (Block : BlockF.S with module Jmp = Jmp)
@@ -9,6 +37,10 @@ module Make
       val sexp_of_t : t -> Sexplib.Sexp.t
     end) =
 struct
+  module Jmp = Jmp
+  module Block = Block
+  module Attr = Attr
+
   type t = {
     nameo : String.t Option.t;
     entry : Loc.t;

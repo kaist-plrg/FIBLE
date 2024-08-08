@@ -8,6 +8,7 @@ module Prog = struct
     rom : DMem.t;
     rspec : Int32.t Int32Map.t;
     externs : String.t Byte8Map.t;
+    entries : (Int64.t * String.t) List.t;
     objects : (Int64.t * String.t) List.t;
   }
 

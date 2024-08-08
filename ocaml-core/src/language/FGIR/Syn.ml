@@ -48,7 +48,7 @@ module Func = struct
   let from_partial (p : FGIR_partial.Syn.Func.t) : t =
     let entry = p.entry in
     let boundaries = p.boundaries in
-    let blocks = List.map Block.from_partial p.blocks in
+    let blocks = List.map Block_.from_partial p.blocks in
     let nameo = p.nameo in
     { nameo; entry; boundaries; blocks; attr = () }
 end

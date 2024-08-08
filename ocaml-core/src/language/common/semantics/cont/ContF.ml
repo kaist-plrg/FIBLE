@@ -1,31 +1,43 @@
-module Make (Inst : sig
-  type t_full
+module type S = sig
+  module Inst : InstFullF.S
+  module Jmp : JmpFullF.S
+  module Block : BlockF.S with module Inst = Inst and module Jmp = Jmp
+  module Func : FuncF.S with module Jmp = Jmp and module Block = Block
 
-  val pp_full : Format.formatter -> t_full -> unit
-  val get_loc : t_full -> Loc.t
-  val is_nop_full : t_full -> bool
-end) (Jmp : sig
-  type t_full
+  module Prog : sig
+    type t
+  end
 
-  val pp_full : Format.formatter -> t_full -> unit
-  val get_loc : t_full -> Loc.t
-end) (Block : sig
   type t
 
-  val get_body : t -> Inst.t_full list
-  val get_jmp : t -> Jmp.t_full
-end) (Func : sig
-  type t
+  val of_block : Block.t -> t
+  val of_loc : Prog.t -> Loc.t -> Loc.t -> (t, String.t) Result.t
+  val of_func_entry_loc : Prog.t -> Loc.t -> (t, String.t) Result.t
+  val pp : Format.formatter -> t -> unit
+  val get_loc : t -> Loc.t
+  val remaining : t -> Inst.t_full list
+  val jmp : t -> Jmp.t_full
+end
 
-  val entry : t -> Loc.t
-  val get_bb : t -> Loc.t -> Block.t option
-end) (Prog : sig
-  type t
+module Make
+    (Inst : InstFullF.S)
+    (Jmp : JmpFullF.S)
+    (Block : BlockF.S with module Inst = Inst and module Jmp = Jmp)
+    (Func : FuncF.S with module Jmp = Jmp and module Block = Block)
+    (Prog : sig
+      type t
 
-  val get_func_opt : t -> Loc.t -> Func.t option
-end) =
+      val get_func_opt : t -> Loc.t -> Func.t option
+    end) =
 struct
+  module Inst = Inst
+  module Jmp = Jmp
+  module Block = Block
+  module Func = Func
+  module Prog = Prog
+
   type t = { remaining : Inst.t_full list; jmp : Jmp.t_full }
+  [@@deriving fields]
 
   let of_block (b : Block.t) : t =
     { remaining = Block.get_body b; jmp = Block.get_jmp b }

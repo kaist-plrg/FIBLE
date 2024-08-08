@@ -46,19 +46,68 @@ struct
     let mem = Memory.store_bytes s.mem addr e in
     { s with mem } |> Result.ok
 
+  let alloc_string (mem : Memory.t) (arg : String.t) (sp : Int64.t) :
+      Memory.t * Int64.t * Int64.t =
+    let len = Int64.of_int ((String.length arg + 1 + 7) / 8 * 8) in
+    let padlen = Int64.sub len (Int64.of_int (String.length arg)) in
+    let arg = arg ^ String.make (Int64.to_int padlen) '\x00' in
+    let nsp = Int64.sub sp len in
+    let nmem = Memory.store_bytes mem nsp arg in
+    (nmem, nsp, nsp)
+
+  let alloc_strings (mem : Memory.t) (args : String.t List.t) (sp : Int64.t) :
+      Memory.t * Int64.t * Int64.t List.t =
+    let arg_rev = List.rev args in
+    List.fold_left
+      (fun (mem, sp, ptrs) arg ->
+        let nmem, nsp, ptr = alloc_string mem arg sp in
+        (nmem, nsp, ptr :: ptrs))
+      (mem, sp, []) arg_rev
+
+  let alloc_pointer (mem : Memory.t) (sp : Int64.t) (ptr : Int64.t) :
+      Memory.t * Int64.t * Int64.t =
+    let nsp = Int64.sub sp 8L in
+    let nmem = Memory.store_mem mem nsp (Value.of_int64 ptr 8l) in
+    (nmem, nsp, nsp)
+
+  let alloc_array (mem : Memory.t) (sp : Int64.t) (ptrs : Int64.t List.t) :
+      Memory.t * Int64.t * Int64.t =
+    let ptrs = 0L :: List.rev ptrs in
+    List.fold_left
+      (fun (mem, sp, _) ptr ->
+        let nmem, nsp, _ = alloc_pointer mem sp ptr in
+        (nmem, nsp, nsp))
+      (mem, sp, 0L) ptrs
+
   let init_from_sig (dmem : DMem.t) (rspec : int32 Int32Map.t)
-      (init_sp : Int64.t) : t =
+      (init_sp : Int64.t) (args : String.t List.t) : t =
+    let mem_init = Memory.from_rom dmem in
+    let nmem, nsp, envptrs = alloc_strings mem_init [] init_sp in
+    let nmem, nsp, argptrs = alloc_strings nmem args nsp in
+    let nmem, nsp, envpptr = alloc_array nmem nsp envptrs in
+    let nmem, nsp, argpptr = alloc_array nmem nsp argptrs in
+    let nmem, nsp, _ = alloc_pointer nmem nsp 0xDEADBEEFL in
     let regs =
       RegFile.add_reg (RegFile.empty rspec)
         { id = RegId.Register 32l; offset = 0l; width = 8l }
-        (Value.of_int64 init_sp 8l)
+        (Value.of_int64 nsp 8l)
     in
-    let mem =
-      Memory.store_mem (Memory.from_rom dmem)
-        (init_sp |> Byte8.of_int64)
-        (Value.of_int64 0xDEADBEEFL 8l)
+    let regs =
+      RegFile.add_reg regs
+        { id = RegId.Register 56l; offset = 0l; width = 8l }
+        (Value.of_int64 (Int64.of_int (List.length args)) 8l)
     in
-    { regs; mem }
+    let regs =
+      RegFile.add_reg regs
+        { id = RegId.Register 48l; offset = 0l; width = 8l }
+        (Value.of_int64 argpptr 8l)
+    in
+    let regs =
+      RegFile.add_reg regs
+        { id = RegId.Register 16l; offset = 0l; width = 8l }
+        (Value.of_int64 envpptr 8l)
+    in
+    { regs; mem = nmem }
 
   let eval_vn (s : t) (vn : VarNode.t) : (Value.t, String.t) Result.t =
     match vn with
@@ -244,4 +293,6 @@ struct
     NumericBop.eval Bint_add
       (get_reg s (sp_extern ()))
       (Value.of_int64 8L 8l) 8l
+
+  let get_regfile (s : t) = s.regs
 end

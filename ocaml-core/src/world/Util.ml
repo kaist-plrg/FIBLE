@@ -25,27 +25,25 @@ let rec waitpid_non_intr pid =
 
 let establish_server server_fun sock =
   Unix.listen sock 5;
-  while true do
-    let s, _caller = accept_non_intr sock in
-    (* The "double fork" trick, the process which calls server_fun will not
-       leave a zombie process *)
-    match Unix.fork () with
-    | 0 ->
-        if Unix.fork () <> 0 then Unix._exit 0;
-        (* The child exits, the grandchild works *)
-        Unix.close sock;
-        let inchan = Unix.in_channel_of_descr s in
-        let outchan = Unix.out_channel_of_descr s in
-        server_fun inchan outchan;
-        (* Do not close inchan nor outchan, as the server_fun could
-           have done it already, and we are about to exit anyway
-           (PR#3794) *)
-        exit 0
-    | id ->
-        Unix.close s;
-        ignore (waitpid_non_intr id)
-    (* Reclaim the child *)
-  done
+  let s, _caller = accept_non_intr sock in
+  (* The "double fork" trick, the process which calls server_fun will not
+     leave a zombie process *)
+  match Unix.fork () with
+  | 0 ->
+      if Unix.fork () <> 0 then Unix._exit 0;
+      (* The child exits, the grandchild works *)
+      Unix.close sock;
+      let inchan = Unix.in_channel_of_descr s in
+      let outchan = Unix.out_channel_of_descr s in
+      server_fun inchan outchan;
+      (* Do not close inchan nor outchan, as the server_fun could
+         have done it already, and we are about to exit anyway
+         (PR#3794) *)
+      exit 0
+  | id ->
+      Unix.close s;
+      ignore (waitpid_non_intr id)
+(* Reclaim the child *)
 
 module SpaceInfo = struct
   type t = SleighDef.SpaceInfo.t

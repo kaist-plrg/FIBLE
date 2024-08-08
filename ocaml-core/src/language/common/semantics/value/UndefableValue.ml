@@ -104,12 +104,6 @@ let try_chars (x : t) : (Char.t list, String.t) Result.t =
       Result.map (fun (acc : Char.t List.t) -> c :: acc) acc)
     x (Ok [])
 
-let of_z v width =
-  let bits = Z.extract v 0 (Int32.to_int width * 8) |> Z.to_bits in
-  let bits_padded = bits ^ String.make (Int32.to_int width) '\x00' in
-  let bits_truncated = String.sub bits_padded 0 (Int32.to_int width) in
-  of_chars (String.to_seq bits_truncated |> List.of_seq)
-
 let of_int64 v width =
   let bits = Int64.bitwidth v in
   if Int64.to_int32 bits > Int32.mul width 8l then

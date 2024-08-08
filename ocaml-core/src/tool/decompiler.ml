@@ -135,7 +135,6 @@ let make_l1 (ifile : String.t) (symtab : Artifact.Data.symbol_table)
   if not (Sys.file_exists tmp_path) then Unix.mkdir tmp_path 0o777;
   [%log debug "Input file is %s" ifile];
   let server = Ghidra.make_server ifile !ghidra_path tmp_path cwd in
-  let func_with_addrs = symtab.funcs in
   let _ = server.dump_rom (!dump_path ^ "/" ^ ifile_base ^ ".dmem") in
   let rom : DMem.t =
     Util.DMemWrapper.read_file (!dump_path ^ "/" ^ ifile_base ^ ".dmem")
@@ -148,12 +147,13 @@ let make_l1 (ifile : String.t) (symtab : Artifact.Data.symbol_table)
       rspec = server.regspec.base_size;
       externs = Util.ExternalFunction.to_addrMap server.external_function;
       objects = symtab.objects;
+      entries = symtab.funcs;
     }
   in
   let c1 = Sys.time () in
   [%log info "L0 translation time: %f" (c1 -. c0)];
   let cfa_res : (String.t * Byte8.t * ILIR.Shallow_CFA.t) list =
-    func_with_addrs
+    l0.entries
     |> List.map (fun (e, fname) ->
            (fname, e, ILIR.Shallow_CFA.follow_flow l0 e))
   in

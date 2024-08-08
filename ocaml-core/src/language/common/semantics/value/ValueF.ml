@@ -19,6 +19,7 @@ module type S = sig
   val extend : t -> Int32.t -> t
   val undefined : Int32.t -> t
   val extend_undef : t -> Int32.t -> t
+  val sp : SPVal.t -> t
 end
 
 module Make (Pointer : PointerF.S) (NonNumericValue : NonNumericValueF.S) =

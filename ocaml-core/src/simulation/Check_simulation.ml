@@ -144,7 +144,8 @@ let action_all a1 l1 l1_state a2 l2 l2_state a3 l3 l3_state =
 
 let run (l1 : FGIR.Syn.Prog.t) (l2 : ASIR.Syn.Prog.t) (l3 : IOIR.Syn.Prog.t)
     (addr : Byte8.t) : (Unit.t, StopEvent.t) Result.t =
-  let l1_state = FGIR.Init.from_signature l1 addr in
+  let l1_state = FGIR.Init.from_signature l1 [] addr in
+  (* TODO: args *)
   let l2_state = ASIR.Init.from_signature l2 addr in
   let l3_state = IOIR.Init.from_signature l3 addr in
   let sps =
