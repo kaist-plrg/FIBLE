@@ -171,9 +171,12 @@ let action_store (p : Prog.t) (sto : Store.t) (a : StoreAction.t) (s : State.t)
           |> Result.ok
       | _ ->
           [%log finfo "syscall" "%a" Stack.pp s.stack];
-          Error "unimplemented syscall" |> StopEvent.of_str_res)
+          Error (Format.sprintf "unimplemented syscall %Ld" rax)
+          |> StopEvent.of_str_res)
   | Special "LOCK" | Special "UNLOCK" -> sto |> Result.ok
-  | Special _ -> Error "unimplemented special" |> StopEvent.of_str_res
+  | Special x ->
+      Error (Format.sprintf "unimplemented special %s" x)
+      |> StopEvent.of_str_res
   | Assign (p, v) -> Store.action_assign sto p v |> StopEvent.of_str_res
   | Load (r, p, v) -> Store.action_load sto r p v |> StopEvent.of_str_res
   | Store (p, v) -> Store.action_store sto p v |> StopEvent.of_str_res
