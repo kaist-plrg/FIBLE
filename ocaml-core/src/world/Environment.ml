@@ -130,7 +130,7 @@ let to_ctype : type t. t typ -> Interop.t -> t =
   | ( Ctypes_static.View
         { ty = Ctypes_static.Pointer (Ctypes_static.Primitive Char) },
       Interop.VBuffer x ) ->
-      Obj.magic x
+      Obj.magic (Bytes.to_string x)
   | Ctypes_static.OCaml Ctypes_static.Bytes, Interop.VBuffer x ->
       Ctypes.ocaml_bytes_start x
   | Ctypes_static.OCaml Ctypes_static.String, Interop.VIBuffer x ->

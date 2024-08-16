@@ -353,7 +353,7 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
         aux_arr 0 [] []
     | Abs ((x, pr), t) ->
         let size = arith_int_size pr in
-        let* n = aux_extract_id s x size t ptr in
+        let* n = aux_extract_id_ptr s x size t ptr in
         aux_ptr s (subst_id t x pr n) ptr env
     | _ -> Error "unreachable"
   and aux_prim (s : 'store_t) (a : prim_tag) (v : 'value_t) (env : env_t) :
@@ -381,18 +381,21 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
         let* n64 = NumericValue.value_64 n in
         let* f = Int64.to_float_width n64 8l in
         ([], VFloat (VDouble f)) |> Result.ok
-  and aux_extract_id (s : 'store_t) (x : String.t) (size : Int32.t) (t : tag)
-      (ptr : 'value_t) : (Int64.t, String.t) Result.t =
+  and aux_extract_id_prim (s : 'store_t) (x : String.t) (size : Int32.t)
+      (t : prim_tag) (v : 'value_t) : (Int64.t, String.t) Result.t =
     match t with
-    | Abs (_, t) -> aux_extract_id s x size t ptr
-    | Fixed (TPrim (TArith (TInt (Id y)))) when x = y ->
-        let* v = i.load_mem s ptr size in
+    | TArith (TInt (Id y)) when x = y ->
         let* n = i.try_num v in
         NumericValue.value_64 n
-    | Fixed (TPrim (TPtr t)) ->
-        let* size = prim_size (TPtr t) [] in
+    | TPtr t -> aux_extract_id_ptr s x size t v
+    | _ -> Error "unreachable"
+  and aux_extract_id_ptr (s : 'store_t) (x : String.t) (size : Int32.t)
+      (t : tag) (ptr : 'value_t) : (Int64.t, String.t) Result.t =
+    match t with
+    | Abs (_, t) -> aux_extract_id_ptr s x size t ptr
+    | Fixed (TPrim p) ->
         let* v = i.load_mem s ptr size in
-        aux_extract_id s x size t v
+        aux_extract_id_prim s x size p v
     | Fixed (TStruct ts) -> (
         let* idx_opt, size =
           Result.fold_left_M
@@ -409,10 +412,9 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
         match idx_opt with
         | Some t ->
             let* nptr = i.add_num ptr (Int64.of_int32 size) in
-            aux_extract_id s x size (Fixed t) nptr
+            aux_extract_id_ptr s x size (Fixed t) nptr
         | None -> Error "unreachable")
-    | Fixed (TPrim _) | Fixed (TBuffer _) | Fixed (TIBuffer _) | Dynamic _ ->
-        Error "unreachable"
+    | Fixed (TBuffer _) | Fixed (TIBuffer _) | Dynamic _ -> Error "unreachable"
   in
 
   let aux_extract_id_list (s : 'store_t) ((x, prim) : String.t * int_tag_prim)
@@ -427,7 +429,8 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
       in
       match offopt with
       | Some (t, ptr) ->
-          aux_extract_id s x (arith_int_size prim) (Fixed (TPrim t)) ptr
+          [%log debug "found id: %s, %a" x pp_prim_tag t];
+          aux_extract_id_prim s x (arith_int_size prim) t ptr
       | None -> Error "can't find id"
   in
 
@@ -446,6 +449,10 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
         |> Result.join_list
       in
       let id_with_lens = List.combine (fst fsig.params) lens in
+      [%log
+        debug "ids: %a"
+          (List.pp (fun ppf ((x, _), l) -> Format.fprintf ppf "(%s, %Ld)" x l))
+          id_with_lens];
       let* ntags =
         Result.fold_left_M
           (fun tags ((x, pr), l) ->
