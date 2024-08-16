@@ -42,7 +42,9 @@ let step_ins (p : Prog.t) (s : State.t) (ins : Inst.t) :
     (fun i -> Store.step_ILS s.sto i |> Result.map (storeaction_to_action p s))
     (fun i -> Store.step_IA s.sto i |> Result.map (storeaction_to_action p s))
     (fun i -> Store.step_IN s.sto i |> Result.map (storeaction_to_action p s))
-    (fun i -> Store.step_SP s.sto i |> Result.map (storeaction_to_action p s))
+    (fun i ->
+      Store.step_SP World.Environment.x64_syscall_table s.sto i
+      |> Result.map (storeaction_to_action p s))
     (step_cbranch p s) (step_jump p s) (step_jump_ind p s)
     (step_unimplemented p s) ins
 
@@ -78,7 +80,7 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
 let action_store (p : Prog.t) (sto : Store.t) (a : StoreAction.t) :
     (Store.t, StopEvent.t) Result.t =
   match a with
-  | Special v -> Store.action_nop sto |> StopEvent.of_str_res
+  | Special _ -> Store.action_nop sto |> StopEvent.of_str_res
   | Assign (p, v) -> Store.action_assign sto p v |> StopEvent.of_str_res
   | Load (r, p, v) -> Store.action_load sto r p v |> StopEvent.of_str_res
   | Store (p, v) -> Store.action_store sto p v |> StopEvent.of_str_res

@@ -145,7 +145,9 @@ let action_JR = State.mk_action_JR step_ret
 let step_ins (p : Prog.t) (s : Store.t) (curr : Cursor.t) (ins : Inst.t) :
     (StoreAction.t, String.t) Result.t =
   Inst.fold (Store.step_ILS s) (Store.step_ISLS s curr) (Store.step_IA s)
-    (Store.step_IN s) (Store.step_SP s) ins
+    (Store.step_IN s)
+    (Store.step_SP World.Environment.x64_syscall_table s)
+    ins
 
 let step_jmp (p : Prog.t) (jmp : Jmp.t) (s : State.t) :
     (Action.t, String.t) Result.t =
@@ -179,7 +181,7 @@ let step (p : Prog.t) (s : State.t) : (Action.t, StopEvent.t) Result.t =
 let action_store (p : Prog.t) (sto : Store.t) (a : StoreAction.t) :
     (Store.t, StopEvent.t) Result.t =
   match a with
-  | Special v -> Store.action_nop sto |> StopEvent.of_str_res
+  | Special _ -> Store.action_nop sto |> StopEvent.of_str_res
   | Assign (p, v) -> Store.action_assign sto p v |> StopEvent.of_str_res
   | Load (r, p, v) -> Store.action_load sto r p v |> StopEvent.of_str_res
   | Store (p, v) -> Store.action_store sto p v |> StopEvent.of_str_res

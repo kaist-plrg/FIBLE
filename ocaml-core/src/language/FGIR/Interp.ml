@@ -29,7 +29,8 @@ let action_JR = State.mk_action_JR step_ret
 let step_ins (p : Prog.t) (ins : Inst.t) (s : Store.t) (curr : Cursor.t) :
     (StoreAction.t, String.t) Result.t =
   Inst.fold (Store.step_ILS s) (Store.step_IA s) (Store.step_IN s)
-    (Store.step_SP s) ins
+    (Store.step_SP World.Environment.x64_syscall_table s)
+    ins
 
 let step_jmp (p : Prog.t) (jmp : Jmp.t) (s : State.t) :
     (Action.t, String.t) Result.t =
@@ -63,143 +64,23 @@ let step (p : Prog.t) (s : State.t) : (Action.t, StopEvent.t) Result.t =
 let action_store (p : Prog.t) (sto : Store.t) (a : StoreAction.t) (s : State.t)
     : (Store.t, StopEvent.t) Result.t =
   match a with
-  | Special "syscall" -> (
-      let* rax =
-        Store.get_reg sto { id = RegId.Register 0l; offset = 0l; width = 8l }
-        |> Value.value_64 |> StopEvent.of_str_res
+  | Special ("syscall", sides, vals) ->
+      let* syscall_num =
+        match vals with
+        | Interop.VArith (VInt (V64 n)) :: _ -> Ok n
+        | _ -> Error "syscall: invalid syscall number" |> StopEvent.of_str_res
       in
-      [%log finfo "syscall" "SYSCALL NUM: %Ld" rax];
-      match rax with
-      | 3L ->
-          Store.add_reg sto
-            { id = RegId.Register 0l; offset = 0l; width = 8l }
-            (Value.of_int64 0L 8l)
-          |> Result.ok
-      | 9L ->
-          let* rdi =
-            Store.get_reg sto
-              { id = RegId.Register 56l; offset = 0l; width = 8l }
-            |> Value.value_64 |> StopEvent.of_str_res
-          in
-          let* r8 =
-            Store.get_reg sto
-              { id = RegId.Register 128l; offset = 0l; width = 8l }
-            |> Value.value_64 |> StopEvent.of_str_res
-          in
-          if r8 = 0xffffffffffffffffL then
-            if rdi = 0L then
-              let hval =
-                (String.hash (Format.asprintf "%a%a" Store.pp sto State.pp s)
-                |> Int64.of_int |> Int64.shift_left)
-                  24
-              in
-              Store.add_reg sto
-                { id = RegId.Register 0l; offset = 0l; width = 8l }
-                (Value.of_int64 hval 8l)
-              |> Result.ok
-            else
-              Store.add_reg sto
-                { id = RegId.Register 0l; offset = 0l; width = 8l }
-                (Value.of_int64 rdi 8l)
-              |> Result.ok
-          else Error "Not supported mmap" |> StopEvent.of_str_res
-      | 11L ->
-          Store.add_reg sto
-            { id = RegId.Register 0l; offset = 0l; width = 8l }
-            (Value.of_int64 0L 8l)
-          |> Result.ok
-      | 12L ->
-          let* rdi =
-            Store.get_reg sto
-              { id = RegId.Register 56l; offset = 0l; width = 8l }
-            |> Value.value_64 |> StopEvent.of_str_res
-          in
-          Store.add_reg sto
-            { id = RegId.Register 0l; offset = 0l; width = 8l }
-            (Value.of_int64 rdi 8l)
-          |> Result.ok
-      | 16L ->
-          Store.add_reg sto
-            { id = RegId.Register 0l; offset = 0l; width = 8l }
-            (Value.of_int64 (0 |> Int64.of_int) 8l)
-          |> Result.ok
-      | 20L ->
-          let* rdi =
-            Store.get_reg sto
-              { id = RegId.Register 56l; offset = 0l; width = 8l }
-            |> Value.value_64 |> StopEvent.of_str_res
-          in
-          let rsi =
-            Store.get_reg sto
-              { id = RegId.Register 48l; offset = 0l; width = 8l }
-          in
-          let* rdx =
-            Store.get_reg sto
-              { id = RegId.Register 16l; offset = 0l; width = 8l }
-            |> Value.value_64 |> StopEvent.of_str_res
-          in
-          [%log
-            finfo "syscall" "%a: SYSCALL ARG: %Ld %a %Ld" Loc.pp
-              (Cont.get_loc (State.get_cont s))
-              rdi Value.pp rsi rdx];
-          let* writestr =
-            Result.fold_left_M
-              (fun strr n ->
-                let* ptr_1 =
-                  NumericBop.eval Bint_add rsi
-                    (Value.of_int64 (n * 16 |> Int64.of_int) 8l)
-                    8l
-                in
-                let* ptr_2 =
-                  NumericBop.eval Bint_add rsi
-                    (Value.of_int64 ((n * 16) + 8 |> Int64.of_int) 8l)
-                    8l
-                in
-                let* v1 = Store.load_mem sto ptr_1 8l in
-                let* v2 = Store.load_mem sto ptr_2 8l in
-                let* len = Value.value_32 v2 in
-                let* strra = Store.load_bytes sto v1 len in
-                Ok (strr ^ strra))
-              ""
-              (List.init (Int64.to_int rdx) Fun.id)
-            |> StopEvent.of_str_res
-          in
-          Out_channel.output_string Stdlib.stdout writestr;
-          Store.add_reg sto
-            { id = RegId.Register 0l; offset = 0l; width = 8l }
-            (Value.of_int64 (String.length writestr |> Int64.of_int) 8l)
-          |> Result.ok
-      | 72L (* FCNTL *) ->
-          let* rdi =
-            Store.get_reg sto
-              { id = RegId.Register 56l; offset = 0l; width = 8l }
-            |> Value.value_64 |> StopEvent.of_str_res
-          in
-          let* rsi =
-            Store.get_reg sto
-              { id = RegId.Register 48l; offset = 0l; width = 8l }
-            |> Value.value_64 |> StopEvent.of_str_res
-          in
-
-          let* res =
-            match rsi with
-            | 3L (*GETFL*) ->
-                Ok
-                  (Value.of_int64
-                     (World.Util.getfl (rdi |> Int64.to_int) |> Int64.of_int)
-                     8l)
-            | _ -> Error "unimplemented fcntl" |> StopEvent.of_str_res
-          in
-          Store.add_reg sto
-            { id = RegId.Register 0l; offset = 0l; width = 8l }
-            res
-          |> Result.ok
-      | _ ->
-          [%log finfo "syscall" "%a" Stack.pp s.stack];
-          Error (Format.sprintf "unimplemented syscall %Ld" rax)
-          |> StopEvent.of_str_res)
-  | Special "LOCK" | Special "UNLOCK" -> sto |> Result.ok
-  | Special x ->
+      let* fsig =
+        World.Environment.x64_syscall_table syscall_num
+        |> Option.to_result
+             ~none:(StopEvent.FailStop "syscall: invalid syscall number")
+      in
+      let* res =
+        World.Environment.x64_do_syscall vals |> StopEvent.of_str_res
+      in
+      Store.build_ret sto res |> StopEvent.of_str_res
+  | Special ("LOCK", _, _) | Special ("UNLOCK", _, _) -> sto |> Result.ok
+  | Special (x, _, _) ->
       Error (Format.sprintf "unimplemented special %s" x)
       |> StopEvent.of_str_res
   | Assign (p, v) -> Store.action_assign sto p v |> StopEvent.of_str_res

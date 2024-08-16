@@ -4,6 +4,133 @@ open Common
 
 type hidden_fn = Hide : ('a -> 'b) fn -> hidden_fn
 
+let global_syscall_offset = ref 0L
+
+let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
+  match n with
+  | 3L ->
+      { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
+      |> Option.some
+  | 9L ->
+      {
+        Interop.params =
+          ( [],
+            [
+              Interop.t64;
+              Interop.t64;
+              Interop.t64;
+              Interop.t64;
+              Interop.t64;
+              Interop.t64;
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 11L ->
+      {
+        Interop.params = ([], [ Interop.t64; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 12L ->
+      { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
+      |> Option.some
+  | 16L ->
+      {
+        Interop.params = ([], [ Interop.t64; Interop.t64; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 20L ->
+      {
+        Interop.params =
+          ( [ ("x", T64) ],
+            [
+              Interop.t64;
+              Interop.TPtr
+                (Dynamic
+                   (Interop.TIArr
+                      ( Interop.Abs
+                          ( ("y", T64),
+                            TStruct
+                              [
+                                TPrim
+                                  (TPtr
+                                     (Dynamic
+                                        (TIArr
+                                           ( TPrim (TArith (TInt (Prim T8))),
+                                             Dependent "y" ))));
+                                TPrim (TArith (TInt (Id "y")));
+                              ] ),
+                        Interop.Dependent "x" )));
+              Interop.id "x";
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 72L ->
+      {
+        Interop.params = ([], [ Interop.t64; Interop.t64; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | _ -> Option.none
+
+let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
+  global_syscall_offset := Int64.add !global_syscall_offset 1L;
+  let* rax, args =
+    match args with
+    | Interop.VArith (VInt (V64 rax)) :: rest -> Ok (rax, rest)
+    | _ -> Error "syscall: invalid syscall number"
+  in
+  match (rax, args) with
+  | 3L, [ _ ] -> Interop.v64 0L |> Result.ok
+  | 9L, [ VArith (VInt (V64 rdi)); rsi; rdx; rcx; VArith (VInt (V64 r8)); r9 ]
+    ->
+      if r8 = 0xffffffffffffffffL then
+        if rdi = 0L then
+          let hval =
+            (String.hash (Format.asprintf "%Lx" !global_syscall_offset)
+            |> Int64.of_int |> Int64.shift_left)
+              24
+          in
+          Interop.v64 hval |> Result.ok
+        else Interop.v64 rdi |> Result.ok
+      else Error "Not supported mmap"
+  | 11L, [ rdi; rsi ] -> Interop.v64 0L |> Result.ok
+  | 12L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 rdi |> Result.ok
+  | 16L, [ VArith (VInt (V64 rdi)); rsi; rdx ] -> Interop.v64 0L |> Result.ok
+  | 20L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ] ->
+      [%log
+        finfo "syscall" "WRITE ARG: %Ld %a %Ld" rdi Interop.pp (VIBuffer rsi)
+          rdx];
+      let* writearr =
+        Array.map
+          (fun x ->
+            match x with
+            | Interop.VStruct [ VIBuffer b; _ ] ->
+                Interop.vibuffer_to_string b |> Result.ok
+            | _ -> "parse fail" |> Result.error)
+          rsi
+        |> Array.to_list |> Result.join_list
+      in
+      let writestr = String.concat "" writearr in
+      Out_channel.output_string Stdlib.stdout writestr;
+      Out_channel.flush Stdlib.stdout;
+      Interop.v64 (Int64.of_int (String.length writestr)) |> Result.ok
+  | ( 72L,
+      [
+        VArith (VInt (V64 rdi));
+        VArith (VInt (V64 rsi));
+        VArith (VInt (V64 rdx));
+      ] )
+  (* FCNTL *) -> (
+      match rsi with
+      | 3L (*GETFL*) ->
+          Ok (Interop.v64 (Util.getfl (rdi |> Int64.to_int) |> Int64.of_int))
+      | _ -> Error "unimplemented fcntl")
+  | _ -> Error (Format.sprintf "unimplemented syscall %Ld" rax)
+
 let cgc_funcs : String.t List.t =
   [
     "_terminate";

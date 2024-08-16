@@ -19,7 +19,10 @@ module Make
       val of_assign : RegId.t_full -> Value.t -> t
       val of_load : RegId.t_full -> Value.t -> Value.t -> t
       val of_store : Value.t -> Value.t -> t
-      val of_special : String.t -> t
+
+      val of_special :
+        String.t -> (Value.t * Bytes.t) List.t -> Interop.t List.t -> t
+
       val nop : t
 
       val to_either5 :
@@ -27,7 +30,7 @@ module Make
         ( RegId.t_full * Value.t,
           RegId.t_full * Value.t * Value.t,
           Value.t * Value.t,
-          String.t,
+          String.t * (Value.t * Bytes.t) List.t * Interop.t List.t,
           Unit.t )
         Either5.t
     end)
@@ -172,9 +175,6 @@ struct
   let step_IN (s : t) (_ : INop.t) : (Action.t, String.t) Result.t =
     Ok Action.nop
 
-  let step_SP (s : t) (name : ISpecial.t) : (Action.t, String.t) Result.t =
-    Ok (Action.of_special name)
-
   let action_assign (s : t) (r : RegId.t_full) (v : Value.t) :
       (t, String.t) Result.t =
     add_reg s r v |> Result.ok
@@ -307,6 +307,29 @@ struct
     List.fold_left
       (fun s (i, t) -> Result.bind s (fun s -> build_side s i t))
       (Ok s) sides
+
+  let step_SP (syscall_table : Int64.t -> Interop.func_sig Option.t) (s : t)
+      (name : ISpecial.t) : (Action.t, String.t) Result.t =
+    match name with
+    | "syscall" ->
+        let* _, rax =
+          build_arg s Interop.t64
+            (get_reg s { id = RegId.Register 0l; offset = 0l; width = 8l })
+        in
+        let* snum =
+          match rax with
+          | VArith (VInt (V64 rax)) -> rax |> Result.ok
+          | _ -> "rax is not a 64-bit integer" |> Result.error
+        in
+        [%log finfo "syscall" "SYSCALL NUM: %Ld" snum];
+        let* fsig =
+          match syscall_table snum with
+          | Some fsig -> fsig |> Result.ok
+          | None -> "syscall not found" |> Result.error
+        in
+        let* sides, args = build_args s fsig in
+        Ok (Action.of_special "syscall" sides (rax :: args))
+    | _ -> Ok (Action.of_special name [] [])
 
   let get_sp_curr (s : t) (p : Prog.t) : Value.t =
     get_reg s { id = RegId.Register (Prog.sp_num p); offset = 0l; width = 8l }

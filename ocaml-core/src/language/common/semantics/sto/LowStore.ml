@@ -161,9 +161,6 @@ struct
   let step_IN (s : t) (_ : INop.t) : (Action.t, String.t) Result.t =
     Ok Action.Nop
 
-  let step_SP (s : t) (name : ISpecial.t) : (Action.t, String.t) Result.t =
-    Ok (Action.Special name)
-
   let action_assign (s : t) (r : RegId.t_full) (v : Value.t) :
       (t, String.t) Result.t =
     Ok { s with regs = RegFile.add_reg s.regs r v }
@@ -277,6 +274,29 @@ struct
     List.fold_left
       (fun s (i, t) -> Result.bind s (fun s -> build_side s i t))
       (Ok s) sides
+
+  let step_SP (syscall_table : Int64.t -> Interop.func_sig Option.t) (s : t)
+      (name : ISpecial.t) : (Action.t, String.t) Result.t =
+    match name with
+    | "syscall" ->
+        let* _, rax =
+          build_arg s Interop.t64
+            (get_reg s { id = RegId.Register 0l; offset = 0l; width = 8l })
+        in
+        let* snum =
+          match rax with
+          | VArith (VInt (V64 rax)) -> rax |> Result.ok
+          | _ -> "rax is not a 64-bit integer" |> Result.error
+        in
+        [%log finfo "syscall" "SYSCALL NUM: %Ld" snum];
+        let* fsig =
+          match syscall_table snum with
+          | Some fsig -> fsig |> Result.ok
+          | None -> "syscall not found" |> Result.error
+        in
+        let* sides, args = build_args s fsig in
+        Ok (Action.Special ("syscall", sides, rax :: args))
+    | _ -> Ok (Action.Special (name, [], []))
 
   let sp_extern (_ : 'a) : RegId.t_full =
     { id = RegId.Register 32l; offset = 0l; width = 8l }

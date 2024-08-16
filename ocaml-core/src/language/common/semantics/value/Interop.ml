@@ -11,16 +11,13 @@ and fixed_tag =
   | TBuffer of (arith_tag * Int64.t)
   | TIBuffer of (fixed_tag * Int64.t)
   | TStruct of fixed_tag list
+  | Abs of (String.t * int_tag_prim) * fixed_tag
 
 and dynamic_tag =
   | TArr of (arith_tag * length_type)
   | TIArr of (fixed_tag * length_type)
 
-and tag =
-  | Fixed of fixed_tag
-  | Dynamic of dynamic_tag
-  | Abs of (String.t * int_tag_prim) * tag
-[@@deriving show]
+and tag = Fixed of fixed_tag | Dynamic of dynamic_tag [@@deriving show]
 
 let t8 = TArith (TInt (Prim T8))
 let t16 = TArith (TInt (Prim T16))
@@ -63,7 +60,6 @@ let rec subst_id (t : tag) (x : String.t) (pr : int_tag_prim) (n : Int64.t) :
     tag =
   match t with
   | Fixed f -> Fixed (subst_id_fixed f x pr n)
-  | Abs ((y, pt), t) -> Abs ((y, pt), subst_id t x pr n)
   | Dynamic (TArr (t, Dependent y)) when x = y -> Fixed (TBuffer (t, n))
   | Dynamic (TIArr (t, Dependent y)) when x = y -> Fixed (TIBuffer (t, n))
   | _ -> t
@@ -72,6 +68,7 @@ and subst_id_fixed (f : fixed_tag) (x : String.t) (pr : int_tag_prim)
     (n : Int64.t) : fixed_tag =
   match f with
   | TPrim a -> TPrim (subst_id_prim a x pr n)
+  | Abs ((y, pt), t) -> Abs ((y, pt), subst_id_fixed t x pr n)
   | TBuffer (t, l) -> TBuffer (t, l)
   | TIBuffer (t, l) -> TIBuffer (t, l)
   | TStruct ts -> TStruct (List.map (fun t -> subst_id_fixed t x pr n) ts)
@@ -87,12 +84,12 @@ let rec typecheck (t : tag) (env : env_t) : Bool.t =
   match t with
   | Fixed f -> typecheck_fixed f env
   | Dynamic d -> typecheck_dynamic d env
-  | Abs ((x, pt), t) ->
-      if List.exists (fun (y, _) -> x = y) env then false
-      else typecheck t ((x, pt) :: env)
 
 and typecheck_fixed (f : fixed_tag) (env : env_t) : Bool.t =
   match f with
+  | Abs ((x, pt), t) ->
+      if List.exists (fun (y, _) -> x = y) env then false
+      else typecheck_fixed t ((x, pt) :: env)
   | TPrim (TArith a) -> typecheck_arith a env
   | TPrim (TPtr t) -> typecheck t env
   | TBuffer (t, l) -> typecheck_arith t env
@@ -164,7 +161,9 @@ let arith_float_size (p : float_tag) : Int32.t =
 
 let prim_size (pr : prim_tag) (env : env_t) : (Int32.t, String.t) Result.t =
   match pr with
-  | TArith (TInt (Id x)) -> Error "unreachable"
+  | TArith (TInt (Id x)) ->
+      let* p = List.assoc_opt x env |> Option.to_result ~none:"not found" in
+      arith_int_size p |> Result.ok
   | TArith (TInt (Prim p)) -> arith_int_size p |> Result.ok
   | TArith (TFloat f) -> arith_float_size f |> Result.ok
   | TPtr _ -> 8l |> Result.ok
@@ -172,6 +171,7 @@ let prim_size (pr : prim_tag) (env : env_t) : (Int32.t, String.t) Result.t =
 let rec fixed_size (p : fixed_tag) (env : env_t) : (Int32.t, String.t) Result.t
     =
   match p with
+  | Abs ((x, pr), t) -> fixed_size t ((x, pr) :: env)
   | TPrim pr -> prim_size pr env
   | TBuffer (t, l) ->
       let* size = prim_size (TArith t) env in
@@ -305,6 +305,10 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
             ([], [], 0l) tags
         in
         (sides, VStruct (List.rev rets)) |> Result.ok
+    | Fixed (Abs ((x, pr), t)) ->
+        let size = arith_int_size pr in
+        let* n = aux_extract_id_ptr s x size (Fixed t) ptr ((x, pr) :: env) in
+        aux_ptr s (Fixed (subst_id_fixed t x pr n)) ptr ((x, pr) :: env)
     | Dynamic (TArr (tag, ZeroEnd)) ->
         let* tsize = prim_size (TArith tag) env in
         let rec aux_arr (k : Int.t) (sides : ('value_t * Bytes.t) List.t)
@@ -351,11 +355,7 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
             aux_arr (k + 1) (List.append rsides sides) (rv :: vs)
         in
         aux_arr 0 [] []
-    | Abs ((x, pr), t) ->
-        let size = arith_int_size pr in
-        let* n = aux_extract_id_ptr s x size t ptr in
-        aux_ptr s (subst_id t x pr n) ptr env
-    | _ -> Error "unreachable"
+    | _ -> Error "unreachable 4"
   and aux_prim (s : 'store_t) (a : prim_tag) (v : 'value_t) (env : env_t) :
       (('value_t * Bytes.t) List.t * t, String.t) Result.t =
     match a with
@@ -382,20 +382,22 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
         let* f = Int64.to_float_width n64 8l in
         ([], VFloat (VDouble f)) |> Result.ok
   and aux_extract_id_prim (s : 'store_t) (x : String.t) (size : Int32.t)
-      (t : prim_tag) (v : 'value_t) : (Int64.t, String.t) Result.t =
+      (t : prim_tag) (v : 'value_t) (env : env_t) : (Int64.t, String.t) Result.t
+      =
     match t with
     | TArith (TInt (Id y)) when x = y ->
         let* n = i.try_num v in
         NumericValue.value_64 n
-    | TPtr t -> aux_extract_id_ptr s x size t v
-    | _ -> Error "unreachable"
+    | TPtr t -> aux_extract_id_ptr s x size t v env
+    | _ -> Error "unreachable 5"
   and aux_extract_id_ptr (s : 'store_t) (x : String.t) (size : Int32.t)
-      (t : tag) (ptr : 'value_t) : (Int64.t, String.t) Result.t =
+      (t : tag) (ptr : 'value_t) (env : env_t) : (Int64.t, String.t) Result.t =
     match t with
-    | Abs (_, t) -> aux_extract_id_ptr s x size t ptr
+    | Fixed (Abs ((y, pr), t)) ->
+        aux_extract_id_ptr s x size (Fixed t) ptr ((y, pr) :: env)
     | Fixed (TPrim p) ->
         let* v = i.load_mem s ptr size in
-        aux_extract_id_prim s x size p v
+        aux_extract_id_prim s x size p v env
     | Fixed (TStruct ts) -> (
         let* idx_opt, size =
           Result.fold_left_M
@@ -405,20 +407,21 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
               | None ->
                   if contains_use_id t x then (Some t, i) |> Result.ok
                   else
-                    let* size = fixed_size t [] in
+                    let* size = fixed_size t env in
                     (None, Int32.add i size) |> Result.ok)
             (None, 0l) ts
         in
         match idx_opt with
         | Some t ->
             let* nptr = i.add_num ptr (Int64.of_int32 size) in
-            aux_extract_id_ptr s x size (Fixed t) nptr
-        | None -> Error "unreachable")
-    | Fixed (TBuffer _) | Fixed (TIBuffer _) | Dynamic _ -> Error "unreachable"
+            aux_extract_id_ptr s x size (Fixed t) nptr env
+        | None -> Error "unreachable 1")
+    | Fixed (TBuffer _) | Fixed (TIBuffer _) | Dynamic _ ->
+        Error "unreachable 2"
   in
 
   let aux_extract_id_list (s : 'store_t) ((x, prim) : String.t * int_tag_prim)
-      (t : prim_tag List.t) (ptrs : 'value_t List.t) :
+      (t : prim_tag List.t) (ptrs : 'value_t List.t) (env : env_t) :
       (Int64.t, String.t) Result.t =
     if List.length t <> List.length ptrs then Error "different length"
     else
@@ -430,7 +433,7 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
       match offopt with
       | Some (t, ptr) ->
           [%log debug "found id: %s, %a" x pp_prim_tag t];
-          aux_extract_id_prim s x (arith_int_size prim) t ptr
+          aux_extract_id_prim s x (arith_int_size prim) t ptr env
       | None -> Error "can't find id"
   in
 
@@ -445,7 +448,7 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
     if List.length tags <> List.length v then Error "different length"
     else
       let* lens =
-        List.map (fun x -> aux_extract_id_list s x tags v) (fst fsig.params)
+        List.map (fun x -> aux_extract_id_list s x tags v []) (fst fsig.params)
         |> Result.join_list
       in
       let id_with_lens = List.combine (fst fsig.params) lens in
