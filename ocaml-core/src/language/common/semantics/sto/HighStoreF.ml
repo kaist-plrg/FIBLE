@@ -43,6 +43,7 @@ module Make
     (RegFile : sig
       type t
 
+      val empty : int32 Int32Map.t -> t
       val pp : Format.formatter -> t -> unit
       val add_reg : t -> RegId.t_full -> Value.t -> t
       val get_reg : t -> RegId.t_full -> Value.t
@@ -88,6 +89,104 @@ struct
     let* ptv = Value.try_pointer v in
     let* mem = Memory.store_bytes s.mem ptv e in
     { s with mem } |> Result.ok
+
+  let alloc_string (mem : Memory.t) (arg : String.t) (sp : Value.t) :
+      (Memory.t * Value.t * Value.t, String.t) Result.t =
+    let len = Int64.of_int ((String.length arg + 1 + 7) / 8 * 8) in
+    let padlen = Int64.sub len (Int64.of_int (String.length arg)) in
+    let arg = arg ^ String.make (Int64.to_int padlen) '\x00' in
+    let* nsp =
+      Value.eval_bop Bint_sub sp
+        (Value.of_num (NumericValue.of_int64 len 8l))
+        8l
+    in
+    let* spptr = Value.try_pointer nsp in
+    let* nmem = Memory.store_bytes mem spptr arg in
+    (nmem, nsp, nsp) |> Result.ok
+
+  let alloc_strings (mem : Memory.t) (args : String.t List.t) (sp : Value.t) :
+      (Memory.t * Value.t * Value.t List.t, String.t) Result.t =
+    let arg_rev = List.rev args in
+    Result.fold_left_M
+      (fun (mem, sp, ptrs) arg ->
+        let* nmem, nsp, ptr = alloc_string mem arg sp in
+        (nmem, nsp, ptr :: ptrs) |> Result.ok)
+      (mem, sp, []) arg_rev
+
+  let alloc_pointer (mem : Memory.t) (sp : Value.t) (ptr : Value.t) :
+      (Memory.t * Value.t * Value.t, String.t) Result.t =
+    let* nsp =
+      Value.eval_bop Bint_sub sp (Value.of_num (NumericValue.of_int64 8L 8l)) 8l
+    in
+    let* vptr =
+      Value.eval_bop Bint_sub ptr
+        (Value.of_num (NumericValue.of_int64 8L 8l))
+        8l
+    in
+    let* spptr = Value.try_pointer nsp in
+    let* nmem = Memory.store_mem mem spptr vptr in
+    (nmem, nsp, nsp) |> Result.ok
+
+  let alloc_array (mem : Memory.t) (sp : Value.t) (ptrs : Value.t List.t) :
+      (Memory.t * Value.t * Value.t, String.t) Result.t =
+    let ptrs = Value.zero 8l :: List.rev ptrs in
+    Result.fold_left_M
+      (fun (mem, sp, _) ptr ->
+        let* nmem, nsp, _ = alloc_pointer mem sp ptr in
+        (nmem, nsp, nsp) |> Result.ok)
+      (mem, sp, Value.zero 8l)
+      ptrs
+
+  let init_from_sig (dmem : DMem.t) (rspec : int32 Int32Map.t)
+      (frame_addr : Loc.t * Memory.TimeStamp.t) (init_frame : Memory.Frame.t)
+      (init_sp : Value.t) (args : String.t List.t) : t =
+    let mem_init =
+      Memory.of_global_memory (Memory.GlobalMemory.from_rom dmem)
+      |> Memory.add_local_frame frame_addr init_frame
+    in
+    let v =
+      let* sp_start =
+        Value.eval_bop Bint_add init_sp
+          (Value.of_num (NumericValue.of_int64 4096L 8l))
+          8l
+      in
+      let* sp_final =
+        Value.eval_bop Bint_add init_sp
+          (Value.of_num (NumericValue.of_int64 8L 8l))
+          8l
+      in
+      let* nmem, nsp, envptrs = alloc_strings mem_init [] sp_start in
+      let* nmem, nsp, argptrs = alloc_strings nmem args nsp in
+      let* nmem, nsp, envpptr = alloc_array nmem nsp envptrs in
+      let* nmem, nsp, argpptr = alloc_array nmem nsp argptrs in
+      let* nmem, nsp, _ =
+        alloc_pointer nmem sp_final
+          (Value.of_num (NumericValue.of_int64 0xDEADBEEFL 8l))
+      in
+      let regs =
+        RegFile.add_reg (RegFile.empty rspec)
+          { id = RegId.Register 32l; offset = 0l; width = 8l }
+          nsp
+      in
+      let regs =
+        RegFile.add_reg regs
+          { id = RegId.Register 56l; offset = 0l; width = 8l }
+          (Value.of_num
+             (NumericValue.of_int64 (Int64.of_int (List.length args)) 8l))
+      in
+      let regs =
+        RegFile.add_reg regs
+          { id = RegId.Register 48l; offset = 0l; width = 8l }
+          argpptr
+      in
+      let regs =
+        RegFile.add_reg regs
+          { id = RegId.Register 16l; offset = 0l; width = 8l }
+          envpptr
+      in
+      { regs; mem = nmem } |> Result.ok
+    in
+    match v with Ok v -> v | Error s -> failwith s
 
   let eval_vn (s : t) (vn : VarNode.t) : (Value.t, String.t) Result.t =
     match vn with

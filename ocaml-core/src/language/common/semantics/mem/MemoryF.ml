@@ -3,9 +3,11 @@ module type S = sig
   module Value : ValueF.S
   module TimeStamp : TimeStampF.S
   module Frame : FrameF.S with module Value = Value
+  module GlobalMemory : GlobalMemoryF.S with module Value = Value
 
   type t
 
+  val of_global_memory : GlobalMemory.t -> t
   val load_mem : t -> Pointer.t -> Int32.t -> Value.t
   val load_string : t -> Pointer.t -> (String.t, String.t) Result.t
   val load_bytes : t -> Pointer.t -> Int32.t -> (String.t, String.t) Result.t
@@ -59,6 +61,7 @@ struct
   module Value = Value
   module TimeStamp = TimeStamp
   module Frame = Frame
+  module GlobalMemory = GlobalMemory
 
   type t = { global : GlobalMemory.t; local : LocalMemory.t }
 
