@@ -55,11 +55,11 @@ end) (Store : sig
     t -> VarNode.t List.t -> (Value.t List.t, String.t) Result.t
 
   val build_args :
-    t -> Interop.func_sig -> ((Value.t * Interop.t) List.t, String.t) Result.t
+    t ->
+    Interop.func_sig ->
+    ((Value.t * Bytes.t) List.t * Interop.t List.t, String.t) Result.t
 
-  val build_sides :
-    t -> Value.t List.t -> (Int.t * Interop.t) List.t -> (t, String.t) Result.t
-
+  val build_sides : t -> (Value.t * Bytes.t) List.t -> (t, String.t) Result.t
   val build_ret : t -> Interop.t -> (t, String.t) Result.t
   val add_sp_extern : t -> Prog.t -> (Value.t, String.t) Result.t
   val sp_extern : Prog.t -> RegId.t_full
@@ -91,7 +91,10 @@ end) (Action : sig
 
   val of_store : StoreAction.t -> Loc.t Option.t -> t
   val jmp : Loc.t -> t
-  val externcall : String.t -> Value.t List.t -> Interop.t List.t -> Loc.t -> t
+
+  val externcall :
+    String.t -> (Value.t * Bytes.t) List.t -> Interop.t List.t -> Loc.t -> t
+
   val call : SCall.t -> t
   val tailcall : STailCall.t -> t
   val ret : SRet.t -> t
@@ -119,11 +122,7 @@ end) (Environment : sig
   type hidden_fn
 
   val signature_map : (Interop.func_sig * hidden_fn) StringMap.t
-
-  val request_call_opt :
-    String.t ->
-    Interop.t list ->
-    ((Int.t * Interop.t) list * Interop.t) Option.t
+  val request_call_opt : String.t -> Interop.t list -> Interop.t Option.t
 end) =
 struct
   type t = {
@@ -177,39 +176,33 @@ struct
       StringMap.find_opt name Environment.signature_map
       |> Option.to_result ~none:(Format.asprintf "No external function %s" name)
     in
-    let* bargs = Store.build_args s fsig in
-    let values, args = bargs |> List.split in
-    [%log
-      debug "Call values: %a"
-        (Format.pp_print_list ~pp_sep:Format.pp_print_space Value.pp)
-        values];
+    let* sides, args = Store.build_args s fsig in
     [%log
       debug "Call args: %a"
         (Format.pp_print_list ~pp_sep:Format.pp_print_space Interop.pp)
         args];
 
-    Action.externcall name values args fallthrough |> Result.ok
+    Action.externcall name sides args fallthrough |> Result.ok
 
-  let action_external_sto (p : Prog.t) (s : Store.t) (values : Value.t List.t)
-      (sides : (int * Interop.t) List.t) (retv : Interop.t) :
+  let action_external_sto (p : Prog.t) (s : Store.t)
+      (sides : (Value.t * Bytes.t) List.t) (retv : Interop.t) :
       (Store.t, StopEvent.t) Result.t =
-    [%log
+    (*[%log
       debug "Side values: %a"
         (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun fmt (i, v) ->
              Format.fprintf fmt "%d: %a" i Interop.pp v))
-        sides];
+        sides];*)
     let* sp_saved = Store.add_sp_extern s p |> StopEvent.of_str_res in
-    let* sto_side = Store.build_sides s values sides |> StopEvent.of_str_res in
+    let* sto_side = Store.build_sides s sides |> StopEvent.of_str_res in
     let* sto =
       Store.build_ret (Store.add_reg sto_side (Store.sp_extern p) sp_saved) retv
       |> StopEvent.of_str_res
     in
     Ok sto
 
-  let action_extern (p : Prog.t) (s : t) (values : Value.t List.t)
-      (sides : (int * Interop.t) List.t) (retv : Interop.t) (ft : Loc.t) :
-      (t, StopEvent.t) Result.t =
-    let* sto = action_external_sto p s.sto values sides retv in
+  let action_extern (p : Prog.t) (s : t) (sides : (Value.t * Bytes.t) List.t)
+      (retv : Interop.t) (ft : Loc.t) : (t, StopEvent.t) Result.t =
+    let* sto = action_external_sto p s.sto sides retv in
     let* ncont =
       Cont.of_loc p (Cursor.get_func_loc s.cursor) ft |> StopEvent.of_str_res
     in

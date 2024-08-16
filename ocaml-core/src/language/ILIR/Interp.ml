@@ -59,11 +59,10 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
         StringMap.find_opt name World.Environment.signature_map
         |> Option.to_result ~none:(StopEvent.FailStop "No external function")
       in
-      let* bargs = Store.build_args s.sto fsig |> StopEvent.of_str_res in
-      let values, args = bargs |> List.split in
+      let* sides, args = Store.build_args s.sto fsig |> StopEvent.of_str_res in
       match World.Environment.request_call name args with
       | World.Environment.EventTerminate -> Error StopEvent.NormalStop
-      | World.Environment.EventReturn (_, retv) ->
+      | World.Environment.EventReturn retv ->
           let* rv = Value.value_64 retpointer |> StopEvent.of_str_res in
           let* retaddr = Value.try_loc retaddr |> StopEvent.of_str_res in
           let* sto' =

@@ -45,6 +45,8 @@ let establish_server server_fun sock =
       ignore (waitpid_non_intr id)
 (* Reclaim the child *)
 
+external getfl : int -> int = "unix_getfl"
+
 module SpaceInfo = struct
   type t = SleighDef.SpaceInfo.t
 

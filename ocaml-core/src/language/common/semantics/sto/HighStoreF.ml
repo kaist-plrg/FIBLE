@@ -189,52 +189,74 @@ struct
 
   let action_nop (s : t) : (t, String.t) Result.t = Ok s
 
-  let build_arg (s : t) (tagv : Interop.tag) (v : Value.t) :
-      (Interop.t, String.t) Result.t =
-    match tagv with
-    | TString ->
-        let* v = load_string s v in
-        Interop.VString v |> Result.ok
-    | T8 -> (
-        match Value.try_num v with
-        | Ok value ->
-            let* value = NumericValue.value_64 value in
-            Interop.V8 (Char.chr (Int64.to_int value)) |> Result.ok
-        | _ -> Error "Not a number")
-    | T16 -> (
-        match Value.try_num v with
-        | Ok value ->
-            let* value = NumericValue.value_64 value in
-            Interop.V16 (Int64.to_int32 value) |> Result.ok
-        | _ -> Error "Not a number")
-    | T32 -> (
-        match Value.try_num v with
-        | Ok value ->
-            let* value = NumericValue.value_64 value in
+  let interop_interface : (t, Value.t) Interop.interface_t =
+    {
+      load_mem;
+      load_bytes;
+      store_bytes;
+      try_num = Value.try_num;
+      add_num =
+        (fun (a : Value.t) (b : Int64.t) ->
+          Value.eval_bop Bint_add a
+            (Value.of_num (NumericValue.of_int64 b 8l))
+            8l);
+    }
 
-            Interop.V32 (Int64.to_int32 value) |> Result.ok
-        | _ -> Error "Not a number")
-    | T64 -> (
-        match Value.try_num v with
-        | Ok value ->
-            let* value = NumericValue.value_64 value in
-            Interop.V64 value |> Result.ok
-        | _ ->
-            Interop.V64
-              (Foreign.foreign "strdup"
-                 (Ctypes_static.( @-> ) Ctypes.string
-                    (Ctypes.returning Ctypes_static.int64_t))
-                 "[null]")
-            |> Result.ok)
-    | TBuffer n ->
-        let* v = load_bytes s v (Int64.to_int32 n) in
-        Interop.VBuffer (v |> String.to_bytes) |> Result.ok
-    | TIBuffer n ->
-        let* v = load_bytes s v (Int64.to_int32 n) in
-        Interop.VIBuffer v |> Result.ok
-    | _ -> "Not supported" |> Result.error
+  let interop_accessor : (t, Value.t) Interop.acccessor_t =
+    Interop.get_accessor interop_interface
+
+  let build_arg :
+      t ->
+      Interop.prim_tag ->
+      Value.t ->
+      (Value.t Interop.side_t * Interop.t, String.t) Result.t =
+    interop_accessor.prim_acc
+  (* match tagv with
+     | TString ->
+         let* v = load_string s v in
+         Interop.VString v |> Result.ok
+     | T8 -> (
+         match Value.try_num v with
+         | Ok value ->
+             let* value = NumericValue.value_64 value in
+             Interop.V8 (Char.chr (Int64.to_int value)) |> Result.ok
+         | _ -> Error "Not a number")
+     | T16 -> (
+         match Value.try_num v with
+         | Ok value ->
+             let* value = NumericValue.value_64 value in
+             Interop.V16 (Int64.to_int32 value) |> Result.ok
+         | _ -> Error "Not a number")
+     | T32 -> (
+         match Value.try_num v with
+         | Ok value ->
+             let* value = NumericValue.value_64 value in
+
+             Interop.V32 (Int64.to_int32 value) |> Result.ok
+         | _ -> Error "Not a number")
+     | T64 -> (
+         match Value.try_num v with
+         | Ok value ->
+             let* value = NumericValue.value_64 value in
+             Interop.V64 value |> Result.ok
+         | _ ->
+             Interop.V64
+               (Foreign.foreign "strdup"
+                  (Ctypes_static.( @-> ) Ctypes.string
+                     (Ctypes.returning Ctypes_static.int64_t))
+                  "[null]")
+             |> Result.ok)
+     | TBuffer n ->
+         let* v = load_bytes s v (Int64.to_int32 n) in
+         Interop.VBuffer (v |> String.to_bytes) |> Result.ok
+     | TIBuffer n ->
+         let* v = load_bytes s v (Int64.to_int32 n) in
+         Interop.VIBuffer v |> Result.ok
+     | _ -> "Not supported" |> Result.error *)
 
   let build_ret (s : t) (v : Interop.t) : (t, String.t) Result.t =
+    let rv = Interop.extract_64 v in
+    (*
     match v with
     | V8 c ->
         add_reg s
@@ -256,11 +278,15 @@ struct
           { id = RegId.Register 0l; offset = 0l; width = 8l }
           (Value.of_num (NumericValue.of_int64 i 8l))
         |> Result.ok
-    | _ -> "Unsupported return type" |> Result.error
+    | _ -> "Unsupported return type" |> Result.error *)
+    add_reg s
+      { id = RegId.Register 0l; offset = 0l; width = 8l }
+      (Value.of_num (NumericValue.of_int64 rv 8l))
+    |> Result.ok
 
   let build_args (s : t) (fsig : Interop.func_sig) :
-      ((Value.t * Interop.t) list, String.t) Result.t =
-    if List.length fsig.params > 6 then
+      ((Value.t * Bytes.t) list * Interop.t list, String.t) Result.t =
+    if List.length (snd fsig.params) > 6 then
       [%log fatal "At most 6 argument is supported for external functions"];
     let reg_list = [ 56l; 48l; 16l; 8l; 128l; 136l ] in
     let val_list =
@@ -268,51 +294,18 @@ struct
         (fun r -> get_reg s { id = RegId.Register r; offset = 0l; width = 8l })
         reg_list
     in
-    let* nondep_tags =
-      List.fold_right
-        (fun (tag : Interop.tag) (acc : (Interop.tag List.t, String.t) Result.t) ->
-          let* ntag =
-            match tag with
-            | TBuffer_dep n ->
-                let* k =
-                  build_arg s (List.nth fsig.params n) (List.nth val_list n)
-                in
-                Interop.TBuffer (Interop.extract_64 k) |> Result.ok
-            | TIBuffer_dep n ->
-                let* k =
-                  build_arg s (List.nth fsig.params n) (List.nth val_list n)
-                in
-                Interop.TIBuffer (Interop.extract_64 k) |> Result.ok
-            | _ -> tag |> Result.ok
-          in
-          match acc with Ok l -> Ok (ntag :: l) | Error e -> Error e)
-        fsig.params (Ok [])
-    in
-    try
-      let ndt =
-        List.combine nondep_tags (List.take (List.length nondep_tags) val_list)
-      in
-      List.fold_right
-        (fun (t, v) acc ->
-          let* k = build_arg s t v in
-          match acc with Ok acc -> Ok ((v, k) :: acc) | Error e -> Error e)
-        ndt (Ok [])
-    with Invalid_argument _ ->
-      "Mismatched number of arguments for external functions" |> Result.error
+    let val_list = List.take (List.length (snd fsig.params)) val_list in
+    interop_accessor.fsig_acc s fsig val_list
 
-  let build_side (s : t) (value : Value.t) (t : Interop.t) :
+  let build_side (s : t) (value : Value.t) (t : Bytes.t) :
       (t, String.t) Result.t =
-    match t with
-    | Interop.VBuffer v ->
-        [%log debug "Storing extern_val at %a" Value.pp value];
-        store_bytes s value (Bytes.to_string v)
-    | _ -> Error "Unreachable"
+    [%log debug "Storing extern_val at %a" Value.pp value];
+    store_bytes s value (t |> Bytes.to_string)
 
-  let build_sides (s : t) (values : Value.t List.t)
-      (sides : (Int.t * Interop.t) List.t) : (t, String.t) Result.t =
+  let build_sides (s : t) (sides : (Value.t * Bytes.t) List.t) :
+      (t, String.t) Result.t =
     List.fold_left
-      (fun s (i, t) ->
-        Result.bind s (fun s -> build_side s (List.nth values i) t))
+      (fun s (i, t) -> Result.bind s (fun s -> build_side s i t))
       (Ok s) sides
 
   let get_sp_curr (s : t) (p : Prog.t) : Value.t =

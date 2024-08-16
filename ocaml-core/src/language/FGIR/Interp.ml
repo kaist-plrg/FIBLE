@@ -169,6 +169,31 @@ let action_store (p : Prog.t) (sto : Store.t) (a : StoreAction.t) (s : State.t)
             { id = RegId.Register 0l; offset = 0l; width = 8l }
             (Value.of_int64 (String.length writestr |> Int64.of_int) 8l)
           |> Result.ok
+      | 72L (* FCNTL *) ->
+          let* rdi =
+            Store.get_reg sto
+              { id = RegId.Register 56l; offset = 0l; width = 8l }
+            |> Value.value_64 |> StopEvent.of_str_res
+          in
+          let* rsi =
+            Store.get_reg sto
+              { id = RegId.Register 48l; offset = 0l; width = 8l }
+            |> Value.value_64 |> StopEvent.of_str_res
+          in
+
+          let* res =
+            match rsi with
+            | 3L (*GETFL*) ->
+                Ok
+                  (Value.of_int64
+                     (World.Util.getfl (rdi |> Int64.to_int) |> Int64.of_int)
+                     8l)
+            | _ -> Error "unimplemented fcntl" |> StopEvent.of_str_res
+          in
+          Store.add_reg sto
+            { id = RegId.Register 0l; offset = 0l; width = 8l }
+            res
+          |> Result.ok
       | _ ->
           [%log finfo "syscall" "%a" Stack.pp s.stack];
           Error (Format.sprintf "unimplemented syscall %Ld" rax)
@@ -197,16 +222,16 @@ let action (p : Prog.t) (s : State.t) (a : Action.t) :
           Ok { s with sto; cont }
       | _ -> StopEvent.FailStop "Not possible inst" |> Result.error)
   | Jmp l -> State.action_jmp p s l |> StopEvent.of_str_res
-  | ExternCall (name, values, args, ft) -> (
+  | ExternCall (name, sides, args, ft) -> (
       match World.Environment.request_call_opt name args with
-      | Some (sides, retv) -> State.action_extern p s values sides retv ft
+      | Some retv -> State.action_extern p s sides retv ft
       | None -> StopEvent.NormalStop |> Result.error)
   | Call sc -> action_JC p s sc
   | TailCall st -> StopEvent.FailStop "unimplemented jump" |> Result.error
   | Ret sr -> action_JR p s sr
 
 let action_with_computed_extern (p : Prog.t) (s : State.t) (a : Action.t)
-    (sides : (Int.t * Interop.t) List.t) (retv : Interop.t) :
+    (sides : ('a * Bytes.t) List.t) (retv : Interop.t) :
     (State.t, StopEvent.t) Result.t =
   match a with
   | StoreAction (a, lo) -> (
@@ -221,8 +246,15 @@ let action_with_computed_extern (p : Prog.t) (s : State.t) (a : Action.t)
           Ok { s with sto; cont }
       | _ -> StopEvent.FailStop "Not possible inst" |> Result.error)
   | Jmp l -> State.action_jmp p s l |> StopEvent.of_str_res
-  | ExternCall (name, values, args, ft) ->
-      State.action_extern p s values sides retv ft
+  | ExternCall (name, sidesn, args, ft) ->
+      if List.length sides = List.length sidesn then
+        let fake_sides =
+          List.map
+            (fun ((ptr, _), (_, bytes)) -> (ptr, bytes))
+            (List.combine sidesn sides)
+        in
+        State.action_extern p s fake_sides retv ft
+      else Error "Not same call target" |> StopEvent.of_str_res
   | Call sc -> action_JC p s sc
   | TailCall st -> StopEvent.FailStop "unimplemented jump" |> Result.error
   | Ret sr -> action_JR p s sr

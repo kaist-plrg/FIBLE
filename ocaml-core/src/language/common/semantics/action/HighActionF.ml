@@ -20,7 +20,8 @@ struct
   type t =
     | StoreAction of (StoreAction.t * Loc.t Option.t)
     | Jmp of Loc.t
-    | ExternCall of (String.t * Value.t List.t * Interop.t List.t * Loc.t)
+    | ExternCall of
+        (String.t * (Value.t * Bytes.t) List.t * Interop.t List.t * Loc.t)
     | Call of SCall.t
     | TailCall of STailCall.t
     | Ret of SRet.t

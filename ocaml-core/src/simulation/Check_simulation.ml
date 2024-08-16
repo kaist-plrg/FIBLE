@@ -127,9 +127,9 @@ let check_action (a1 : FGIR.Sem.Action.t) (a2 : ASIR.Sem.Action.t)
 
 let action_all a1 l1 l1_state a2 l2 l2_state a3 l3 l3_state =
   match (a1, a2, a3) with
-  | FGIR.Sem.Action.ExternCall (name, _, args, _), _, _ -> (
+  | FGIR.Sem.Action.ExternCall (name, sides, args, _), _, _ -> (
       match World.Environment.request_call_opt name args with
-      | Some (sides, retv) ->
+      | Some retv ->
           ( FGIR.Interp.action_with_computed_extern l1 l1_state a1 sides retv,
             ASIR.Interp.action_with_computed_extern l2 l2_state a2 sides retv,
             IOIR.Interp.action_with_computed_extern l3 l3_state a3 sides retv )

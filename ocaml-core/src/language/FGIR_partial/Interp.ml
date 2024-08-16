@@ -84,9 +84,9 @@ let action (p : Prog.t) (s : State.t) (a : Action.t) :
           Ok { s with sto; cont }
       | _ -> StopEvent.FailStop "Not possible inst" |> Result.error)
   | Jmp l -> State.action_jmp p s l |> StopEvent.of_str_res
-  | ExternCall (name, values, args, ft) -> (
+  | ExternCall (name, sides, args, ft) -> (
       match World.Environment.request_call_opt name args with
-      | Some (sides, retv) -> State.action_extern p s values sides retv ft
+      | Some retv -> State.action_extern p s sides retv ft
       | None -> StopEvent.NormalStop |> Result.error)
   | Call sc -> action_JC p s sc
   | TailCall st -> StopEvent.FailStop "unimplemented jump" |> Result.error
@@ -108,8 +108,7 @@ let action_with_computed_extern (p : Prog.t) (s : State.t) (a : Action.t)
           Ok { s with sto; cont }
       | _ -> StopEvent.FailStop "Not possible inst" |> Result.error)
   | Jmp l -> State.action_jmp p s l |> StopEvent.of_str_res
-  | ExternCall (name, values, args, ft) ->
-      State.action_extern p s values sides retv ft
+  | ExternCall (name, sides, args, ft) -> State.action_extern p s sides retv ft
   | Call sc -> action_JC p s sc
   | TailCall st -> StopEvent.FailStop "unimplemented jump" |> Result.error
   | Ret sr -> action_JR p s sr

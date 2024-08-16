@@ -10,6 +10,10 @@
   Either6
   Either7
   Either8
+  Array
+  Bool
+  Char
+  Float
   Int64
   Int32
   Option
