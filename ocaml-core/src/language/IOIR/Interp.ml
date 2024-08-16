@@ -181,7 +181,26 @@ let step (p : Prog.t) (s : State.t) : (Action.t, StopEvent.t) Result.t =
 let action_store (p : Prog.t) (sto : Store.t) (a : StoreAction.t) :
     (Store.t, StopEvent.t) Result.t =
   match a with
-  | Special _ -> Store.action_nop sto |> StopEvent.of_str_res
+  | Special ("syscall", sides, vals) ->
+      let* syscall_num =
+        match vals with
+        | Interop.VArith (VInt (V64 n)) :: _ -> Ok n
+        | _ -> Error "syscall: invalid syscall number" |> StopEvent.of_str_res
+      in
+      let* fsig =
+        World.Environment.x64_syscall_table syscall_num
+        |> Option.to_result
+             ~none:(StopEvent.FailStop "syscall: invalid syscall number")
+      in
+      let* res =
+        World.Environment.x64_do_syscall vals |> StopEvent.of_str_res
+      in
+      let* sto = Store.build_sides sto sides |> StopEvent.of_str_res in
+      Store.build_ret sto res |> StopEvent.of_str_res
+  | Special ("LOCK", _, _) | Special ("UNLOCK", _, _) -> sto |> Result.ok
+  | Special (x, _, _) ->
+      Error (Format.sprintf "unimplemented special %s" x)
+      |> StopEvent.of_str_res
   | Assign (p, v) -> Store.action_assign sto p v |> StopEvent.of_str_res
   | Load (r, p, v) -> Store.action_load sto r p v |> StopEvent.of_str_res
   | Store (p, v) -> Store.action_store sto p v |> StopEvent.of_str_res

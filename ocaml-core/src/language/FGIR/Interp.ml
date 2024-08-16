@@ -78,6 +78,7 @@ let action_store (p : Prog.t) (sto : Store.t) (a : StoreAction.t) (s : State.t)
       let* res =
         World.Environment.x64_do_syscall vals |> StopEvent.of_str_res
       in
+      let* sto = Store.build_sides sto sides |> StopEvent.of_str_res in
       Store.build_ret sto res |> StopEvent.of_str_res
   | Special ("LOCK", _, _) | Special ("UNLOCK", _, _) -> sto |> Result.ok
   | Special (x, _, _) ->
