@@ -421,7 +421,9 @@ let process_load (_ : DMem.t) (a : t) (outv : RegId.t_full)
 let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_full) =
   (let na = clear_mr a outv.id in
    match asn with
-   | Avar (Register r) -> add_single_eq na (KReg outv.id) (KReg r.id) 0L
+   | Avar (Register r) ->
+       if RegId.compare r.id outv.id = 0 then a
+       else add_single_eq na (KReg outv.id) (KReg r.id) 0L
    | Avar _ -> na
    | Abop (Bint_add, op1v, op2v) -> (
        match (op1v, op2v) with
