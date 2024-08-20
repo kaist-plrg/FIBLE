@@ -156,7 +156,9 @@ struct
         let* tv = Store.eval_vn (get_store s) target in
         let* loc = Value.try_loc tv in
         if LocSet.mem loc candidates then Action.jmp loc |> Result.ok
-        else "jump_ind: Not a valid jump" |> Result.error
+        else
+          Format.asprintf "jump_ind: Not a valid jump to %a" Loc.pp loc
+          |> Result.error
     | Jcbranch { condition; target_true; target_false } ->
         let* v = Store.eval_vn (get_store s) condition in
         [%log debug "Jcbranch %a" Value.pp v];
