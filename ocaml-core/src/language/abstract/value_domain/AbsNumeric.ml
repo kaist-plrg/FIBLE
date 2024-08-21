@@ -28,7 +28,7 @@ let pp fmt a =
 
 let of_const n : t =
   {
-    a_interval = IntervalD.of_const n;
+    a_interval = IntervalD.of_const (n |> Z.of_int64);
     a_mod8 = Mod8D.of_const n;
     a_limset = LimSetD.of_const n;
   }

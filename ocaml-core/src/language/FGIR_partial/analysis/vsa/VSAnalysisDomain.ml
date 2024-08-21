@@ -35,7 +35,7 @@ module Lattice_noBot = struct
 
   let gen_aexpr_set (o : OctagonD.t) (v : VarNode.t) : AExprSet.t =
     match v with
-    | Register r -> OctagonD.find_all_equiv o r.id
+    | Register r -> OctagonD.find_all_equiv o r
     | _ -> AExprSet.empty
 
   let clear_memref (a : t) : t =
@@ -44,6 +44,14 @@ module Lattice_noBot = struct
       value_octagon = OctagonD.clear_memref a.value_octagon;
       value_boolpower = BoolPowerD.clear_memref a.value_boolpower;
     }
+
+  let clear_tempreg (a : t) : t = a
+  (*
+    {
+      value_nonrel = NonRelStateD.clear_tempreg a.value_nonrel;
+      value_octagon = OctagonD.clear_tempreg (OctagonD.floyd_warshall a.value_octagon);
+      value_boolpower = BoolPowerD.clear_tempreg a.value_boolpower;
+    } *)
 
   let post_single (rom : DMem.t) (ls : Loc.t) (a : t) (i : Inst.t) : t =
     match i with
@@ -62,11 +70,11 @@ module Lattice_noBot = struct
         let addrSet = gen_aexpr_set a.value_octagon pointer in
         let regSet = AExprSet.used_regs addrSet in
         let inter_regSet =
-          RegIdSet.inter regSet (OctagonD.memory_base_regs a.value_octagon)
+          RegIdFullSet.inter regSet (OctagonD.memory_base_regs a.value_octagon)
         in
         let inter_addrSet =
           AExprSet.filter
-            (fun { base; offset } -> RegIdSet.mem base inter_regSet)
+            (fun { base; offset } -> RegIdFullSet.mem base inter_regSet)
             addrSet
         in
         let a, addrSet =
@@ -88,11 +96,11 @@ module Lattice_noBot = struct
         let addrSet = gen_aexpr_set a.value_octagon pointer in
         let regSet = AExprSet.used_regs addrSet in
         let inter_regSet =
-          RegIdSet.inter regSet (OctagonD.memory_base_regs a.value_octagon)
+          RegIdFullSet.inter regSet (OctagonD.memory_base_regs a.value_octagon)
         in
         let inter_addrSet =
           AExprSet.filter
-            (fun { base; offset } -> RegIdSet.mem base inter_regSet)
+            (fun { base; offset } -> RegIdFullSet.mem base inter_regSet)
             addrSet
         in
         let a, addrSet =
@@ -115,7 +123,7 @@ module Lattice_noBot = struct
       (targetloc : Loc.t) : t =
     match condv with
     | Register r -> (
-        match BoolPowerD.find_opt (KReg r.id) a.value_boolpower with
+        match BoolPowerD.find_opt (KReg r) a.value_boolpower with
         | Some b ->
             if compare trueloc targetloc = 0 then
               {
@@ -135,7 +143,7 @@ module Lattice_noBot = struct
   let try_concretize_vn (a : t) (vn : VarNode.t) : Int64Set.t option =
     match vn with
     | Register u ->
-        OctagonD.find_all_equiv a.value_octagon u.id
+        OctagonD.find_all_equiv a.value_octagon u
         |> AExprSet.to_list
         |> List.fold_left
              (fun acc (ae : AExpr.t) ->
@@ -148,7 +156,9 @@ module Lattice_noBot = struct
                    | Some a ->
                        AbsNumeric.try_concretize a
                        |> Option.map (fun x ->
-                              Int64Set.map (fun x -> Int64.add x ae.offset) x)
+                              Int64Set.map
+                                (fun x -> Int64.add x (Z.to_int64 ae.offset))
+                                x)
                    | None -> None))
              None
     | _ -> None
@@ -189,14 +199,24 @@ let analyze_noBot (e : edge) (a : Lattice_noBot.t) (rom : DMem.t) :
   | Inner ->
       [%log debug "Analyzing edge %a" Loc.pp (ICFG.G.E.src e).block.loc];
       List.fold_left
-        (fun a (i : Inst.t_full) -> Lattice_noBot.post_single rom i.loc a i.ins)
+        (fun a (i : Inst.t_full) ->
+          let a2 =
+            if Loc.get_seq i.loc = 0 then Lattice_noBot.clear_tempreg a else a
+          in
+          let value = Lattice_noBot.post_single rom i.loc a2 i.ins in
+          value)
         a (ICFG.G.E.src e).block.body
   | Flow -> (
       let srcBlock = ICFG.G.E.src e in
       match srcBlock.block.jmp.jmp with
       | JI (Jcbranch { condition; target_true; target_false }) ->
-          Lattice_noBot.filter_branch a condition target_true
-            (ICFG.G.E.dst e).block.loc
+          (* if OctagonD.check_neg_cycle a.value_octagon then
+             [%log fatal "Negative cycle detected BEFORE"]; *)
+          let value =
+            Lattice_noBot.filter_branch a condition target_true
+              (ICFG.G.E.dst e).block.loc
+          in
+          value
       | _ -> a)
 
 let analyze (e : edge) (a : t) : t =

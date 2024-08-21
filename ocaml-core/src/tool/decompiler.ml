@@ -27,6 +27,7 @@ let dump_flag =
   }
 
 let cwd = ref ""
+let func : String.t Option.t ref = ref None
 
 let speclist =
   [
@@ -35,6 +36,9 @@ let speclist =
     ( "-log-feature",
       Arg.String (fun x -> Logger.add_log_feature x),
       ": add log feature" );
+    ( "-func-name",
+      Arg.String (fun x -> func := Some x),
+      ": target function name" );
   ]
 
 let dump_cfa (cfa_res : (String.t * Byte8.t * ILIR.Shallow_CFA.t) list)
@@ -147,7 +151,11 @@ let make_l1 (ifile : String.t) (symtab : Artifact.Data.symbol_table)
       rspec = server.regspec.base_size;
       externs = Util.ExternalFunction.to_addrMap server.external_function;
       objects = symtab.objects;
-      entries = symtab.funcs;
+      entries =
+        symtab.funcs
+        |> List.filter (fun (_, s) ->
+               if Option.is_none !func then true
+               else Option.equal String.equal !func (Some s));
     }
   in
   let c1 = Sys.time () in

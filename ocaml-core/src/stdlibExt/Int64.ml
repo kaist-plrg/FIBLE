@@ -200,4 +200,12 @@ let sborrow (l : t) (r : t) (width : int32) : bool =
 
 let pp fmt v = Format.fprintf fmt "%Lx" v
 let t_of_sexp = Sexplib.Conv.int64_of_sexp
-let sexp_of_t = Sexplib.Conv.sexp_of_int64
+let sexp_of_t v = Sexplib.Conv.sexp_of_int64 v
+
+let t_of_sexp_hex (s : Sexplib.Sexp.t) : t =
+  match s with
+  | Sexplib.Sexp.Atom s -> Scanf.sscanf s "%Lx" Fun.id
+  | _ -> Sexplib.Conv_error.no_variant_match ()
+
+let sexp_of_t_hex (v : t) : Sexplib.Sexp.t =
+  Sexplib.Sexp.Atom (Format.sprintf "0x%Lx" v)

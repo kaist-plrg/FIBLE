@@ -93,6 +93,7 @@
   ;; semantics-regs
   RegIdMap
   RegIdSet
+  RegIdFullSet
   RegFileF
   ;; semantics-mem
   MemoryBlock

@@ -19,7 +19,7 @@ struct
     let sk = bindings a |> List.map fst in
     List.sort_uniq Key.compare sk
 
-  let refine_memrefs (a : t) (rs : RegIdSet.t) : t =
+  let refine_memrefs (a : t) (rs : RegIdFullSet.t) : t =
     to_list a
     |> List.filter_map (fun (k, v) ->
            let k' = Key.refine_memrefs k rs in
@@ -31,7 +31,13 @@ struct
       (fun (k : Key.t) _ -> match k with KMemLoc _ -> false | _ -> true)
       a
 
-  let clear_mr a (r : RegId.t) : t =
+  let clear_tempreg a =
+    filter
+      (fun (k : Key.t) _ ->
+        match k with KReg { id = Unique _; _ } -> false | _ -> true)
+      a
+
+  let clear_mr a (r : RegId.t_full) : t =
     to_list a
     |> List.filter_map (fun (k, v) ->
            let k' = Key.clear_mr k r in
@@ -43,20 +49,20 @@ struct
     |> List.filter_map (fun (k : Key.t) ->
            match k with KMemLoc v -> Some v | _ -> None)
 
-  let memory_base_regs (a : t) : RegIdSet.t =
+  let memory_base_regs (a : t) : RegIdFullSet.t =
     memory_keys a
     |> List.fold_left
-         (fun (acc : RegIdSet.t) (k : AExprSet.t) ->
-           RegIdSet.union (AExprSet.used_regs k) acc)
-         RegIdSet.empty
+         (fun (acc : RegIdFullSet.t) (k : AExprSet.t) ->
+           RegIdFullSet.union (AExprSet.used_regs k) acc)
+         RegIdFullSet.empty
 
   let join (a : t) (b : t) =
     let amregs = memory_base_regs a in
     let bmregs = memory_base_regs b in
     let inters =
-      RegIdSet.inter amregs bmregs
-      |> RegIdSet.elements
-      |> List.sort_uniq RegId.compare
+      RegIdFullSet.inter amregs bmregs
+      |> RegIdFullSet.elements
+      |> List.sort_uniq RegId.compare_full
     in
     match inters with
     | [] -> join (clear_memref a) (clear_memref b)
@@ -72,12 +78,12 @@ struct
                  AExprSet.exists (fun (x : AExpr.t) -> x.base = base) k)
         in
         let candids =
-          RegIdSet.union
+          RegIdFullSet.union
             (AExprSet.used_regs amreg_rep)
             (AExprSet.used_regs bmreg_rep)
         in
         let final_inters =
-          RegIdSet.filter
+          RegIdFullSet.filter
             (fun r -> AExprSet.has_same_diff amreg_rep bmreg_rep base r)
             candids
         in

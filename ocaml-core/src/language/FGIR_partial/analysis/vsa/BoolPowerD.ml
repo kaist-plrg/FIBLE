@@ -28,13 +28,18 @@ let clear_memref a =
   |> Map.map (fun (vt, vf) ->
          (OctagonD.clear_memref vt, OctagonD.clear_memref vf))
 
-let clear_mr a (r : RegId.t) =
+let clear_tempreg a =
+  Map.clear_tempreg a
+  |> Map.map (fun (vt, vf) ->
+         (OctagonD.clear_tempreg vt, OctagonD.clear_tempreg vf))
+
+let clear_mr a (r : RegId.t_full) =
   Map.clear_mr a r
   |> Map.map (fun (vt, vf) -> (OctagonD.clear_mr vt r, OctagonD.clear_mr vf r))
 
 let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
     (outv : RegId.t_full) =
-  let outmr : Key.t = KReg outv.id in
+  let outmr : Key.t = KReg outv in
   let a =
     Map.map
       (fun (vt, vf) ->
@@ -43,69 +48,89 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
       a
   in
   (* NOTE: should use Map.clear_mr to not delete outv.id inside of map *)
-  let na = Map.clear_mr a outv.id in
+  let na = Map.clear_mr a outv in
   match asn with
   | Avar (Register r) ->
-      Map.find_opt (KReg r.id) na
-      |> Option.map (fun v -> Map.add outmr v na)
-      |> Option.value ~default:na
+      if RegId.compare outv.id r.id = 0 then a
+      else
+        Map.find_opt (KReg r) na
+        |> Option.map (fun v -> Map.add outmr v na)
+        |> Option.value ~default:na
   | Avar _ -> na
   | Abop (Bint_less, op1v, op2v) -> (
       match (op1v, op2v) with
       | Register r, Const { value = c; _ } ->
+          let c = Z.of_int64 c in
           (Map.add outmr
-             ( OctagonD.gen_single_lt (OctagonD.gen_single_ge d r.id 0L) r.id c,
-               OctagonD.gen_single_ge d r.id c ))
+             ( OctagonD.gen_single_lt
+                 (OctagonD.gen_single_ge d r Z.zero
+                    ((r.width |> Int32.to_int) * 8))
+                 r c
+                 ((r.width |> Int32.to_int) * 8),
+               OctagonD.gen_single_ge d r c ((r.width |> Int32.to_int) * 8) ))
             na
       | _ -> na)
   | Abop (Bint_sless, op1v, op2v) -> (
       match (op1v, op2v) with
       | Register r, Const { value = c; _ } ->
+          let c = Z.of_int64 c in
           (Map.add outmr
-             (OctagonD.gen_single_lt d r.id c, OctagonD.gen_single_ge d r.id c))
+             ( OctagonD.gen_single_lt d r c ((r.width |> Int32.to_int) * 8),
+               OctagonD.gen_single_ge d r c ((r.width |> Int32.to_int) * 8) ))
             na
       | _ -> na)
   | Abop (Bint_sborrow, op1v, op2v) -> (
       match (op1v, op2v) with
       | Register r, Const { value = c; _ } ->
+          let c = Z.of_int64 c in
           (Map.add outmr
              ( d,
-               OctagonD.gen_single_lt (OctagonD.gen_single_ge d r.id 0L) r.id c
-             ))
+               OctagonD.gen_single_lt
+                 (OctagonD.gen_single_ge d r Z.zero
+                    ((r.width |> Int32.to_int) * 8))
+                 r c
+                 ((r.width |> Int32.to_int) * 8) ))
             na
       | _ -> na)
   | Abop (Bint_lessequal, op1v, op2v) -> (
       match (op1v, op2v) with
       | Register r, Const { value = c; _ } ->
+          let c = Z.of_int64 c in
           (Map.add outmr
              ( OctagonD.gen_single_lt
-                 (OctagonD.gen_single_ge d r.id 0L)
-                 r.id (Int64.add c 1L),
-               OctagonD.gen_single_ge d r.id (Int64.add c 1L) ))
+                 (OctagonD.gen_single_ge d r Z.zero
+                    ((r.width |> Int32.to_int) * 8))
+                 r (Z.add c Z.one)
+                 ((r.width |> Int32.to_int) * 8),
+               OctagonD.gen_single_ge d r (Z.add c Z.one)
+                 ((r.width |> Int32.to_int) * 8) ))
             na
       | _ -> na)
   | Abop (Bint_slessequal, op1v, op2v) -> (
       match (op1v, op2v) with
       | Register r, Const { value = c; _ } ->
+          let c = Z.of_int64 c in
           (Map.add outmr
-             ( OctagonD.gen_single_lt d r.id (Int64.add c 1L),
-               OctagonD.gen_single_ge d r.id (Int64.add c 1L) ))
+             ( OctagonD.gen_single_lt d r (Z.add c Z.one)
+                 ((r.width |> Int32.to_int) * 8),
+               OctagonD.gen_single_ge d r (Z.add c Z.one)
+                 ((r.width |> Int32.to_int) * 8) ))
             na
       | _ -> na)
   | Abop (Bint_equal, op1v, op2v) -> (
       match (op1v, op2v) with
       | Register r, Const { value = c; _ } ->
-          (Map.add outmr (OctagonD.gen_single_eq d r.id c, d)) na
+          let c = Z.of_int64 c in
+          (Map.add outmr
+             (OctagonD.gen_single_eq d r c ((r.width |> Int32.to_int) * 8), d))
+            na
       | Register r1, Register r2 -> (
-          match
-            (Map.find_opt (KReg r1.id) na, Map.find_opt (KReg r2.id) na)
-          with
+          match (Map.find_opt (KReg r1) na, Map.find_opt (KReg r2) na) with
           | Some (dt, df), Some (dt2, df2) ->
-              if RegId.compare r1.id (Register 523l) = 0 then
-                Map.add outmr
-                  ( OctagonD.join (OctagonD.meet dt dt2) (OctagonD.meet df df2),
-                    OctagonD.meet df dt2 )
-                  na
+              if
+                RegId.compare r1.id (Register 0x20bl) = 0
+                (* OF *) && RegId.compare r2.id (Register 0x207l) = 0 (* SF *)
+              then Map.add outmr (dt, df) na
               else
                 Map.add outmr
                   ( OctagonD.join (OctagonD.meet dt dt2) (OctagonD.meet df df2),
@@ -117,9 +142,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
   | Abop (Bbool_and, op1v, op2v) -> (
       match (op1v, op2v) with
       | Register r1, Register r2 -> (
-          match
-            (Map.find_opt (KReg r1.id) na, Map.find_opt (KReg r2.id) na)
-          with
+          match (Map.find_opt (KReg r1) na, Map.find_opt (KReg r2) na) with
           | Some (dt, df), Some (dt2, df2) ->
               Map.add outmr (OctagonD.meet dt dt2, OctagonD.join df df2) na
           | _ -> na)
@@ -127,9 +150,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
   | Abop (Bbool_or, op1v, op2v) -> (
       match (op1v, op2v) with
       | Register r1, Register r2 -> (
-          match
-            (Map.find_opt (KReg r1.id) na, Map.find_opt (KReg r2.id) na)
-          with
+          match (Map.find_opt (KReg r1) na, Map.find_opt (KReg r2) na) with
           | Some (dt, df), Some (dt2, df2) ->
               Map.add outmr (OctagonD.join dt dt2, OctagonD.meet df df2) na
           | _ -> na)
@@ -142,7 +163,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
   | Auop (Ubool_negate, opv) -> (
       match opv with
       | Register r -> (
-          match Map.find_opt (KReg r.id) na with
+          match Map.find_opt (KReg r) na with
           | Some (d1, d2) -> Map.add outmr (d2, d1) na
           | _ -> na)
       | _ -> na)
@@ -150,7 +171,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
 
 let process_load (rom : DMem.t) (a : t) (d : OctagonD.t) (outv : RegId.t_full)
     (addrSet : AExprSet.t) : t =
-  clear_mr a outv.id
+  clear_mr a outv
   |> Map.map (fun (vt, vf) ->
          ( OctagonD.process_load rom vt outv addrSet,
            OctagonD.process_load rom vf outv addrSet ))
