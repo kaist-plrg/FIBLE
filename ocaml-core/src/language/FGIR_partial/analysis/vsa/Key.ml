@@ -35,27 +35,24 @@ let update_single_reg (a : t) (r : RegId.t_full) (offset : Z.t) : t =
            s)
   | _ -> a
 
-let shift_aset (a : t) (aset : AExprSet.t) : t =
+let shift_aset (a : t) (aset : AExprSet.t) : t Option.t =
   match a with
   | KMemLoc s ->
-      let diff =
-        AExprSet.choose s |> fun e ->
-        Z.sub e.offset
-          ( AExprSet.find_filter_opt
-              (fun x -> RegId.compare x.base.id e.base.id = 0)
-              aset
-          |> Option.map (fun v _ -> v)
-          |> Option.value ~default:(fun () ->
-                 [%log
-                   fatal
-                     "shift_aset: no matching base register %a found from %a"
-                     RegId.pp_full e.base AExprSet.pp aset])
-          |> fun f -> f () )
-            .offset
+      let e = AExprSet.choose s in
+      let o =
+        AExprSet.find_filter_opt
+          (fun x -> RegId.compare x.base.id e.base.id = 0)
+          aset
       in
-      KMemLoc
-        (AExprSet.map (fun e -> { e with offset = Z.add e.offset diff }) aset)
-  | _ -> a
+      Option.map
+        (fun (o : AExpr.t) ->
+          let diff = Z.sub e.offset o.offset in
+          KMemLoc
+            (AExprSet.map
+               (fun e -> { e with offset = Z.add e.offset diff })
+               aset))
+        o
+  | _ -> Some a
 
 let compare (a : t) (b : t) : Int.t =
   match (a, b) with

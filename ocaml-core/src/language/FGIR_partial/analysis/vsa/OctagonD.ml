@@ -318,6 +318,8 @@ let find_all_equiv (a : t) (r : RegId.t_full) : AExprSet.t =
     AExprSet.empty keys
   |> AExprSet.add { base = r; offset = Z.zero }
 
+(** [rewrite_alias a] returns a new map where register alias are resolved most precisely. Also it removes memory cells with unkwon alias information
+*)
 let rewrite_alias (a : t) : t =
   let regs = memory_base_regs a in
   if RegIdFullSet.is_empty regs then a
@@ -325,10 +327,12 @@ let rewrite_alias (a : t) : t =
     let reg = RegIdFullSet.choose regs in
     let aset = find_all_equiv a reg in
     Map.to_list a
-    |> List.map (fun ((k1, k2), v) ->
+    |> List.filter_map (fun ((k1, k2), v) ->
            let k1' = Key.shift_aset k1 aset in
            let k2' = Key.shift_aset k2 aset in
-           ((k1', k2'), v))
+           match (k1', k2') with
+           | Some k1', Some k2' -> Some ((k1', k2'), v)
+           | _ -> None)
     |> Map.of_list
 
 let add_single_eq (a : t) (newk : Key.t) (orig : Key.t) (offset : Z.t)
