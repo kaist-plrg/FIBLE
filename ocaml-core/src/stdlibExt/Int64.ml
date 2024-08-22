@@ -208,4 +208,4 @@ let t_of_sexp_hex (s : Sexplib.Sexp.t) : t =
   | _ -> Sexplib.Conv_error.no_variant_match ()
 
 let sexp_of_t_hex (v : t) : Sexplib.Sexp.t =
-  Sexplib.Sexp.Atom (Format.sprintf "0x%Lx" v)
+  Sexplib.Sexp.Atom (Format.sprintf "%Lx" v)
