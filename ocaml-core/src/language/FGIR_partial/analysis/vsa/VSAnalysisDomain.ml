@@ -204,6 +204,10 @@ let analyze_noBot (e : edge) (a : Lattice_noBot.t) (rom : DMem.t) :
             if Loc.get_seq i.loc = 0 then Lattice_noBot.clear_tempreg a else a
           in
           let value = Lattice_noBot.post_single rom i.loc a2 i.ins in
+          (* if Int64.compare (Loc.get_addr i.loc) 0x0L = 0 then
+             [%log
+               info "Value after instruction %a: %a" Loc.pp i.loc
+                 Lattice_noBot.pp value]; *)
           value)
         a (ICFG.G.E.src e).block.body
   | Flow -> (

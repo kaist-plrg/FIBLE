@@ -562,7 +562,8 @@ let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_full) =
    | Avar _ -> na
    | Abop (Bint_add, op1v, op2v) -> (
        match (op1v, op2v) with
-       | Register r, Const { value = c; _ } -> (
+       | Register r, Const { value = c; _ } | Const { value = c; _ }, Register r
+         -> (
            let c = Z.of_int64 c in
            if RegId.compare_full r outv = 0 then update_single_reg a r c
            else if RegId.compare r.id outv.id = 0 then na
