@@ -87,6 +87,23 @@ let mband_sub (a : mband_t) (v : Z.t) : UpperD.t =
 module Map = struct
   include TopMapD.MakeLatticeWithTop (KeyPair) (UpperD)
 
+  let add (k : KeyPair.t) (v : UpperD.t) (a : t) : t =
+    match k with
+    | KReg r1, KReg r2 when Int32.compare r1.width r2.width <> 0 ->
+        [%log
+          fatal "Map.add: different width %a %a" RegId.pp_full r1 RegId.pp_full
+            r2]
+    | _ -> add k v a
+
+  let update (k : KeyPair.t) (f : UpperD.t Option.t -> UpperD.t Option.t)
+      (a : t) : t =
+    match k with
+    | KReg r1, KReg r2 when Int32.compare r1.width r2.width <> 0 ->
+        [%log
+          fatal "Map.update: different width %a %a" RegId.pp_full r1
+            RegId.pp_full r2]
+    | _ -> update k f a
+
   let find_filter_opt (f : KeyPair.t -> bool) (a : t) :
       (KeyPair.t * UpperD.t) Option.t =
     fold (fun k v acc -> if f k then Some (k, v) else acc) a None
@@ -120,7 +137,8 @@ let pp fmt (a : t) =
       match v with
       | UpperD.Bounded _ ->
           Format.fprintf fmt "(%a - %a) <= %a; " Key.pp k1 Key.pp k2 UpperD.pp v
-      | _ -> ())
+      | Top -> Format.fprintf fmt "(%a - %a) <= Top; " Key.pp k1 Key.pp k2
+      | Bot -> Format.fprintf fmt "(%a - %a) <= Bot; " Key.pp k1 Key.pp k2)
     a
 
 let clear_memref a =
@@ -187,6 +205,11 @@ let floyd_warshall graph =
             (fun acc_inner_map j ->
               if Key.compare j intermediate = 0 then acc_inner_map
               else if Key.compare i j = 0 then acc_inner_map
+              else if
+                match (i, j) with
+                | KReg i, KReg j when Int32.compare i.width j.width <> 0 -> true
+                | _ -> false
+              then acc_inner_map
               else
                 let ik =
                   Map.find_opt (i, intermediate) graph
@@ -235,12 +258,16 @@ let join a b =
       let amreg_rep =
         memory_keys a
         |> List.find (fun k ->
-               AExprSet.exists (fun (x : AExpr.t) -> x.base = base) k)
+               AExprSet.exists
+                 (fun (x : AExpr.t) -> RegId.compare_full x.base base = 0)
+                 k)
       in
       let bmreg_rep =
         memory_keys b
         |> List.find (fun k ->
-               AExprSet.exists (fun (x : AExpr.t) -> x.base = base) k)
+               AExprSet.exists
+                 (fun (x : AExpr.t) -> RegId.compare_full x.base base = 0)
+                 k)
       in
       let candids =
         RegIdFullSet.union
@@ -335,44 +362,63 @@ let rewrite_alias (a : t) : t =
            | _ -> None)
     |> Map.of_list
 
+(** [add_single_eq a newk orig offset] adds new relation newk - orig = offset
+*)
 let add_single_eq (a : t) (newk : Key.t) (orig : Key.t) (offset : Z.t)
     (bits : Int.t) =
-  let keys = keys a in
-  let x =
-    List.fold_left
-      (fun acc k ->
-        if Key.compare k orig = 0 then acc
-        else
-          Map.update (k, newk)
-            (fun vo ->
-              match (vo, Map.find_opt (k, orig) a) with
-              | Some v, Some (UpperD.Bounded i) ->
-                  Some (UpperD.meet v (mband_sub i offset))
-              | Some v, _ -> Some v
-              | _, Some (UpperD.Bounded i) -> Some (mband_sub i offset)
-              | _ -> Some UpperD.Top)
-            acc)
-      a keys
-  in
-  let y =
-    List.fold_left
-      (fun acc k ->
-        if Key.compare k orig = 0 then acc
-        else
-          Map.update (newk, k)
-            (fun vo ->
-              match (vo, Map.find_opt (orig, k) a) with
-              | Some v, Some (UpperD.Bounded i) ->
-                  Some (UpperD.meet v (mband_add i offset))
-              | Some v, _ -> Some v
-              | _, Some (UpperD.Bounded i) -> Some (mband_add i offset)
-              | _ -> Some UpperD.Top)
-            acc)
-      x keys
-  in
-  y
-  |> Map.add (orig, newk) (UpperD.mk_bounded (Z.neg offset) bits)
-  |> Map.add (newk, orig) (UpperD.mk_bounded offset bits)
+  if
+    match (newk, orig) with
+    | KReg r1, KReg r2 when Int32.compare r1.width r2.width <> 0 -> true
+    | _ -> false
+  then
+    [%log fatal "add_single_eq: different width %a %a" Key.pp newk Key.pp orig]
+  else
+    let keys = keys a in
+    let x =
+      List.fold_left
+        (fun acc k ->
+          if Key.compare k orig = 0 then acc
+          else if
+            match (k, newk) with
+            | KReg r1, KReg r2 when Int32.compare r1.width r2.width <> 0 -> true
+            | _ -> false
+          then acc
+          else
+            Map.update (k, newk)
+              (fun vo ->
+                match (vo, Map.find_opt (k, orig) a) with
+                | Some v, Some (UpperD.Bounded i) ->
+                    Some (UpperD.meet v (mband_sub i offset))
+                | Some v, _ -> Some v
+                | _, Some (UpperD.Bounded i) -> Some (mband_sub i offset)
+                | _ -> Some UpperD.Top)
+              acc)
+        a keys
+    in
+    let y =
+      List.fold_left
+        (fun acc k ->
+          if Key.compare k orig = 0 then acc
+          else if
+            match (k, newk) with
+            | KReg r1, KReg r2 when Int32.compare r1.width r2.width <> 0 -> true
+            | _ -> false
+          then acc
+          else
+            Map.update (newk, k)
+              (fun vo ->
+                match (vo, Map.find_opt (orig, k) a) with
+                | Some v, Some (UpperD.Bounded i) ->
+                    Some (UpperD.meet v (mband_add i offset))
+                | Some v, _ -> Some v
+                | _, Some (UpperD.Bounded i) -> Some (mband_add i offset)
+                | _ -> Some UpperD.Top)
+              acc)
+        x keys
+    in
+    y
+    |> Map.add (orig, newk) (UpperD.mk_bounded (Z.neg offset) bits)
+    |> Map.add (newk, orig) (UpperD.mk_bounded offset bits)
 
 let update_single_reg (a : t) (orig : RegId.t_full) (offset : Z.t) : t =
   let mem_updated =
@@ -419,15 +465,20 @@ let gen_single_lt (a : t) (r : RegId.t_full) (c : Z.t) (bits : Int.t) : t =
                        Some (UpperD.meet (UpperD.Bounded j) nv)
                    | _ -> Some nv)
                | _ -> vo)
-        |> Map.update (KReg r, k) (fun vo ->
-               match Map.find_opt (KZero, k) a with
-               | Some (UpperD.Bounded i) -> (
-                   let nv = mband_add i c in
-                   match vo with
-                   | Some (UpperD.Bounded j) ->
-                       Some (UpperD.meet (UpperD.Bounded j) nv)
-                   | _ -> Some nv)
-               | _ -> vo))
+        |> fun m ->
+        match k with
+        | KReg r1 when Int32.compare r1.width r.width <> 0 -> m
+        | _ ->
+            (Map.update (KReg r, k) (fun vo ->
+                 match Map.find_opt (KZero, k) a with
+                 | Some (UpperD.Bounded i) -> (
+                     let nv = mband_add i c in
+                     match vo with
+                     | Some (UpperD.Bounded j) ->
+                         Some (UpperD.meet (UpperD.Bounded j) nv)
+                     | _ -> Some nv)
+                 | _ -> vo))
+              m)
       a keys
   in
   x |> Map.add (KReg r, KZero) (UpperD.mk_bounded (Z.pred c) bits)
@@ -447,15 +498,21 @@ let gen_single_ge (a : t) (r : RegId.t_full) (c : Z.t) (bits : Int.t) : t =
                        Some (UpperD.meet (UpperD.Bounded j) nv)
                    | _ -> Some nv)
                | _ -> vo)
-        |> Map.update (k, KReg r) (fun vo ->
-               match Map.find_opt (k, KZero) a with
-               | Some (UpperD.Bounded i) -> (
-                   let nv = mband_add i c in
-                   match vo with
-                   | Some (UpperD.Bounded j) ->
-                       Some (UpperD.meet (UpperD.Bounded j) nv)
-                   | _ -> Some nv)
-               | _ -> vo))
+        |> fun m ->
+        match k with
+        | KReg r1 when Int32.compare r1.width r.width <> 0 -> m
+        | _ ->
+            Map.update (k, KReg r)
+              (fun vo ->
+                match Map.find_opt (k, KZero) a with
+                | Some (UpperD.Bounded i) -> (
+                    let nv = mband_add i c in
+                    match vo with
+                    | Some (UpperD.Bounded j) ->
+                        Some (UpperD.meet (UpperD.Bounded j) nv)
+                    | _ -> Some nv)
+                | _ -> vo)
+              m)
       a keys
   in
   x |> Map.add (KZero, KReg r) (UpperD.mk_bounded (Z.neg c) bits)
@@ -499,7 +556,7 @@ let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_full) =
   (let na = clear_mr a outv in
    match asn with
    | Avar (Register r) ->
-       if RegId.compare r.id outv.id = 0 then a
+       if RegId.compare_full r outv = 0 then a
        else
          add_single_eq na (KReg outv) (KReg r) Z.zero (Int32.to_int r.width * 8)
    | Avar _ -> na
@@ -507,7 +564,8 @@ let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_full) =
        match (op1v, op2v) with
        | Register r, Const { value = c; _ } -> (
            let c = Z.of_int64 c in
-           if RegId.compare r.id outv.id = 0 then update_single_reg a r c
+           if RegId.compare_full r outv = 0 then update_single_reg a r c
+           else if RegId.compare r.id outv.id = 0 then na
            else
              match
                ( Map.find_opt (KReg outv, KReg r) a,
@@ -527,21 +585,28 @@ let process_assignment (a : t) (asn : Assignable.t) (outv : RegId.t_full) =
        match (op1v, op2v) with
        | Register r, Const { value = c; _ } ->
            let c = Z.of_int64 c in
-           if RegId.compare r.id outv.id = 0 then
-             update_single_reg a r (Z.neg c)
+           if RegId.compare_full r outv = 0 then update_single_reg a r (Z.neg c)
+           else if RegId.compare r.id outv.id = 0 then na
            else
              add_single_eq na (KReg outv) (KReg r) (Z.neg c)
                (Int32.to_int r.width * 8)
        | _ -> na)
    | Abop (_, _, _) -> na
    | Auop (Uint_zext, Register r) ->
-       if RegId.compare r.id outv.id = 0 then a
-       else
-         add_single_eq na (KReg outv) (KReg r) Z.zero (Int32.to_int r.width * 8)
+       if RegId.compare_full r outv = 0 then a
+       else na
+         (* TODO: Handle different bitwidth in Octagon
+            else if RegId.compare r.id outv.id = 0 then na
+            else
+              add_single_eq na (KReg outv) (KReg r) Z.zero (Int32.to_int r.width * 8) *)
    | Auop (Uint_sext, Register r) ->
-       if RegId.compare r.id outv.id = 0 then a
-       else
-         add_single_eq na (KReg outv) (KReg r) Z.zero (Int32.to_int r.width * 8)
+       if RegId.compare_full r outv = 0 then a
+       else na
+         (* TODO: Handle different bitwidth in Octagon
+            else if RegId.compare r.id outv.id = 0 then na
+            else
+              add_single_eq na (KReg outv) (KReg r) Z.zero (Int32.to_int r.width * 8)
+         *)
    | Auop (_, _) -> na)
   |> rewrite_alias
 

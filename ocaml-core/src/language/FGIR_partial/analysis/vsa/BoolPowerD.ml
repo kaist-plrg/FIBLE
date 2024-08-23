@@ -51,7 +51,7 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
   let na = Map.clear_mr a outv in
   match asn with
   | Avar (Register r) ->
-      if RegId.compare outv.id r.id = 0 then a
+      if RegId.compare_full outv r = 0 then a
       else
         Map.find_opt (KReg r) na
         |> Option.map (fun v -> Map.add outmr v na)
@@ -152,13 +152,18 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
       | Register r1, Register r2 -> (
           match (Map.find_opt (KReg r1) na, Map.find_opt (KReg r2) na) with
           | Some (dt, df), Some (dt2, df2) ->
-              Map.add outmr (OctagonD.join dt dt2, OctagonD.meet df df2) na
+              let dtn, dfn = (OctagonD.join dt dt2, OctagonD.meet df df2) in
+              if
+                RegId.compare r1.id (Register 0x200l) = 0
+                && RegId.compare r2.id (Register 0x206l) = 0
+              then ();
+              Map.add outmr (dtn, dfn) na
           | _ -> na)
       | _ -> na)
   | Abop (Bint_add, Register r, Const _) ->
-      if RegId.compare outv.id r.id = 0 then a else na
+      if RegId.compare_full outv r = 0 then a else na
   | Abop (Bint_sub, Register r, Const _) ->
-      if RegId.compare outv.id r.id = 0 then a else na
+      if RegId.compare_full outv r = 0 then a else na
   | Abop (_, _, _) -> na
   | Auop (Ubool_negate, opv) -> (
       match opv with

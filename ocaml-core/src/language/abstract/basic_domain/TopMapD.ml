@@ -5,10 +5,25 @@ struct
 
   type t = A.t XMap.t
 
+  let add (k : key) (v : A.t) (a : t) : t =
+    if A.le A.top v then XMap.remove k a else XMap.add k v a
+
+  let update (k : key) (f : A.t option -> A.t option) (a : t) : t =
+    XMap.update k
+      (fun v ->
+        match f v with
+        | Some v -> if A.le A.top v then None else Some v
+        | None -> None)
+      a
+
   let join (a : t) (b : t) =
     merge
       (fun _ a b ->
-        match (a, b) with Some a, Some b -> Some (A.join a b) | _, _ -> None)
+        match (a, b) with
+        | Some a, Some b ->
+            let v = A.join a b in
+            if A.le A.top v then None else Some v
+        | _, _ -> None)
       a b
 
   let top = empty

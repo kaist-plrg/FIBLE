@@ -22,11 +22,7 @@ let eval_varnode (a : t) (d : OctagonD.t) (vn : VarNode.t) =
   | Register r -> (
       match
         Map.find_filter_opt
-          (function
-            | KReg r' ->
-                RegId.compare r'.id r.id = 0
-                && Int32.compare r'.offset r.offset = 0
-            | _ -> false)
+          (function KReg r' -> RegId.compare_full r' r = 0 | _ -> false)
           a
       with
       | None -> AbsNumeric.of_interval (OctagonD.request_interval d r)
@@ -84,10 +80,36 @@ let process_assignment (a : t) (d : OctagonD.t) (asn : Assignable.t)
   | Abop (_, _, _) -> na
   | Auop (Uint_sext, vn) ->
       let v = eval_varnode a d vn in
+      let v =
+        match vn with
+        | Register r
+          when RegId.compare outv.id r.id = 0
+               && Int32.compare outv.width 8l = 0
+               && Int32.compare r.width 4l = 0
+               && Int32.compare outv.offset r.offset = 0
+               && AbsNumeric.le AbsNumeric.top v
+               (* Special handling for Rxx = sext Exx *) ->
+            eval_varnode a d (Register outv)
+        | _ -> v
+      in
       Map.add (KReg outv)
         (AbsNumeric.sext v (VarNode.get_width vn) (RegId.width outv))
         na
-  | Auop (Uint_zext, vn) -> Map.add (KReg outv) (eval_varnode a d vn) na
+  | Auop (Uint_zext, vn) ->
+      let v = eval_varnode a d vn in
+      let v =
+        match vn with
+        | Register r
+          when RegId.compare outv.id r.id = 0
+               && Int32.compare outv.width 8l = 0
+               && Int32.compare r.width 4l = 0
+               && Int32.compare outv.offset r.offset = 0
+               && AbsNumeric.le AbsNumeric.top v
+               (* Special handling for Rxx = zext Exx *) ->
+            eval_varnode a d (Register outv)
+        | _ -> v
+      in
+      Map.add (KReg outv) v na
   | Auop (_, _) -> na
 
 let process_store (a : t) (d : OctagonD.t) (vn : VarNode.t)
