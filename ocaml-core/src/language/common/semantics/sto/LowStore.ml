@@ -294,7 +294,7 @@ struct
         let* fsig =
           match syscall_table snum with
           | Some fsig -> fsig |> Result.ok
-          | None -> "syscall not found" |> Result.error
+          | None -> Format.sprintf "syscall %Ld not found" snum |> Result.error
         in
         let* sides, args = build_args s fsig in
         Ok (Action.Special ("syscall", sides, rax :: args))

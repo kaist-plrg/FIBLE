@@ -15,6 +15,7 @@ let parse_stab (s : String.t) : (Int64.t * symbol_type * String.t) Option.t =
     Str.regexp
       {| *[0-9]+: \([0-9a-f]+\) *[0-9]+ \([A-Z]+\) *[A-Z]+ *[A-Z]+ *[0-9A-Z]+ * *\([^ ]+\)$|}
   in
+  let fini = Str.regexp {| *\[[^]]*\] *\.fini *PROGBITS *\([0-9a-f]+\)|} in
   if Str.string_match r s 0 then
     let addr = Scanf.sscanf (Str.matched_group 1 s) "%Lx" (fun x -> x) in
     (let* typ =
@@ -26,6 +27,9 @@ let parse_stab (s : String.t) : (Int64.t * symbol_type * String.t) Option.t =
      let name = Str.matched_group 3 s in
      Ok (addr, typ, name))
     |> Result.to_option
+  else if Str.string_match fini s 0 then
+    let addr = Scanf.sscanf (Str.matched_group 1 s) "%Lx" (fun x -> x) in
+    Some (addr, FUNC, ".fini")
   else None
 
 let main () =
