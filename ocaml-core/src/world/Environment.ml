@@ -74,6 +74,12 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
+  | 231L (* fgetxattr; ignore *) ->
+      { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
+      |> Option.some
+  | 60L (* exit *) ->
+      { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
+      |> Option.some
   | _ -> Option.none
 
 let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
@@ -129,6 +135,8 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       | 3L (*GETFL*) ->
           Ok (Interop.v64 (Util.getfl (rdi |> Int64.to_int) |> Int64.of_int))
       | _ -> Error "unimplemented fcntl")
+  | 231L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 0L |> Result.ok
+  | 60L, [ VArith (VInt (V64 rdi)) ] -> exit (Int64.to_int rdi)
   | _ -> Error (Format.sprintf "unimplemented syscall %Ld" rax)
 
 let cgc_funcs : String.t List.t =
