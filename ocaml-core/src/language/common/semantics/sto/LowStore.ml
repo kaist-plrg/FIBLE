@@ -115,7 +115,7 @@ struct
     match vn with
     | Register r -> get_reg s r |> Result.ok
     | Const v -> Value.of_int64 v.value v.width |> Result.ok
-    | Ram v -> load_mem s (Value.of_int64 v.value 8l) v.width
+    | Ram (v, width) -> load_mem s (Value.of_int64 v.value 8l) width
 
   let eval_vn_list (s : t) (vnl : VarNode.t List.t) :
       (Value.t List.t, String.t) Result.t =

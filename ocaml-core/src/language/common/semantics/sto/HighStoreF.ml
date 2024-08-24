@@ -52,7 +52,7 @@ module Make
     (Frame : sig
       type t
 
-      val empty : Int64.t -> Int64.t -> t
+      val empty : Int64.t Option.t -> Int64.t -> t
       val store_mem : t -> Int64.t -> Value.t -> (t, String.t) Result.t
     end) =
 struct
@@ -192,7 +192,7 @@ struct
     match vn with
     | Register r -> get_reg s r |> Result.ok
     | Const v -> v |> Value.of_const |> Result.ok
-    | Ram v -> load_mem s (v |> Value.of_const) (Const.get_width v)
+    | Ram (v, width) -> load_mem s (v |> Value.of_const) width
 
   let eval_vn_list (s : t) (vnl : VarNode.t List.t) :
       (Value.t List.t, String.t) Result.t =
@@ -433,7 +433,7 @@ struct
   let get_sp_curr (s : t) (p : Prog.t) : Value.t =
     get_reg s { id = RegId.Register (Prog.sp_num p); offset = 0l; width = 8l }
 
-  let build_local_frame (s : t) (p : Prog.t) (bnd : Int64.t * Int64.t)
+  let build_local_frame (s : t) (p : Prog.t) (bnd : Int64.t Option.t * Int64.t)
       (copydepth : Int64.t) =
     let sp_curr = get_sp_curr s p in
     let* passing_vals =

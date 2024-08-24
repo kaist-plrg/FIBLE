@@ -16,6 +16,21 @@ module Immutable = struct
         let make x y = { accesses = x; states = y }
       end)
 
+  let check_sp_fixed (a : t) (sp_num : Int32.t) : bool =
+    let epre =
+      FSAbsD.AbsLocMapD.exists
+        (fun _ (a : AbsState.t) ->
+          AbsVal.le Top (ARegFile.get a.regs (Register sp_num)))
+        a.states.pre_state
+    in
+    let epost =
+      FSAbsD.AbsLocMapD.exists
+        (fun _ (a : AbsState.t) ->
+          AbsVal.le Top (ARegFile.get a.regs (Register sp_num)))
+        a.states.post_state
+    in
+    not (epre || epost)
+
   let init (f : Func.t) (sp_num : Int32.t) (fp_num : Int32.t) : t =
     {
       states =

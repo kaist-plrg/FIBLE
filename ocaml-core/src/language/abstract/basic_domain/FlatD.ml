@@ -29,10 +29,10 @@ struct
 
   let le a b =
     match (a, b) with
-    | Top, _ -> true
-    | _, Top -> false
+    | _, Top -> true
     | Bot, _ -> true
     | _, Bot -> false
+    | Top, Flat _ -> false
     | Flat x, Flat y -> x = y
 
   let pp fmt = function

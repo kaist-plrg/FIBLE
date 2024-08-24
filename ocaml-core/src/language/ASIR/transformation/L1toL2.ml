@@ -119,7 +119,12 @@ let translate_block (b : FGIR.Syn.Block.t)
 
 let translate_func (f : FGIR.Syn.Func.t)
     (alist : (FGIR.Syn.Func.t * FGIR.SPFA.Immutable.t) List.t)
-    (a : FGIR.SPFA.Immutable.t) : Func.t =
+    (a : FGIR.SPFA.Immutable.t) (sp_num : Int32.t) : Func.t =
+  let sp_fixed = FGIR.SPFA.Immutable.check_sp_fixed a sp_num in
+  if not sp_fixed then
+    [%log
+      debug "SPFA.Immutable.check_sp_fixed returned false for function entry %s"
+        (Option.value ~default:"" f.nameo)];
   {
     nameo = f.nameo;
     entry = f.entry;
@@ -131,7 +136,8 @@ let translate_func (f : FGIR.Syn.Func.t)
         sp_boundary =
           (match a.accesses with
           | Fin s ->
-              ( FGIR.AccessD.FinSet.min_elt s,
+              ( (if sp_fixed then FGIR.AccessD.FinSet.min_elt s |> Option.some
+                 else Option.none),
                 (Int64.mul
                    (Int64.div (Int64.add (FGIR.AccessD.FinSet.max_elt s) 7L) 8L))
                   8L )
@@ -150,7 +156,7 @@ let translate_prog (p1 : FGIR.Syn.Prog.t) (sp_num : Int32.t) (fp_num : Int32.t)
       (fun f -> (f, FGIR.SPFA.Immutable.analyze f sp_num fp_num))
       p1.funcs
   in
-  let funcs = List.map (fun (f, r) -> translate_func f ares r) ares in
+  let funcs = List.map (fun (f, r) -> translate_func f ares r sp_num) ares in
   {
     sp_num;
     fp_num;
@@ -164,7 +170,9 @@ let translate_prog (p1 : FGIR.Syn.Prog.t) (sp_num : Int32.t) (fp_num : Int32.t)
 let translate_prog_from_spfa (p1 : FGIR.Syn.Prog.t)
     (spfa_res : (FGIR.Syn.Func.t * FGIR.SPFA.Immutable.t) list)
     (sp_num : Int32.t) (fp_num : Int32.t) : Prog.t =
-  let funcs = List.map (fun (f, a) -> translate_func f spfa_res a) spfa_res in
+  let funcs =
+    List.map (fun (f, a) -> translate_func f spfa_res a sp_num) spfa_res
+  in
   {
     sp_num;
     fp_num;

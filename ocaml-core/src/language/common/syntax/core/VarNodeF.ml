@@ -1,7 +1,7 @@
 type 'const_t poly_t =
   | Register of RegId.t_full
   | Const of 'const_t
-  | Ram of 'const_t
+  | Ram of ('const_t * Int32.t)
 [@@deriving sexp]
 
 module type S = sig
@@ -24,7 +24,7 @@ module Make (Const : ConstF.S) = struct
   let pp (fmt : Format.formatter) (v : t) =
     match v with
     | Register n -> Format.fprintf fmt "%a" RegId.pp_full n
-    | Ram n -> Format.fprintf fmt "*[ram]%a" Const.pp n
+    | Ram (n, width) -> Format.fprintf fmt "*[ram]%a:%ld" Const.pp n width
     | Const n -> Format.fprintf fmt "%a" Const.pp n
 
   let compare = compare
@@ -32,5 +32,5 @@ module Make (Const : ConstF.S) = struct
   let get_width = function
     | Register n -> n.width
     | Const n -> Const.get_width n
-    | Ram n -> Const.get_width n
+    | Ram (n, width) -> width
 end

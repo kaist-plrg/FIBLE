@@ -6,6 +6,13 @@ let pp fmt = function
   | SP sp -> SPVal.pp fmt sp
   | Undef i -> Format.fprintf fmt "undef_%ld" i
 
+let compare (a : t) (b : t) =
+  match (a, b) with
+  | SP a, SP b -> SPVal.compare a b
+  | Undef a, Undef b -> Int32.compare a b
+  | SP _, _ -> -1
+  | Undef _, _ -> 1
+
 let eval_uop (u : Uop.t) (v : t) (outwidth : Int32.t) :
     (NumericValue.t, t) Either.t =
   Right (Undef outwidth)
@@ -66,14 +73,15 @@ let eval_bop (b : Bop.t)
         Left (NumericValue.zero outwidth)
       else Right (Undef outwidth)
   | Bop.Bint_xor, First (v1, v2) ->
-      if (match v1 with Undef _ -> false | _ -> true) && v1 = v2 then
-        Left (NumericValue.zero outwidth)
+      if (match v1 with Undef _ -> false | _ -> true) && compare v1 v2 = 0
+      then Left (NumericValue.zero outwidth)
+      else Right (Undef outwidth)
+  | Bop.Bint_and, First (v1, v2) ->
+      if (match v1 with Undef _ -> false | _ -> true) && compare v1 v2 = 0
+      then Right v1
       else Right (Undef outwidth)
   | Bop.Bint_equal, First (SP o1, SP o2) ->
-      if
-        (o1.timestamp, o1.func, o1.multiplier, o1.offset)
-        = (o2.timestamp, o2.func, o2.multiplier, o2.offset)
-      then Left (NumericValue.of_int64 1L 1l)
+      if SPVal.compare o1 o2 = 0 then Left (NumericValue.of_int64 1L 1l)
       else Left (NumericValue.of_int64 0L 1l)
   | Bop.Bint_equal, Second _ | Bop.Bint_equal, Third _ ->
       Left (NumericValue.of_int64 0L 1l)

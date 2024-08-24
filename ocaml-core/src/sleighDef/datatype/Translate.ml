@@ -9,7 +9,7 @@ let varnode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t) (v : VarNode.t) :
     in
     Register { id = Register base; offset; width = v.size }
   else if v.space = si.const then Const { value = v.offset; width = v.size }
-  else if v.space = si.ram then Ram { value = v.offset; width = v.size }
+  else if v.space = si.ram then Ram ({ value = v.offset; width = 8l }, v.size)
   else [%log fatal "Unknown space %ld" v.space]
 
 let parse_mnemonic (s : String.t) : String.t * String.t =
@@ -41,7 +41,7 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
       {
         target =
           (match inputs 0 with
-          | Ram { value = a; _ } -> Common.Loc.of_addr a
+          | Ram ({ value = a; _ }, _) -> Common.Loc.of_addr a
           | Const { value = offset; _ } ->
               Common.Loc.of_addr_seq (addr, seqn + Int64.to_int offset)
           | _ ->
@@ -64,7 +64,7 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
         match output_raw () with
         | Register r ->
             Common.RawInst.second { expr = Avar (inputs 0); output = r }
-        | Ram { value = a; width = w } ->
+        | Ram ({ value = a; width = _ }, _) ->
             Common.RawInst.first
               (Store
                  {
@@ -86,7 +86,7 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
             condition = inputs 1;
             target =
               (match inputs 0 with
-              | Ram { value = a; _ } -> Common.Loc.of_addr a
+              | Ram ({ value = a; _ }, _) -> Common.Loc.of_addr a
               | Const { value = offset; _ } ->
                   Common.Loc.of_addr_seq (addr, seqn + Int64.to_int offset)
               | _ ->

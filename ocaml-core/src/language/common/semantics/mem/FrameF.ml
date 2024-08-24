@@ -3,7 +3,7 @@ module type S = sig
 
   type t
 
-  val empty : Byte8.t -> Byte8.t -> t
+  val empty : Byte8.t Option.t -> Byte8.t -> t
   val load_mem : t -> Byte8.t -> Int32.t -> Value.t
   val load_string : t -> Byte8.t -> (String.t, String.t) Result.t
   val load_bytes : t -> Byte8.t -> Int32.t -> (String.t, String.t) Result.t
@@ -19,16 +19,16 @@ module Make (Value : ValueF.S) = struct
   type t = {
     left : FailableMemory.t;
     right : Value.t Byte8Map.t;
-    min_addr : Byte8.t;
+    min_addr : Byte8.t Option.t;
     max_addr : Byte8.t;
   }
 
-  let empty (min_addr : Byte8.t) (max_addr : Byte8.t) =
+  let empty (min_addr : Byte8.t Option.t) (max_addr : Byte8.t) =
     { left = FailableMemory.empty; right = Byte8Map.empty; min_addr; max_addr }
 
   let load_mem (s : t) (addr : Byte8.t) (width : Int32.t) : Value.t =
     if
-      s.min_addr <= addr
+      s.min_addr |> Option.value ~default:Int64.min_int <= addr
       && Byte8.add addr (Byte8.pred (Byte8.of_int32 width)) <= s.max_addr
     then
       match
@@ -56,7 +56,7 @@ module Make (Value : ValueF.S) = struct
   let store_mem (s : t) (addr : Byte8.t) (v : Value.t) : (t, String.t) Result.t
       =
     if
-      s.min_addr <= addr
+      s.min_addr |> Option.value ~default:Int64.min_int <= addr
       && Int64.add addr (Int64.pred (Int64.of_int32 (Value.width v)))
          <= s.max_addr
     then
@@ -76,16 +76,20 @@ module Make (Value : ValueF.S) = struct
           }
           |> Result.ok
     else
-      Format.asprintf "%Ld out of bound [%Ld, %Ld]" addr s.min_addr s.max_addr
+      Format.asprintf "%Ld out of bound [%Ld, %Ld]" addr
+        (s.min_addr |> Option.value ~default:Int64.min_int)
+        s.max_addr
       |> Result.error
 
   let store_bytes (s : t) (addr : Byte8.t) (v : String.t) :
       (t, String.t) Result.t =
     if
-      s.min_addr <= addr
+      s.min_addr |> Option.value ~default:Int64.min_int <= addr
       && Int64.add addr (Int64.of_int (String.length v)) <= s.max_addr
     then { s with left = FailableMemory.store_bytes s.left addr v } |> Result.ok
     else
-      Format.asprintf "%Ld out of bound [%Ld, %Ld]" addr s.min_addr s.max_addr
+      Format.asprintf "%Ld out of bound [%Ld, %Ld]" addr
+        (s.min_addr |> Option.value ~default:Int64.min_int)
+        s.max_addr
       |> Result.error
 end

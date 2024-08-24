@@ -7,6 +7,16 @@ let pp fmt = function
   | Undef i -> Format.fprintf fmt "undef_%ld" i
   | Reg r -> Format.fprintf fmt "reg_%a" RegId.pp r
 
+let compare (a : t) (b : t) =
+  match (a, b) with
+  | SP a, SP b -> SPVal.compare a b
+  | Undef a, Undef b -> Int32.compare a b
+  | Reg a, Reg b -> RegId.compare a b
+  | SP _, _ -> -1
+  | Undef _, SP _ -> 1
+  | Undef _, _ -> -1
+  | Reg _, _ -> 1
+
 let eval_uop (u : Uop.t) (v : t) (outwidth : Int32.t) :
     (NumericValue.t, t) Either.t =
   Right (Undef outwidth)
@@ -69,6 +79,10 @@ let eval_bop (b : Bop.t)
   | Bop.Bint_xor, First (v1, v2) ->
       if (match v1 with Undef _ -> false | _ -> true) && v1 = v2 then
         Left (NumericValue.zero outwidth)
+      else Right (Undef outwidth)
+  | Bop.Bint_and, First (v1, v2) ->
+      if (match v1 with Undef _ -> false | _ -> true) && compare v1 v2 = 0
+      then Right v1
       else Right (Undef outwidth)
   | Bop.Bint_equal, First (SP o1, SP o2) ->
       if
