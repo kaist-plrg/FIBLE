@@ -27,6 +27,7 @@ module Make (Value : sig
   val get : t -> Int32.t -> Int32.t -> t
   val extend : t -> Int32.t -> t
   val extend_undef : t -> Int32.t -> t
+  val width : t -> Int32.t
   val set : t -> t -> Int32.t -> t
   val pp : Format.formatter -> t -> unit
 end) =
@@ -52,7 +53,11 @@ struct
       RegIdMap.find_opt r.id s
       |> Option.map (Fun.flip Value.extend_undef (Int32.add r.offset r.width))
       |> Option.value ~default:(Value.undefined r.width)
-      |> fun o -> Value.set o v r.offset
+      |> fun o ->
+      Value.set o
+        (if Int32.compare (Value.width v) r.width <= 0 then v
+         else Value.get v 0l r.width)
+        r.offset
     in
     RegIdMap.add r.id v s
 

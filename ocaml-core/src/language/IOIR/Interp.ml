@@ -120,13 +120,8 @@ let step_ret (s : State.t) (p : Prog.t) ({ attr } : SRet.t)
     List.fold_left
       (fun x (o, v) ->
         let* rf = x in
-        match v with
-        | Value.NonNum (Reg r) ->
-            if RegId.compare o r <> 0 then Error "Unmatched reg"
-            else rf |> Result.ok
-        | _ ->
-            RegFile.add_reg rf { id = o; offset = 0l; width = 8l } v
-            |> Result.ok)
+        (* TODO: ret match check using regs' *)
+        RegFile.add_reg rf { id = o; offset = 0l; width = 8l } v |> Result.ok)
       (Ok regs') output_values
     |> StopEvent.of_str_res
   in
