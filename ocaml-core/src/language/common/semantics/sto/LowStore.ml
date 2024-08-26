@@ -79,6 +79,50 @@ struct
         (nmem, nsp, nsp))
       (mem, sp, 0L) ptrs
 
+  let init_libc_glob (v : t) (objects : (Int64.t * String.t) List.t) : t =
+    let swaped_objects = objects |> List.map (fun (a, b) -> (b, a)) in
+    let argv =
+      RegFile.get_reg v.regs
+        { id = RegId.Register 48l; offset = 0l; width = 8l }
+    in
+    match
+      let* argv_ptr = NumericValue.try_addr argv in
+      let* argv0 = Memory.load_mem v.mem argv_ptr 8l in
+      let* argv0_ptr = NumericValue.try_addr argv0 in
+      let* progname = Memory.load_string v.mem argv0_ptr in
+      let short_prog_idx =
+        match String.rindex_opt progname '/' with
+        | None -> 0L
+        | Some idx -> Int64.of_int (idx + 1)
+      in
+      let* nmem =
+        match List.assoc_opt "program_invocation_name" swaped_objects with
+        | None -> v.mem |> Result.ok
+        | Some addr ->
+            let* addrp =
+              NumericValue.of_int64 addr 8l |> NumericValue.try_addr
+            in
+            Memory.store_mem v.mem addrp argv0 |> Result.ok
+      in
+      let* nmem =
+        match List.assoc_opt "program_invocation_short_name" swaped_objects with
+        | None -> nmem |> Result.ok
+        | Some addr ->
+            let* addrp =
+              NumericValue.of_int64 addr 8l |> NumericValue.try_addr
+            in
+            let* short_prog =
+              NumericBop.eval Bint_add argv0
+                (Value.of_num (NumericValue.of_int64 short_prog_idx 8l))
+                8l
+            in
+            Memory.store_mem nmem addrp short_prog |> Result.ok
+      in
+      { v with mem = nmem } |> Result.ok
+    with
+    | Ok v -> v
+    | Error s -> failwith s
+
   let init_from_sig (dmem : DMem.t) (rspec : int32 Int32Map.t)
       (init_sp : Int64.t) (args : String.t List.t) : t =
     let mem_init = Memory.from_rom dmem in

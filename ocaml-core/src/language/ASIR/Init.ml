@@ -11,11 +11,13 @@ let from_signature (p : Prog.t) (args : String.t List.t) (a : Byte8.t) : State.t
   {
     timestamp = 0L;
     sto =
-      Store.init_from_sig p.rom p.rspec
-        (Loc.of_addr a, 0L)
-        (Frame.empty (fst f.attr.sp_boundary)
-           (Int64.add (snd f.attr.sp_boundary) 4096L))
-        (Value.sp init_sp) args;
+      Store.init_libc_glob
+        (Store.init_from_sig p.rom p.rspec
+           (Loc.of_addr a, 0L)
+           (Frame.empty (fst f.attr.sp_boundary)
+              (Int64.add (snd f.attr.sp_boundary) 4096L))
+           (Value.sp init_sp) args)
+        p.objects;
     (*
        {
          regs =

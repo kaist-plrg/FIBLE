@@ -118,13 +118,8 @@ struct
     let* nsp =
       Value.eval_bop Bint_sub sp (Value.of_num (NumericValue.of_int64 8L 8l)) 8l
     in
-    let* vptr =
-      Value.eval_bop Bint_sub ptr
-        (Value.of_num (NumericValue.of_int64 8L 8l))
-        8l
-    in
     let* spptr = Value.try_pointer nsp in
-    let* nmem = Memory.store_mem mem spptr vptr in
+    let* nmem = Memory.store_mem mem spptr ptr in
     (nmem, nsp, nsp) |> Result.ok
 
   let alloc_array (mem : Memory.t) (sp : Value.t) (ptrs : Value.t List.t) :
@@ -136,6 +131,50 @@ struct
         (nmem, nsp, nsp) |> Result.ok)
       (mem, sp, Value.zero 8l)
       ptrs
+
+  let init_libc_glob (v : t) (objects : (Int64.t * String.t) List.t) : t =
+    let swaped_objects = objects |> List.map (fun (a, b) -> (b, a)) in
+    let argv =
+      RegFile.get_reg v.regs
+        { id = RegId.Register 48l; offset = 0l; width = 8l }
+    in
+    match
+      let* argv_ptr = Value.try_pointer argv in
+      let argv0 = Memory.load_mem v.mem argv_ptr 8l in
+      let* argv0_ptr = Value.try_pointer argv0 in
+      let* progname = Memory.load_string v.mem argv0_ptr in
+      let short_prog_idx =
+        match String.rindex_opt progname '/' with
+        | None -> 0L
+        | Some idx -> Int64.of_int (idx + 1)
+      in
+      let* nmem =
+        match List.assoc_opt "program_invocation_name" swaped_objects with
+        | None -> v.mem |> Result.ok
+        | Some addr ->
+            let* addrp =
+              Value.of_num (NumericValue.of_int64 addr 8l) |> Value.try_pointer
+            in
+            Memory.store_mem v.mem addrp argv0
+      in
+      let* nmem =
+        match List.assoc_opt "program_invocation_short_name" swaped_objects with
+        | None -> nmem |> Result.ok
+        | Some addr ->
+            let* addrp =
+              Value.of_num (NumericValue.of_int64 addr 8l) |> Value.try_pointer
+            in
+            let* short_prog =
+              Value.eval_bop Bint_add argv0
+                (Value.of_num (NumericValue.of_int64 short_prog_idx 8l))
+                8l
+            in
+            Memory.store_mem nmem addrp short_prog
+      in
+      { v with mem = nmem } |> Result.ok
+    with
+    | Ok v -> v
+    | Error s -> failwith s
 
   let init_from_sig (dmem : DMem.t) (rspec : int32 Int32Map.t)
       (frame_addr : Loc.t * Memory.TimeStamp.t) (init_frame : Memory.Frame.t)

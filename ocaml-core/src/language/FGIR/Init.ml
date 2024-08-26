@@ -7,7 +7,10 @@ let init_sp = 0x7FFFFFFFC000L
 let from_signature (p : Prog.t) (args : String.t List.t) (entry : Byte8.t) :
     State.t =
   {
-    sto = Store.init_from_sig p.rom p.rspec init_sp args;
+    sto =
+      Store.init_libc_glob
+        (Store.init_from_sig p.rom p.rspec init_sp args)
+        p.objects;
     cursor = { func = Loc.of_addr entry; tick = () };
     cont = Cont.of_func_entry_loc p (Loc.of_addr entry) |> Result.get_ok;
     stack = [];
