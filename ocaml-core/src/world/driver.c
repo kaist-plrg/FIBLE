@@ -49,3 +49,8 @@ CAMLprim value unix_fadvise(value fd, value offset, value len, value advice)
   return Val_int(ret);
 #endif
 }
+
+CAMLprim value unix_fd_is_valid (value fd)
+{
+  return Val_bool(fcntl(Int_val(fd), F_GETFD) != -1);
+}

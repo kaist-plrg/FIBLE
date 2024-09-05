@@ -46,6 +46,7 @@ let establish_server server_fun sock =
 (* Reclaim the child *)
 
 external getfl : int -> int = "unix_getfl"
+external fd_is_valid : int -> bool = "unix_fd_is_valid"
 external open_ : string -> int -> int -> int = "unix_open"
 external close : int -> int = "unix_close"
 external read : int -> bytes -> Int64.t -> Int64.t = "unix_read"

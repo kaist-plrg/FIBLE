@@ -132,6 +132,9 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
   match (rax, args) with
   | 0L, [ VArith (VInt (V64 rdi)); VBuffer rsi; VArith (VInt (V64 rdx)) ] ->
       let retv = Util.read (rdi |> Int64.to_int) rsi rdx in
+      [%log
+        finfo "syscall" "READ ARG: %Ld %a %Ld" rdi Interop.pp (VBuffer rsi) rdx];
+      [%log finfo "syscall" "READ RET: %Ld" retv];
       Interop.v64 retv |> Result.ok
   | 2L, [ VIBuffer sname; VArith (VInt (V64 flags)); VArith (VInt (V64 mode)) ]
     ->
@@ -163,10 +166,15 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
         VArith (VInt (V64 rsi));
         VArith (VInt (V64 rdx));
       ] ) ->
-      Interop.v64
-        (Util.ioctl (rdi |> Int64.to_int) (rsi |> Int64.to_int) rdx
-        |> Int64.of_int)
-      |> Result.ok
+      if
+        Int64.compare rsi 0x5413L = 0
+        (* TIOCGWINSZ *) && Util.fd_is_valid (Int64.to_int rdi)
+      then Interop.v64 0L |> Result.ok
+      else
+        Interop.v64
+          (Util.ioctl (rdi |> Int64.to_int) (rsi |> Int64.to_int) rdx
+          |> Int64.of_int)
+        |> Result.ok
   | 20L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ] ->
       [%log
         finfo "syscall" "WRITE ARG: %Ld %a %Ld" rdi Interop.pp (VIBuffer rsi)
