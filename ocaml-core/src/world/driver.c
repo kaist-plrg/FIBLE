@@ -9,6 +9,12 @@ CAMLprim value unix_getfl(value fd)
   return Val_int(flags);
 }
 
+CAMLprim value unix_read (value fd, value buf, value len)
+{
+  ssize_t ret = read(Int_val(fd), Bytes_val(buf), Int_val(len));
+  return Val_int(ret);
+}
+
 CAMLprim value unix_write(value fd, value buf, value len)
 {
   ssize_t ret = write(Int_val(fd), String_val(buf), Int_val(len));

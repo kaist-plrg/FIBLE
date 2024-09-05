@@ -8,6 +8,21 @@ let global_syscall_offset = ref 0L
 
 let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
   match n with
+  | 0L (* read *) ->
+      {
+        Interop.params =
+          ( [ ("x", T64) ],
+            [
+              Interop.t64;
+              Interop.TPtr
+                (Dynamic
+                   (Interop.TArr
+                      (Interop.TInt (Interop.Prim Interop.T8), Dependent "x")));
+              Interop.id "x";
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
   | 2L (* open *) ->
       {
         Interop.params =
@@ -115,6 +130,9 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
     | _ -> Error "syscall: invalid syscall number"
   in
   match (rax, args) with
+  | 0L, [ VArith (VInt (V64 rdi)); VBuffer rsi; VArith (VInt (V64 rdx)) ] ->
+      let retv = Util.read (rdi |> Int64.to_int) rsi (rdx |> Int64.to_int) in
+      Interop.v64 (Int64.of_int retv) |> Result.ok
   | 2L, [ VIBuffer sname; VArith (VInt (V64 flags)); VArith (VInt (V64 mode)) ]
     ->
       let name = Interop.vibuffer_to_string sname in
