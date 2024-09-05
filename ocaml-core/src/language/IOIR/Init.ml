@@ -18,25 +18,49 @@ let from_signature (p : Prog.t) (args : String.t List.t) (a : Byte8.t) : State.t
               (Int64.add (snd f.attr.sp_boundary) 4096L))
            (Value.sp init_sp) args)
         p.objects;
-    (*
-      {
-        regs =
-          RegFile.add_reg (RegFile.empty p.rspec)
-            { id = RegId.Register 32l; offset = 0l; width = 8l }
-            (Value.sp init_sp);
-        mem =
-          Memory.of_global_memory (GlobalMemory.from_rom p.rom)
-          |> Memory.add_local_frame
-               (Loc.of_addr a, 0L)
-               (Frame.empty (fst f.attr.sp_boundary) (snd f.attr.sp_boundary));
-      };*)
+    cursor = { func = Loc.of_addr a; tick = 0L };
+    cont = Cont.of_func_entry_loc p (Loc.of_addr a) |> Result.get_ok;
+    stack = [];
+  }
+
+let from_signature_libc (p : Prog.t) (args : String.t List.t) (a : Byte8.t)
+    (libc_a : Byte8.t) : State.t =
+  let init_sp =
+    { SPVal.func = Loc.of_addr a; timestamp = 0L; multiplier = 1L; offset = 0L }
+  in
+  let f = Prog.get_func_opt p (Loc.of_addr a) |> Option.get in
+  {
+    timestamp = 0L;
+    sto =
+      Store.init_libc_glob
+        (Store.init_from_sig p.rom p.rspec
+           (Loc.of_addr a, 0L)
+           (Frame.empty (fst f.attr.sp_boundary)
+              (Int64.add (snd f.attr.sp_boundary) 4096L))
+           (Value.sp init_sp) args)
+        p.objects;
     cursor = { func = Loc.of_addr a; tick = 0L };
     cont = Cont.of_func_entry_loc p (Loc.of_addr a) |> Result.get_ok;
     stack = [];
   }
 
 let default (p : Prog.t) (args : String.t List.t) : State.t =
-  (List.find
-     (fun (x : Func.t) -> Option.equal String.equal x.nameo (Some "main"))
-     p.funcs)
-    .entry |> Loc.get_addr |> from_signature p args
+  let main_func =
+    List.find_opt
+      (fun (x : Func.t) -> Option.equal String.equal x.nameo (Some "main"))
+      p.funcs
+  in
+  let libc_func =
+    List.find_opt
+      (fun (x : Func.t) ->
+        Option.equal String.equal x.nameo (Some "libc_start_main_stage2"))
+      p.funcs
+  in
+  match (main_func, libc_func) with
+  | Some main_func, Some libc_func ->
+      from_signature_libc p args
+        (main_func.entry |> Loc.get_addr)
+        (libc_func.entry |> Loc.get_addr)
+  | Some main_func, None ->
+      from_signature p args (main_func.entry |> Loc.get_addr)
+  | _ -> [%log error "No main function found"]

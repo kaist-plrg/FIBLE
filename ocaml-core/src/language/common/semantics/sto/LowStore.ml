@@ -123,16 +123,49 @@ struct
     | Ok v -> v
     | Error s -> failwith s
 
-  let init_from_sig (dmem : DMem.t) (rspec : int32 Int32Map.t)
-      (init_sp : Int64.t) (args : String.t List.t) : t =
+  let init_build_stack (dmem : DMem.t) (init_sp : Int64.t)
+      (args : String.t List.t) (envs : String.t List.t) :
+      Memory.t * Int64.t * Int64.t * Int64.t =
     let mem_init = Memory.from_rom dmem in
     let nmem, nsp, envptrs =
-      alloc_strings mem_init [] (Int64.add init_sp 4096L)
+      alloc_strings mem_init envs (Int64.add init_sp 4096L)
     in
     let nmem, nsp, argptrs = alloc_strings nmem args nsp in
     let nmem, nsp, envpptr = alloc_array nmem nsp envptrs in
     let nmem, nsp, argpptr = alloc_array nmem nsp argptrs in
     let nmem, nsp, _ = alloc_pointer nmem (Int64.add init_sp 8L) 0xDEADBEEFL in
+    (nmem, nsp, argpptr, envpptr)
+
+  let init_from_sig_libc (dmem : DMem.t) (rspec : int32 Int32Map.t)
+      (init_sp : Int64.t) (mainaddr : Int64.t) (args : String.t List.t)
+      (envs : String.t List.t) : t =
+    let nmem, nsp, argpptr, envpptr = init_build_stack dmem init_sp args envs in
+    let regs =
+      RegFile.add_reg (RegFile.empty rspec)
+        { id = RegId.Register 32l; offset = 0l; width = 8l }
+        (Value.of_int64 nsp 8l)
+    in
+    let regs =
+      RegFile.add_reg regs
+        { id = RegId.Register 56l; offset = 0l; width = 8l }
+        (Value.of_int64 mainaddr 8l)
+    in
+    let regs =
+      RegFile.add_reg regs
+        { id = RegId.Register 48l; offset = 0l; width = 8l }
+        (Value.of_int64 (Int64.of_int (List.length args)) 8l)
+    in
+    let regs =
+      RegFile.add_reg regs
+        { id = RegId.Register 16l; offset = 0l; width = 8l }
+        (Value.of_int64 argpptr 8l)
+    in
+    { regs; mem = nmem }
+
+  let init_from_sig_main (dmem : DMem.t) (rspec : int32 Int32Map.t)
+      (init_sp : Int64.t) (args : String.t List.t) (envs : String.t List.t) : t
+      =
+    let nmem, nsp, argpptr, envpptr = init_build_stack dmem init_sp args envs in
     let regs =
       RegFile.add_reg (RegFile.empty rspec)
         { id = RegId.Register 32l; offset = 0l; width = 8l }
