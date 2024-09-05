@@ -12,11 +12,11 @@ let from_signature (p : Prog.t) (args : String.t List.t) (a : Byte8.t) : State.t
     timestamp = 0L;
     sto =
       Store.init_libc_glob
-        (Store.init_from_sig p.rom p.rspec
+        (Store.init_from_sig_main p.rom p.rspec
            (Loc.of_addr a, 0L)
            (Frame.empty (fst f.attr.sp_boundary)
               (Int64.add (snd f.attr.sp_boundary) 4096L))
-           (Value.sp init_sp) args)
+           (Value.sp init_sp) args [])
         p.objects;
     cursor = { func = Loc.of_addr a; tick = 0L };
     cont = Cont.of_func_entry_loc p (Loc.of_addr a) |> Result.get_ok;
@@ -26,21 +26,26 @@ let from_signature (p : Prog.t) (args : String.t List.t) (a : Byte8.t) : State.t
 let from_signature_libc (p : Prog.t) (args : String.t List.t) (a : Byte8.t)
     (libc_a : Byte8.t) : State.t =
   let init_sp =
-    { SPVal.func = Loc.of_addr a; timestamp = 0L; multiplier = 1L; offset = 0L }
+    {
+      SPVal.func = Loc.of_addr libc_a;
+      timestamp = 0L;
+      multiplier = 1L;
+      offset = 0L;
+    }
   in
-  let f = Prog.get_func_opt p (Loc.of_addr a) |> Option.get in
+  let f = Prog.get_func_opt p (Loc.of_addr libc_a) |> Option.get in
   {
     timestamp = 0L;
     sto =
       Store.init_libc_glob
-        (Store.init_from_sig p.rom p.rspec
-           (Loc.of_addr a, 0L)
+        (Store.init_from_sig_libc p.rom p.rspec
+           (Loc.of_addr libc_a, 0L)
            (Frame.empty (fst f.attr.sp_boundary)
               (Int64.add (snd f.attr.sp_boundary) 4096L))
-           (Value.sp init_sp) args)
+           (Value.sp init_sp) a args [])
         p.objects;
-    cursor = { func = Loc.of_addr a; tick = 0L };
-    cont = Cont.of_func_entry_loc p (Loc.of_addr a) |> Result.get_ok;
+    cursor = { func = Loc.of_addr libc_a; tick = 0L };
+    cont = Cont.of_func_entry_loc p (Loc.of_addr libc_a) |> Result.get_ok;
     stack = [];
   }
 

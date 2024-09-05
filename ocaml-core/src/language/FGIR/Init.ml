@@ -24,7 +24,7 @@ let from_signature_libc (p : Prog.t) (args : String.t List.t) (entry : Byte8.t)
       Store.init_libc_glob
         (Store.init_from_sig_libc p.rom p.rspec init_sp entry args [])
         p.objects;
-    cursor = { func = Loc.of_addr entry; tick = () };
+    cursor = { func = Loc.of_addr libc_entry; tick = () };
     cont = Cont.of_func_entry_loc p (Loc.of_addr libc_entry) |> Result.get_ok;
     stack = [];
     timestamp = ();

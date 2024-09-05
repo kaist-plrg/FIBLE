@@ -176,32 +176,75 @@ struct
     | Ok v -> v
     | Error s -> failwith s
 
-  let init_from_sig (dmem : DMem.t) (rspec : int32 Int32Map.t)
-      (frame_addr : Loc.t * Memory.TimeStamp.t) (init_frame : Memory.Frame.t)
-      (init_sp : Value.t) (args : String.t List.t) : t =
+  let init_build_stack (dmem : DMem.t) (frame_addr : Loc.t * Memory.TimeStamp.t)
+      (init_frame : Memory.Frame.t) (init_sp : Value.t) (args : String.t List.t)
+      (envs : String.t List.t) :
+      (Memory.t * Value.t * Value.t * Value.t, String.t) Result.t =
     let mem_init =
       Memory.of_global_memory (Memory.GlobalMemory.from_rom dmem)
       |> Memory.add_local_frame frame_addr init_frame
     in
+    let* sp_start =
+      Value.eval_bop Bint_add init_sp
+        (Value.of_num (NumericValue.of_int64 4096L 8l))
+        8l
+    in
+    let* sp_final =
+      Value.eval_bop Bint_add init_sp
+        (Value.of_num (NumericValue.of_int64 8L 8l))
+        8l
+    in
+    let* nmem, nsp, envptrs = alloc_strings mem_init envs sp_start in
+    let* nmem, nsp, argptrs = alloc_strings nmem args nsp in
+    let* nmem, nsp, envpptr = alloc_array nmem nsp envptrs in
+    let* nmem, nsp, argpptr = alloc_array nmem nsp argptrs in
+    let* nmem, nsp, _ =
+      alloc_pointer nmem sp_final
+        (Value.of_num (NumericValue.of_int64 0xDEADBEEFL 8l))
+    in
+    (nmem, nsp, argpptr, envpptr) |> Result.ok
+
+  let init_from_sig_libc (dmem : DMem.t) (rspec : int32 Int32Map.t)
+      (frame_addr : Loc.t * Memory.TimeStamp.t) (init_frame : Memory.Frame.t)
+      (init_sp : Value.t) (mainaddr : Int64.t) (args : String.t List.t)
+      (envs : String.t List.t) : t =
+    let nmem, nsp, argpptr, envpptr =
+      match init_build_stack dmem frame_addr init_frame init_sp args envs with
+      | Ok s -> s
+      | Error s -> [%log error "%s" s]
+    in
+    let regs =
+      RegFile.add_reg (RegFile.empty rspec)
+        { id = RegId.Register 32l; offset = 0l; width = 8l }
+        nsp
+    in
+    let regs =
+      RegFile.add_reg regs
+        { id = RegId.Register 56l; offset = 0l; width = 8l }
+        (Value.of_num (NumericValue.of_int64 mainaddr 8l))
+    in
+    let regs =
+      RegFile.add_reg regs
+        { id = RegId.Register 48l; offset = 0l; width = 8l }
+        (Value.of_num
+           (NumericValue.of_int64 (Int64.of_int (List.length args)) 8l))
+    in
+    let regs =
+      RegFile.add_reg regs
+        { id = RegId.Register 16l; offset = 0l; width = 8l }
+        argpptr
+    in
+    { regs; mem = nmem }
+
+  let init_from_sig_main (dmem : DMem.t) (rspec : int32 Int32Map.t)
+      (frame_addr : Loc.t * Memory.TimeStamp.t) (init_frame : Memory.Frame.t)
+      (init_sp : Value.t) (args : String.t List.t) (envs : String.t List.t) : t
+      =
+    let nmem, nsp, argpptr, envpptr =
+      init_build_stack dmem frame_addr init_frame init_sp args envs
+      |> Result.get_ok
+    in
     let v =
-      let* sp_start =
-        Value.eval_bop Bint_add init_sp
-          (Value.of_num (NumericValue.of_int64 4096L 8l))
-          8l
-      in
-      let* sp_final =
-        Value.eval_bop Bint_add init_sp
-          (Value.of_num (NumericValue.of_int64 8L 8l))
-          8l
-      in
-      let* nmem, nsp, envptrs = alloc_strings mem_init [] sp_start in
-      let* nmem, nsp, argptrs = alloc_strings nmem args nsp in
-      let* nmem, nsp, envpptr = alloc_array nmem nsp envptrs in
-      let* nmem, nsp, argpptr = alloc_array nmem nsp argptrs in
-      let* nmem, nsp, _ =
-        alloc_pointer nmem sp_final
-          (Value.of_num (NumericValue.of_int64 0xDEADBEEFL 8l))
-      in
       let regs =
         RegFile.add_reg (RegFile.empty rspec)
           { id = RegId.Register 32l; offset = 0l; width = 8l }
