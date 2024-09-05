@@ -131,8 +131,8 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
   in
   match (rax, args) with
   | 0L, [ VArith (VInt (V64 rdi)); VBuffer rsi; VArith (VInt (V64 rdx)) ] ->
-      let retv = Util.read (rdi |> Int64.to_int) rsi (rdx |> Int64.to_int) in
-      Interop.v64 (Int64.of_int retv) |> Result.ok
+      let retv = Util.read (rdi |> Int64.to_int) rsi rdx in
+      Interop.v64 retv |> Result.ok
   | 2L, [ VIBuffer sname; VArith (VInt (V64 flags)); VArith (VInt (V64 mode)) ]
     ->
       let name = Interop.vibuffer_to_string sname in
@@ -183,10 +183,10 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       in
       let writestr = String.concat "" writearr in
       let retv =
-        Util.write (Int64.to_int rdi) writestr (String.length writestr)
+        Util.write (Int64.to_int rdi) writestr
+          (String.length writestr |> Int64.of_int)
       in
-
-      Interop.v64 (Int64.of_int retv) |> Result.ok
+      Interop.v64 retv |> Result.ok
   | ( 72L,
       [
         VArith (VInt (V64 rdi));
