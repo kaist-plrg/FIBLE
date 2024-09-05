@@ -8,7 +8,25 @@ let global_syscall_offset = ref 0L
 
 let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
   match n with
-  | 3L ->
+  | 2L (* open *) ->
+      {
+        Interop.params =
+          ( [],
+            [
+              Interop.TPtr
+                (Interop.Dynamic
+                   (Interop.TIArr
+                      ( Interop.TPrim
+                          (Interop.TArith
+                             (Interop.TInt (Interop.Prim Interop.T8))),
+                        Interop.ZeroEnd )));
+              Interop.t64;
+              Interop.t64;
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 3L (* close *) ->
       { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
       |> Option.some
   | 9L ->
@@ -74,6 +92,13 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
+  | 221L (* fadvise64 *) ->
+      {
+        Interop.params =
+          ([], [ Interop.t64; Interop.t64; Interop.t64; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
   | 231L (* fgetxattr; ignore *) ->
       { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
       |> Option.some
@@ -90,7 +115,16 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
     | _ -> Error "syscall: invalid syscall number"
   in
   match (rax, args) with
-  | 3L, [ _ ] -> Interop.v64 0L |> Result.ok
+  | 2L, [ VIBuffer sname; VArith (VInt (V64 flags)); VArith (VInt (V64 mode)) ]
+    ->
+      let name = Interop.vibuffer_to_string sname in
+      let retv =
+        Util.open_ name (flags |> Int64.to_int) (mode |> Int64.to_int)
+      in
+      Interop.v64 (Int64.of_int retv) |> Result.ok
+  | 3L, [ VArith (VInt (V64 rdi)) ] ->
+      Interop.v64 (Util.close (rdi |> Int64.to_int) |> Int64.of_int)
+      |> Result.ok
   | 9L, [ VArith (VInt (V64 rdi)); rsi; rdx; rcx; VArith (VInt (V64 r8)); r9 ]
     ->
       if r8 = 0xffffffffffffffffL then
@@ -146,6 +180,17 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       | 3L (*GETFL*) ->
           Ok (Interop.v64 (Util.getfl (rdi |> Int64.to_int) |> Int64.of_int))
       | _ -> Error "unimplemented fcntl")
+  | ( 221L (* fadvise64 *),
+      [
+        VArith (VInt (V64 rdi));
+        VArith (VInt (V64 rsi));
+        VArith (VInt (V64 rdx));
+        VArith (VInt (V64 rcx));
+      ] ) ->
+      Interop.v64
+        (Util.fadvise (rdi |> Int64.to_int) rsi rdx (rcx |> Int64.to_int)
+        |> Int64.of_int)
+      |> Result.ok
   | 231L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 0L |> Result.ok
   | 60L, [ VArith (VInt (V64 rdi)) ] -> exit (Int64.to_int rdi)
   | _ -> Error (Format.sprintf "unimplemented syscall %Ld" rax)
