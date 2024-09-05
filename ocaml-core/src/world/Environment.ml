@@ -105,7 +105,16 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       else Error "Not supported mmap"
   | 11L, [ rdi; rsi ] -> Interop.v64 0L |> Result.ok
   | 12L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 rdi |> Result.ok
-  | 16L, [ VArith (VInt (V64 rdi)); rsi; rdx ] -> Interop.v64 0L |> Result.ok
+  | ( 16L,
+      [
+        VArith (VInt (V64 rdi));
+        VArith (VInt (V64 rsi));
+        VArith (VInt (V64 rdx));
+      ] ) ->
+      Interop.v64
+        (Util.ioctl (rdi |> Int64.to_int) (rsi |> Int64.to_int) rdx
+        |> Int64.of_int)
+      |> Result.ok
   | 20L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ] ->
       [%log
         finfo "syscall" "WRITE ARG: %Ld %a %Ld" rdi Interop.pp (VIBuffer rsi)
@@ -121,9 +130,11 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
         |> Array.to_list |> Result.join_list
       in
       let writestr = String.concat "" writearr in
-      Out_channel.output_string Stdlib.stdout writestr;
-      Out_channel.flush Stdlib.stdout;
-      Interop.v64 (Int64.of_int (String.length writestr)) |> Result.ok
+      let retv =
+        Util.write (Int64.to_int rdi) writestr (String.length writestr)
+      in
+
+      Interop.v64 (Int64.of_int retv) |> Result.ok
   | ( 72L,
       [
         VArith (VInt (V64 rdi));

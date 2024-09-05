@@ -46,6 +46,8 @@ let establish_server server_fun sock =
 (* Reclaim the child *)
 
 external getfl : int -> int = "unix_getfl"
+external write : int -> string -> int -> int = "unix_write"
+external ioctl : int -> int -> Int64.t -> int = "unix_ioctl"
 
 module SpaceInfo = struct
   type t = SleighDef.SpaceInfo.t
