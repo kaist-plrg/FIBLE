@@ -21,7 +21,7 @@ let eval_uop (u : Uop.t) (v : t) (outwidth : Int32.t) :
     (NumericValue.t, t) Either.t =
   Right (Undef outwidth)
 
-let eval_sp_arith (o : SPVal.t) (v : Int64.t) : t =
+let add_sp_arith (o : SPVal.t) (v : Int64.t) : t =
   SP
     {
       timestamp = o.timestamp;
@@ -38,13 +38,13 @@ let eval_bop (b : Bop.t)
   | Bop.Bint_add, Second (SP o, lv) | Bop.Bint_add, Third (lv, SP o) -> (
       match NumericValue.value_64 lv with
       | Ok ln ->
-          Right (eval_sp_arith o (Int64.sext ln (NumericValue.width lv) 8l))
+          Right (add_sp_arith o (Int64.sext ln (NumericValue.width lv) 8l))
       | Error _ -> Right (Undef outwidth))
   | Bop.Bint_sub, Second (SP o, rv) -> (
       match NumericValue.value_64 rv with
       | Ok rn ->
           Right
-            (eval_sp_arith o
+            (add_sp_arith o
                (Int64.neg (Int64.sext rn (NumericValue.width rv) 8l)))
       | Error _ -> Right (Undef outwidth))
   | Bop.Bint_sub, Third (rv, SP o) -> (
@@ -76,6 +76,17 @@ let eval_bop (b : Bop.t)
       if (match v1 with Undef _ -> false | _ -> true) && v1 = v2 then
         Left (NumericValue.zero outwidth)
       else Right (Undef outwidth)
+  | Bop.Bint_mult, Second (SP o, lv) | Bop.Bint_mult, Third (lv, SP o) -> (
+      match NumericValue.value_64 lv with
+      | Ok rn ->
+          Right
+            (SP
+               {
+                 o with
+                 multiplier = Int64.mul o.multiplier rn;
+                 offset = Int64.mul o.offset rn;
+               })
+      | Error _ -> Right (Undef outwidth))
   | Bop.Bint_xor, First (v1, v2) ->
       if (match v1 with Undef _ -> false | _ -> true) && v1 = v2 then
         Left (NumericValue.zero outwidth)
