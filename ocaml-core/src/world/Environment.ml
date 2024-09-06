@@ -70,7 +70,7 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
       |> Option.some
   | 16L ->
       {
-        Interop.params = ([], [ Interop.t64; Interop.t64; Interop.t64 ]);
+        Interop.params = ([], [ Interop.t64; Interop.t64; Interop.tany ]);
         result = Some Interop.t64;
       }
       |> Option.some
@@ -160,19 +160,14 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       else Error "Not supported mmap"
   | 11L, [ rdi; rsi ] -> Interop.v64 0L |> Result.ok
   | 12L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 rdi |> Result.ok
-  | ( 16L,
-      [
-        VArith (VInt (V64 rdi));
-        VArith (VInt (V64 rsi));
-        VArith (VInt (V64 rdx));
-      ] ) ->
+  | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 rsi)); VOpaque ] ->
       if
         Int64.compare rsi 0x5413L = 0
         (* TIOCGWINSZ *) && Util.fd_is_valid (Int64.to_int rdi)
       then Interop.v64 0L |> Result.ok
       else
         Interop.v64
-          (Util.ioctl (rdi |> Int64.to_int) (rsi |> Int64.to_int) rdx
+          (Util.ioctl (rdi |> Int64.to_int) (rsi |> Int64.to_int) 0L
           |> Int64.of_int)
         |> Result.ok
   | 20L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ] ->

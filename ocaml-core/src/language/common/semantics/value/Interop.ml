@@ -4,7 +4,7 @@ type float_tag = TFloat | TDouble [@@deriving show]
 type arith_tag = TInt of int_tag | TFloat of float_tag [@@deriving show]
 type length_type = ZeroEnd | Dependent of String.t [@@deriving show]
 
-type prim_tag = TArith of arith_tag | TPtr of tag
+type prim_tag = TArith of arith_tag | TPtr of tag | TAny
 
 and fixed_tag =
   | TPrim of prim_tag
@@ -23,6 +23,7 @@ let t8 = TArith (TInt (Prim T8))
 let t16 = TArith (TInt (Prim T16))
 let t32 = TArith (TInt (Prim T32))
 let t64 = TArith (TInt (Prim T64))
+let tany = TAny
 let id x = TArith (TInt (Id x))
 let immutable_charbuffer_of x = TPtr (Dynamic (TIArr (TPrim t8, Dependent x)))
 
@@ -79,6 +80,7 @@ and subst_id_prim (p : prim_tag) (x : String.t) (pr : int_tag_prim)
   | TArith (TInt (Id y)) when x = y -> TArith (TInt (Prim pr))
   | TArith a -> TArith a
   | TPtr t -> TPtr (subst_id t x pr n)
+  | TAny -> TAny
 
 let rec typecheck (t : tag) (env : env_t) : Bool.t =
   match t with
@@ -92,6 +94,7 @@ and typecheck_fixed (f : fixed_tag) (env : env_t) : Bool.t =
       else typecheck_fixed t ((x, pt) :: env)
   | TPrim (TArith a) -> typecheck_arith a env
   | TPrim (TPtr t) -> typecheck t env
+  | TPrim TAny -> true
   | TBuffer (t, l) -> typecheck_arith t env
   | TIBuffer (t, l) -> typecheck_fixed t env
   | TStruct ts -> List.for_all (fun t -> typecheck_fixed t env) ts
@@ -124,6 +127,7 @@ type t =
   | VBuffer of Bytes.t
   | VIBuffer of t Array.t
   | VStruct of t List.t
+  | VOpaque
 [@@deriving show]
 
 let v8 (x : Char.t) : t = VArith (VInt (V8 x))
@@ -167,6 +171,7 @@ let prim_size (pr : prim_tag) (env : env_t) : (Int32.t, String.t) Result.t =
   | TArith (TInt (Prim p)) -> arith_int_size p |> Result.ok
   | TArith (TFloat f) -> arith_float_size f |> Result.ok
   | TPtr _ -> 8l |> Result.ok
+  | TAny -> 8l |> Result.ok
 
 let rec fixed_size (p : fixed_tag) (env : env_t) : (Int32.t, String.t) Result.t
     =
@@ -363,6 +368,7 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
         let* sides, rv = aux_arith s t v env in
         (sides, VArith rv) |> Result.ok
     | TPtr t -> aux_ptr s t v env
+    | TAny -> ([], VOpaque) |> Result.ok
   and aux_arith (s : 'store_t) (a : arith_tag) (v : 'value_t) (env : env_t) :
       (('value_t * Bytes.t) List.t * arith_value, String.t) Result.t =
     match a with
