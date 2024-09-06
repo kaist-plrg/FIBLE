@@ -132,11 +132,12 @@ struct
       (mem, sp, Value.zero 8l)
       ptrs
 
-  let init_libc_glob (v : t) (objects : (Int64.t * String.t) List.t) : t =
+  let init_libc_glob (v : t) (objects : (Int64.t * String.t) List.t)
+      (argv_reg : Int32.t) : t =
     let swaped_objects = objects |> List.map (fun (a, b) -> (b, a)) in
     let argv =
       RegFile.get_reg v.regs
-        { id = RegId.Register 48l; offset = 0l; width = 8l }
+        { id = RegId.Register argv_reg; offset = 0l; width = 8l }
     in
     match
       let* argv_ptr = Value.try_pointer argv in

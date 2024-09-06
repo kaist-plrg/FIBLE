@@ -10,7 +10,7 @@ let from_signature (p : Prog.t) (args : String.t List.t) (entry : Byte8.t) :
     sto =
       Store.init_libc_glob
         (Store.init_from_sig_main p.rom p.rspec init_sp args [])
-        p.objects;
+        p.objects 48l;
     pc = Loc.of_addr entry;
   }
 
@@ -20,7 +20,7 @@ let from_signature_libc (p : Prog.t) (args : String.t List.t) (entry : Byte8.t)
     sto =
       Store.init_libc_glob
         (Store.init_from_sig_libc p.rom p.rspec init_sp entry args [])
-        p.objects;
+        p.objects 16l;
     pc = Loc.of_addr libc_entry;
   }
 
