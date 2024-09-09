@@ -4,6 +4,7 @@ open Common
 
 type hidden_fn = Hide : ('a -> 'b) fn -> hidden_fn
 
+let env : String.t List.t = Unix.environment () |> Array.to_list
 let global_syscall_offset = ref 0L
 
 let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =

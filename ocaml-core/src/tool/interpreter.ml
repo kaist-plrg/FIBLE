@@ -21,18 +21,18 @@ let speclist =
       ": add log feature" );
   ]
 
-let interp_l1 l1 args =
-  match FGIR.Interp.interp l1 (FGIR.Init.default l1 args) with
+let interp_l1 l1 args env =
+  match FGIR.Interp.interp l1 (FGIR.Init.default l1 args env) with
   | Ok _ | Error NormalStop -> ()
   | Error (FailStop e) -> [%log error "Error: %s\n" e]
 
-let interp_l2 l2 args =
-  match ASIR.Interp.interp l2 (ASIR.Init.default l2 args) with
+let interp_l2 l2 args env =
+  match ASIR.Interp.interp l2 (ASIR.Init.default l2 args env) with
   | Ok _ | Error NormalStop -> ()
   | Error (FailStop e) -> [%log error "Error: %s\n" e]
 
-let interp_l3 l3 args =
-  (match IOIR.Interp.interp l3 (IOIR.Init.default l3 args) with
+let interp_l3 l3 args env =
+  (match IOIR.Interp.interp l3 (IOIR.Init.default l3 args env) with
   | Ok _ | Error NormalStop -> ()
   | Error (FailStop e) -> [%log error "Error: %s\n" e]);
   ()
@@ -48,8 +48,8 @@ let main () =
   else
     let data = Artifact.Loader.load !ifile in
     match data with
-    | Artifact.Data.L1 l1 -> interp_l1 l1 !args
-    | Artifact.Data.L2 l2 -> interp_l2 l2 !args
-    | Artifact.Data.L3 l3 -> interp_l3 l3 !args
+    | Artifact.Data.L1 l1 -> interp_l1 l1 !args Environment.env
+    | Artifact.Data.L2 l2 -> interp_l2 l2 !args Environment.env
+    | Artifact.Data.L3 l3 -> interp_l3 l3 !args Environment.env
 
 let () = Global.run_main main

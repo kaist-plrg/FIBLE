@@ -45,6 +45,30 @@ let establish_server server_fun sock =
       ignore (waitpid_non_intr id)
 (* Reclaim the child *)
 
+let calc_stack_size (args : String.t List.t) (env : String.t List.t) : Int64.t =
+  let args_size =
+    List.fold_left
+      (fun acc x ->
+        let len = Int64.of_int (String.length x) in
+        let padded_len = Int64.mul (Int64.div (Int64.add len 7L) 8L) 8L in
+        Int64.add acc padded_len)
+      0L args
+  in
+  let env_size =
+    List.fold_left
+      (fun acc x ->
+        let len = Int64.of_int (String.length x) in
+        let padded_len = Int64.mul (Int64.div (Int64.add len 7L) 8L) 8L in
+        Int64.add acc padded_len)
+      0L env
+  in
+  let args_ptr_size = Int64.of_int (List.length args + 1) |> Int64.mul 8L in
+  let env_ptr_size = Int64.of_int (List.length env + 1) |> Int64.mul 8L in
+  Int64.add
+    (Int64.add args_size env_size)
+    (Int64.add args_ptr_size env_ptr_size)
+  |> Int64.add 64L
+
 external getfl : int -> int = "unix_getfl"
 external fd_is_valid : int -> bool = "unix_fd_is_valid"
 external open_ : string -> int -> int -> int = "unix_open"

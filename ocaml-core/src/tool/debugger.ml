@@ -15,13 +15,16 @@ let speclist =
   ]
 
 let debug_l1 (in_chan, out_chan) l1 args =
-  Artifact.Repl.FGIR.repl (in_chan, out_chan) l1 (FGIR.Init.default l1 args)
+  Artifact.Repl.FGIR.repl (in_chan, out_chan) l1
+    (FGIR.Init.default l1 args Environment.env)
 
 let debug_l2 (in_chan, out_chan) l2 args =
-  Artifact.Repl.ASIR.repl (in_chan, out_chan) l2 (ASIR.Init.default l2 args)
+  Artifact.Repl.ASIR.repl (in_chan, out_chan) l2
+    (ASIR.Init.default l2 args Environment.env)
 
 let debug_l3 (in_chan, out_chan) l3 args =
-  Artifact.Repl.IOIR.repl (in_chan, out_chan) l3 (IOIR.Init.default l3 args)
+  Artifact.Repl.IOIR.repl (in_chan, out_chan) l3
+    (IOIR.Init.default l3 args Environment.env)
 
 let main () =
   Arg.parse speclist

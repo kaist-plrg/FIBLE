@@ -7,13 +7,6 @@ let step_call_internal (s : State.t) (p : Prog.t)
     (Store.t * Stack.elem_t, StopEvent.t) Result.t =
   let* currf = State.get_current_function s p |> StopEvent.of_str_res in
   let* f = State.get_func_from p calln |> StopEvent.of_str_res in
-
-  (* TODO: think ind copydepth
-     let* _ =
-       if snd f.sp_boundary <= copydepth then Ok ()
-       else Error "jcall_ind: copydepth not match"
-     in
-  *)
   (s.sto, (s.cursor, fallthrough)) |> Result.ok
 
 let step_ret (s : State.t) (p : Prog.t) ({ attr } : SRet.t) (calln, retn') :

@@ -179,7 +179,7 @@ struct
 
   let init_build_stack (dmem : DMem.t) (frame_addr : Loc.t * Memory.TimeStamp.t)
       (init_frame : Memory.Frame.t) (init_sp : Value.t) (args : String.t List.t)
-      (envs : String.t List.t) :
+      (envs : String.t List.t) (stack_size : Int64.t) :
       (Memory.t * Value.t * Value.t * Value.t, String.t) Result.t =
     let mem_init =
       Memory.of_global_memory (Memory.GlobalMemory.from_rom dmem)
@@ -187,7 +187,7 @@ struct
     in
     let* sp_start =
       Value.eval_bop Bint_add init_sp
-        (Value.of_num (NumericValue.of_int64 4096L 8l))
+        (Value.of_num (NumericValue.of_int64 stack_size 8l))
         8l
     in
     let* sp_final =
@@ -208,9 +208,11 @@ struct
   let init_from_sig_libc (dmem : DMem.t) (rspec : int32 Int32Map.t)
       (frame_addr : Loc.t * Memory.TimeStamp.t) (init_frame : Memory.Frame.t)
       (init_sp : Value.t) (mainaddr : Int64.t) (args : String.t List.t)
-      (envs : String.t List.t) : t =
+      (envs : String.t List.t) (stack_size : Int64.t) : t =
     let nmem, nsp, argpptr, envpptr =
-      match init_build_stack dmem frame_addr init_frame init_sp args envs with
+      match
+        init_build_stack dmem frame_addr init_frame init_sp args envs stack_size
+      with
       | Ok s -> s
       | Error s -> [%log error "%s" s]
     in
@@ -239,10 +241,10 @@ struct
 
   let init_from_sig_main (dmem : DMem.t) (rspec : int32 Int32Map.t)
       (frame_addr : Loc.t * Memory.TimeStamp.t) (init_frame : Memory.Frame.t)
-      (init_sp : Value.t) (args : String.t List.t) (envs : String.t List.t) : t
-      =
+      (init_sp : Value.t) (args : String.t List.t) (envs : String.t List.t)
+      (stack_size : Int64.t) : t =
     let nmem, nsp, argpptr, envpptr =
-      init_build_stack dmem frame_addr init_frame init_sp args envs
+      init_build_stack dmem frame_addr init_frame init_sp args envs stack_size
       |> Result.get_ok
     in
     let v =

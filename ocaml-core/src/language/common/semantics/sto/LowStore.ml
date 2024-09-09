@@ -48,7 +48,7 @@ struct
 
   let alloc_string (mem : Memory.t) (arg : String.t) (sp : Int64.t) :
       Memory.t * Int64.t * Int64.t =
-    let len = Int64.of_int ((String.length arg + 1 + 7) / 8 * 8) in
+    let len = Int64.of_int ((String.length arg + 8) / 8 * 8) in
     let padlen = Int64.sub len (Int64.of_int (String.length arg)) in
     let arg = arg ^ String.make (Int64.to_int padlen) '\x00' in
     let nsp = Int64.sub sp len in
@@ -125,11 +125,11 @@ struct
     | Error s -> failwith s
 
   let init_build_stack (dmem : DMem.t) (init_sp : Int64.t)
-      (args : String.t List.t) (envs : String.t List.t) :
+      (args : String.t List.t) (envs : String.t List.t) (stack_size : Int64.t) :
       Memory.t * Int64.t * Int64.t * Int64.t =
     let mem_init = Memory.from_rom dmem in
     let nmem, nsp, envptrs =
-      alloc_strings mem_init envs (Int64.add init_sp 4096L)
+      alloc_strings mem_init envs (Int64.add init_sp stack_size)
     in
     let nmem, nsp, argptrs = alloc_strings nmem args nsp in
     let nmem, nsp, envpptr = alloc_array nmem nsp envptrs in
@@ -139,8 +139,10 @@ struct
 
   let init_from_sig_libc (dmem : DMem.t) (rspec : int32 Int32Map.t)
       (init_sp : Int64.t) (mainaddr : Int64.t) (args : String.t List.t)
-      (envs : String.t List.t) : t =
-    let nmem, nsp, argpptr, envpptr = init_build_stack dmem init_sp args envs in
+      (envs : String.t List.t) (stack_size : Int64.t) : t =
+    let nmem, nsp, argpptr, envpptr =
+      init_build_stack dmem init_sp args envs stack_size
+    in
     let regs =
       RegFile.add_reg (RegFile.empty rspec)
         { id = RegId.Register 32l; offset = 0l; width = 8l }
@@ -164,9 +166,11 @@ struct
     { regs; mem = nmem }
 
   let init_from_sig_main (dmem : DMem.t) (rspec : int32 Int32Map.t)
-      (init_sp : Int64.t) (args : String.t List.t) (envs : String.t List.t) : t
-      =
-    let nmem, nsp, argpptr, envpptr = init_build_stack dmem init_sp args envs in
+      (init_sp : Int64.t) (args : String.t List.t) (envs : String.t List.t)
+      (stack_size : Int64.t) : t =
+    let nmem, nsp, argpptr, envpptr =
+      init_build_stack dmem init_sp args envs stack_size
+    in
     let regs =
       RegFile.add_reg (RegFile.empty rspec)
         { id = RegId.Register 32l; offset = 0l; width = 8l }
