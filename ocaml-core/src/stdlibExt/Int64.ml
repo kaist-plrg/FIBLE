@@ -74,71 +74,6 @@ let bitcount (v : t) : int64 =
   in
   aux 0L v
 
-let lift_float_uop (f : Float.t -> Float.t) (v : t) (width : int32) :
-    (t, String.t) Result.t =
-  if width = 4l then
-    Ok
-      (cut_width
-         (Stdlib.Int64.of_int32
-            (Int32.bits_of_float
-               (f (Int32.float_of_bits (Stdlib.Int64.to_int32 v)))))
-         width)
-  else if width = 8l then
-    Ok
-      (cut_width
-         (Stdlib.Int64.bits_of_float (f (Stdlib.Int64.float_of_bits v)))
-         width)
-  else Error "lift_float_uop: unsupported width"
-
-let float_neg (v : t) (width : int32) : (t, String.t) Result.t =
-  lift_float_uop Float.neg v width
-
-let float_abs (v : t) (width : int32) : (t, String.t) Result.t =
-  lift_float_uop Float.abs v width
-
-let float_sqrt (v : t) (width : int32) : (t, String.t) Result.t =
-  lift_float_uop Float.sqrt v width
-
-let float_ceil (v : t) (width : int32) : (t, String.t) Result.t =
-  lift_float_uop Float.ceil v width
-
-let float_floor (v : t) (width : int32) : (t, String.t) Result.t =
-  lift_float_uop Float.floor v width
-
-let float_round (v : t) (width : int32) : (t, String.t) Result.t =
-  lift_float_uop Float.round v width
-
-let float_is_nan (v : t) (width : int32) : (t, String.t) Result.t =
-  if width = 4l then
-    Ok
-      (if Float.is_nan (Int32.float_of_bits (Stdlib.Int64.to_int32 v)) then 1L
-       else 0L)
-  else if width = 8l then
-    Ok (if Float.is_nan (Stdlib.Int64.float_of_bits v) then 1L else 0L)
-  else Error "float_is_nan: unsupported width"
-
-let int2float (v : t) (inwidth : int32) (outwidth : int32) :
-    (t, String.t) Result.t =
-  let fv = Stdlib.Int64.to_float (sext v inwidth 8l) in
-  if outwidth = 4l then
-    Ok (cut_width (Stdlib.Int64.of_int32 (Int32.bits_of_float fv)) outwidth)
-  else if outwidth = 8l then
-    Ok (cut_width (Stdlib.Int64.bits_of_float fv) outwidth)
-  else Error "int2float: unsupported width"
-
-let float2float (v : t) (inwidth : int32) (outwidth : int32) :
-    (t, String.t) Result.t =
-  let* fv =
-    if inwidth = 4l then Ok (Int32.float_of_bits (Stdlib.Int64.to_int32 v))
-    else if inwidth = 8l then Ok (Stdlib.Int64.float_of_bits v)
-    else Error "float2float: unsupported width"
-  in
-  if outwidth = 4l then
-    Ok (cut_width (Stdlib.Int64.of_int32 (Int32.bits_of_float fv)) outwidth)
-  else if outwidth = 8l then
-    Ok (cut_width (Stdlib.Int64.bits_of_float fv) outwidth)
-  else Error "float2float: unsupported width"
-
 let trunc (v : t) (inwidth : int32) (outwidth : int32) : (t, String.t) Result.t
     =
   let* fv =
@@ -147,16 +82,6 @@ let trunc (v : t) (inwidth : int32) (outwidth : int32) : (t, String.t) Result.t
     else Error "int2float: unsupported width"
   in
   Ok (cut_width (of_float fv) outwidth)
-
-let to_float_width (v : t) (width : int32) : (Float.t, String.t) Result.t =
-  if width = 4l then Ok (Int32.float_of_bits (Stdlib.Int64.to_int32 v))
-  else if width = 8l then Ok (Stdlib.Int64.float_of_bits v)
-  else Error "to_float_width: unsupported width"
-
-let of_float_width (v : Float.t) (width : int32) : (t, String.t) Result.t =
-  if width = 4l then Ok (Stdlib.Int64.of_int32 (Int32.bits_of_float v))
-  else if width = 8l then Ok (Stdlib.Int64.bits_of_float v)
-  else Error "of_float_width: unsupported width"
 
 let concat (v1 : t) (v2 : t) (v1width : int32) (v2width : int32) :
     (t, String.t) Result.t =

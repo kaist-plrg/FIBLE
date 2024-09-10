@@ -47,6 +47,10 @@ let value_z (x : t) : (Z.t, String.t) Result.t =
   let* s = try_string x in
   Z.of_bits s |> Result.ok
 
+let value_float (x : t) : (Float.t, String.t) Result.t =
+  let* s = try_string x in
+  Float.of_string s |> Result.ok
+
 let value_64 (x : t) : (Int64.t, String.t) Result.t =
   let* s = try_string (extend x 8l) in
   String.get_int64_le s 0 |> Result.ok
@@ -109,6 +113,36 @@ let of_z v width =
   let bits_padded = bits ^ String.make (Int32.to_int width) '\x00' in
   let bits_truncated = String.sub bits_padded 0 (Int32.to_int width) in
   of_chars (String.to_seq bits_truncated |> List.of_seq)
+
+let of_float (v : Float.t) (width : Int32.t) : t =
+  match v with
+  | F32 v ->
+      if Int32.compare width 4l != 0 then
+        [%log
+          raise
+            (Invalid_argument
+               (Format.asprintf
+                  "NumericValue.of_float: %a does not fit in %ld bytes"
+                  Float32.pp v width))];
+      of_chars (Float32.to_string v |> String.to_seq |> List.of_seq)
+  | F64 v ->
+      if Int32.compare width 8l != 0 then
+        [%log
+          raise
+            (Invalid_argument
+               (Format.asprintf
+                  "NumericValue.of_float: %a does not fit in %ld bytes"
+                  Float64.pp v width))];
+      of_chars (Float64.to_string v |> String.to_seq |> List.of_seq)
+  | F80 v ->
+      if Int32.compare width 10l != 0 then
+        [%log
+          raise
+            (Invalid_argument
+               (Format.asprintf
+                  "NumericValue.of_float: %a does not fit in %ld bytes"
+                  Float80.pp v width))];
+      of_chars (Float80.to_string v |> String.to_seq |> List.of_seq)
 
 let of_int64 v width =
   let bits = Int64.bitwidth v in

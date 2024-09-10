@@ -1,8 +1,11 @@
 (library
  (name stdlibExt)
  (ocamlopt_flags -O3 -inline-max-depth=5 -inline-max-unroll=2)
+ (foreign_stubs
+  (language c)
+  (names float32 float64 float80))
  (flags -w -20-33-3)
- (libraries unix sexplib)
+ (libraries unix sexplib zarith)
  (modules
   Either3
   Either4
@@ -14,6 +17,9 @@
   Bool
   Char
   Float
+  Float32
+  Float64
+  Float80
   Int64
   Int32
   Option

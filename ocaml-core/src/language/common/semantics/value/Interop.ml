@@ -119,7 +119,12 @@ type int_value =
   | V8 of Char.t
 [@@deriving show]
 
-type float_value = VFloat of Float.t | VDouble of Float.t [@@deriving show]
+type float_value =
+  | VFloat of Float32.t
+  | VDouble of Float64.t
+  | VLDouble of Float80.t
+[@@deriving show]
+
 type arith_value = VInt of int_value | VFloat of float_value [@@deriving show]
 
 type t =
@@ -147,8 +152,9 @@ let arith_is_zero (v : arith_value) : Bool.t =
   | VInt (V32 i) -> Int32.equal i 0l
   | VInt (V16 i) -> Int32.equal i 0l
   | VInt (V8 i) -> Char.equal i '\x00'
-  | VFloat (VFloat f) -> Float.equal f 0.0
-  | VFloat (VDouble f) -> Float.equal f 0.0
+  | VFloat (VFloat f) -> Float32.equal f Float32.zero
+  | VFloat (VDouble f) -> Float64.equal f Float64.zero
+  | VFloat (VLDouble f) -> Float80.equal f Float80.zero
 
 let arith_from_int64 (t : int_tag_prim) (n : Int64.t) : arith_value =
   match t with
@@ -203,11 +209,14 @@ let vbuffer_to_string (vs : arith_value Array.t) : String.t =
       | VInt (V8 i) ->
           acc ^ String.sub (Int64.to_string_le (Int64.of_int (Char.code i))) 0 1
       | VFloat (VFloat f) ->
-          let i = Stdlib.Int32.bits_of_float f in
-          acc ^ String.sub (Int64.to_string_le (Int64.of_int32 i)) 0 4
+          let i = Float32.to_bytes f |> Bytes.to_string in
+          acc ^ i
       | VFloat (VDouble f) ->
-          let i = Stdlib.Int64.bits_of_float f in
-          acc ^ Int64.to_string_le i)
+          let i = Float64.to_bytes f |> Bytes.to_string in
+          acc ^ i
+      | VFloat (VLDouble f) ->
+          let i = Float80.to_bytes f |> Bytes.to_string in
+          acc ^ i)
     "" vs
 
 let vibuffer_to_string (vs : t Array.t) : String.t =
@@ -222,11 +231,14 @@ let vibuffer_to_string (vs : t Array.t) : String.t =
       | VArith (VInt (V8 i)) ->
           acc ^ String.sub (Int64.to_string_le (Int64.of_int (Char.code i))) 0 1
       | VArith (VFloat (VFloat f)) ->
-          let i = Stdlib.Int32.bits_of_float f in
-          acc ^ String.sub (Int64.to_string_le (Int64.of_int32 i)) 0 4
+          let i = Float32.to_bytes f |> Bytes.to_string in
+          acc ^ i
       | VArith (VFloat (VDouble f)) ->
-          let i = Stdlib.Int64.bits_of_float f in
-          acc ^ Int64.to_string_le i
+          let i = Float64.to_bytes f |> Bytes.to_string in
+          acc ^ i
+      | VArith (VFloat (VLDouble f)) ->
+          let i = Float80.to_bytes f |> Bytes.to_string in
+          acc ^ i
       | _ -> acc)
     "" vs
 
@@ -379,13 +391,13 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
         ([], arith_from_int64 t n64) |> Result.ok
     | TFloat TFloat ->
         let* n = i.try_num v in
-        let* n64 = NumericValue.value_64 n in
-        let* f = Int64.to_float_width n64 4l in
+        let* n64 = NumericValue.try_string n in
+        let f = Float32.of_bytes (n64 |> Bytes.of_string) in
         ([], VFloat (VFloat f)) |> Result.ok
     | TFloat TDouble ->
         let* n = i.try_num v in
-        let* n64 = NumericValue.value_64 n in
-        let* f = Int64.to_float_width n64 8l in
+        let* n64 = NumericValue.try_string n in
+        let f = Float64.of_bytes (n64 |> Bytes.of_string) in
         ([], VFloat (VDouble f)) |> Result.ok
   and aux_extract_id_prim (s : 'store_t) (x : String.t) (size : Int32.t)
       (t : prim_tag) (v : 'value_t) (env : env_t) : (Int64.t, String.t) Result.t

@@ -15,10 +15,8 @@ let sborrow (l : Z.t) (r : Z.t) (width : int32) : bool =
 
 let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
     (outwidth : Int32.t) : (NumericValue.t, String.t) Result.t =
-  let* ln64 = NumericValue.value_64 lv in
   let* ln = NumericValue.value_z lv in
   let* ln_s = NumericValue.value_signed_z lv in
-  let* rn64 = NumericValue.value_64 rv in
   let* rn = NumericValue.value_z rv in
   let* rn_s = NumericValue.value_signed_z rv in
   match b with
@@ -167,75 +165,71 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
       if NumericValue.width lv <> NumericValue.width rv then
         Error "float_equal: different bitwidth"
       else
-        let* lf = Int64.to_float_width ln64 (NumericValue.width lv) in
-        let* rf = Int64.to_float_width rn64 (NumericValue.width rv) in
+        let* lf = NumericValue.value_float lv in
+        let* rf = NumericValue.value_float rv in
         let rv = if Float.compare lf rf = 0 then 1L else 0L in
-        [%log finfo "float" "%f = %f = %Lx" lf rf rv];
+        [%log finfo "float" "%a == %a = %Lx" Float.pp lf Float.pp rf rv];
         NumericValue.of_int64_safe rv outwidth
   | Bfloat_notequal ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "float_notequal: different bitwidth"
       else
-        let* lf = Int64.to_float_width ln64 (NumericValue.width lv) in
-        let* rf = Int64.to_float_width rn64 (NumericValue.width rv) in
+        let* lf = NumericValue.value_float lv in
+        let* rf = NumericValue.value_float rv in
         let rv = if Float.compare lf rf <> 0 then 1L else 0L in
-        [%log finfo "float" "%f <> %f = %Lx" lf rf rv];
+        [%log finfo "float" "%a <> %a = %Lx" Float.pp lf Float.pp rf rv];
         NumericValue.of_int64_safe rv outwidth
   | Bfloat_less ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "float_less: different bitwidth"
       else
-        let* lf = Int64.to_float_width ln64 (NumericValue.width lv) in
-        let* rf = Int64.to_float_width rn64 (NumericValue.width rv) in
+        let* lf = NumericValue.value_float lv in
+        let* rf = NumericValue.value_float rv in
         let rv = if Float.compare lf rf < 0 then 1L else 0L in
-        [%log finfo "float" "%f < %f = %Lx" lf rf rv];
+        [%log finfo "float" "%a < %a = %Lx" Float.pp lf Float.pp rf rv];
         NumericValue.of_int64_safe rv outwidth
   | Bfloat_lessequal ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "float_lessequal: different bitwidth"
       else
-        let* lf = Int64.to_float_width ln64 (NumericValue.width lv) in
-        let* rf = Int64.to_float_width rn64 (NumericValue.width rv) in
+        let* lf = NumericValue.value_float lv in
+        let* rf = NumericValue.value_float rv in
         let rv = if Float.compare lf rf <= 0 then 1L else 0L in
-        [%log finfo "float" "%f <= %f = %Lx" lf rf rv];
+        [%log finfo "float" "%a <= %a = %Lx" Float.pp lf Float.pp rf rv];
         NumericValue.of_int64_safe rv outwidth
   | Bfloat_add ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "float_add: different bitwidth"
       else
-        let* lf = Int64.to_float_width ln64 (NumericValue.width lv) in
-        let* rf = Int64.to_float_width rn64 (NumericValue.width rv) in
+        let* lf = NumericValue.value_float lv in
+        let* rf = NumericValue.value_float rv in
         let fv = Float.add lf rf in
-        [%log finfo "float" "%f + %f = %f" lf rf fv];
-        let* fv = Int64.of_float_width fv outwidth in
-        NumericValue.of_int64_safe fv outwidth
+        [%log finfo "float" "%a + %a = %a" Float.pp lf Float.pp rf Float.pp fv];
+        NumericValue.of_float fv outwidth |> Result.ok
   | Bfloat_sub ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "float_sub: different bitwidth"
       else
-        let* lf = Int64.to_float_width ln64 (NumericValue.width lv) in
-        let* rf = Int64.to_float_width rn64 (NumericValue.width rv) in
+        let* lf = NumericValue.value_float lv in
+        let* rf = NumericValue.value_float rv in
         let fv = Float.sub lf rf in
-        [%log finfo "float" "%f - %f = %f" lf rf fv];
-        let* fv = Int64.of_float_width fv outwidth in
-        NumericValue.of_int64_safe fv outwidth
+        [%log finfo "float" "%a - %a = %a" Float.pp lf Float.pp rf Float.pp fv];
+        NumericValue.of_float fv outwidth |> Result.ok
   | Bfloat_mult ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "float_mult: different bitwidth"
       else
-        let* lf = Int64.to_float_width ln64 (NumericValue.width lv) in
-        let* rf = Int64.to_float_width rn64 (NumericValue.width rv) in
+        let* lf = NumericValue.value_float lv in
+        let* rf = NumericValue.value_float rv in
         let fv = Float.mul lf rf in
-        [%log finfo "float" "%f * %f = %f" lf rf fv];
-        let* fv = Int64.of_float_width fv outwidth in
-        NumericValue.of_int64_safe fv outwidth
+        [%log finfo "float" "%a * %a = %a" Float.pp lf Float.pp rf Float.pp fv];
+        NumericValue.of_float fv outwidth |> Result.ok
   | Bfloat_div ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "float_div: different bitwidth"
       else
-        let* lf = Int64.to_float_width ln64 (NumericValue.width lv) in
-        let* rf = Int64.to_float_width rn64 (NumericValue.width rv) in
+        let* lf = NumericValue.value_float lv in
+        let* rf = NumericValue.value_float rv in
         let fv = Float.div lf rf in
-        [%log finfo "float" "%f / %f = %f" lf rf fv];
-        let* fv = Int64.of_float_width fv outwidth in
-        NumericValue.of_int64_safe fv outwidth
+        [%log finfo "float" "%a / %a = %a" Float.pp lf Float.pp rf Float.pp fv];
+        NumericValue.of_float fv outwidth |> Result.ok
