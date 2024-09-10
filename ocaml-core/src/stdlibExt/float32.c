@@ -1,4 +1,7 @@
+#define _GNU_SOURCE
+
 #include <math.h>
+#include <stdio.h>
 #include <caml/mlvalues.h>
 #include <caml/memory.h>
 #include <caml/alloc.h>
@@ -91,7 +94,8 @@ CAMLprim value caml_float32_show(value w)
   CAMLparam1(w);
   CAMLlocal1(s);
   char *sp;
-  asprintf(&sp, "%f", Float32_val(w));
+  int res = asprintf(&sp, "%f", Float32_val(w));
+  if (res == -1) caml_failwith("caml_float32_show");
   s = caml_copy_string(sp);
   free(sp);
   CAMLreturn(s);
