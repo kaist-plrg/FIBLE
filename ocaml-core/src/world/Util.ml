@@ -50,7 +50,7 @@ let calc_stack_size (args : String.t List.t) (env : String.t List.t) : Int64.t =
     List.fold_left
       (fun acc x ->
         let len = Int64.of_int (String.length x) in
-        let padded_len = Int64.mul (Int64.div (Int64.add len 7L) 8L) 8L in
+        let padded_len = Int64.mul (Int64.div (Int64.add len 8L) 8L) 8L in
         Int64.add acc padded_len)
       0L args
   in
@@ -58,7 +58,7 @@ let calc_stack_size (args : String.t List.t) (env : String.t List.t) : Int64.t =
     List.fold_left
       (fun acc x ->
         let len = Int64.of_int (String.length x) in
-        let padded_len = Int64.mul (Int64.div (Int64.add len 7L) 8L) 8L in
+        let padded_len = Int64.mul (Int64.div (Int64.add len 8L) 8L) 8L in
         Int64.add acc padded_len)
       0L env
   in
