@@ -127,6 +127,8 @@ module Immutable = struct
           sp_num fp_num
 
   let analyze (f : Func.t) (sp_num : Int32.t) (fp_num : Int32.t) : t =
+    [%log
+      debug "start analysis %s" (Option.value (Func.nameo f) ~default:"noname")];
     a_fixpoint_worklist f (init f sp_num fp_num) (f.entry :: []) sp_num fp_num
   (*
   let rec a_fixpoint_worklist_prog (p : Prog.t) (c : t) (ls : Loc.t List.t)

@@ -71,7 +71,7 @@ CAMLprim value caml_float80_to_bytes(value w)
 {
   CAMLparam1(w);
   CAMLlocal1(s);
-  s = caml_alloc_string(sizeof(long double));
+  s = caml_alloc_string(10);
   *(long double *) Bytes_val(s) = Float80_val(w);
   CAMLreturn(s);
 }
@@ -86,7 +86,7 @@ CAMLprim value caml_float80_to_string(value w)
 {
   CAMLparam1(w);
   CAMLlocal1(s);
-  s = caml_alloc_string(sizeof(long double));
+  s = caml_alloc_string(10);
   *(long double *) String_val(s) = Float80_val(w);
   CAMLreturn(s);
 }
