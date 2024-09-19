@@ -193,11 +193,41 @@ public class PCert extends GhidraScript {
             ex_funcs.add(func);
         }
         out.writeInt(ex_funcs.size());
+        // (y2 - y1) * (x3 - x1) / (x2 - x1) + y1 to find PLT address
+        Long x1 = 0L;
+        Long y1 = 0L;
+        Long x2 = 0L;
+        Long y2 = 0L;
+        int count = 0;
         for (Function func : ex_funcs) {
             List<Address> func_addresses = new java.util.ArrayList<Address>();
             for (Address thunk_addr : func.getFunctionThunkAddresses(true)) {
                 add_thunk_to(thunk_addr, func_addresses);
             }
+            if (func_addresses.size() == 2) {
+                if (count == 0) {
+                    x1 = func_addresses.get(0).getOffset();
+                    y1 = func_addresses.get(1).getOffset();
+                } else if (count == 1) {
+                    x2 = func_addresses.get(0).getOffset();
+                    y2 = func_addresses.get(1).getOffset();
+                } else {
+                    break;
+                }
+                count++;
+            }
+        }
+        for (Function func : ex_funcs) {
+            List<Address> func_addresses = new java.util.ArrayList<Address>();
+            for (Address thunk_addr : func.getFunctionThunkAddresses(true)) {
+                add_thunk_to(thunk_addr, func_addresses);
+            }
+            if (func_addresses.size() == 1 && count >= 2) {
+                long x3 = func_addresses.get(0).getOffset();
+                long y3 = (y2 - y1) * (x3 - x1) / (x2 - x1) + y1;
+                func_addresses.add(currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(y3));
+            }
+
             writeString(out, func.getName());
             out.writeInt(func_addresses.size());
             for (Address addr : func_addresses) {
