@@ -49,7 +49,7 @@ let value_z (x : t) : (Z.t, String.t) Result.t =
 
 let value_float (x : t) : (Float.t, String.t) Result.t =
   let* s = try_string x in
-  Float.of_string s |> Result.ok
+  try Float.of_string s |> Result.ok with Invalid_argument s -> Result.error s
 
 let value_64 (x : t) : (Int64.t, String.t) Result.t =
   let* s = try_string (extend x 8l) in
