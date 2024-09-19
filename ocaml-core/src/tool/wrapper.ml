@@ -26,7 +26,7 @@ let parse_stab (s : String.t) : (Int64.t * symbol_type * String.t) Option.t =
        | _ -> Error "Invalid symbol type"
      in
      let name = Str.matched_group 3 s in
-     Ok (addr, typ, name))
+     if Int64.compare addr 0L = 0 then Error "" else Ok (addr, typ, name))
     |> Result.to_option
   else if Str.string_match fini s 0 then
     let addr = Scanf.sscanf (Str.matched_group 1 s) "%Lx" (fun x -> x) in
