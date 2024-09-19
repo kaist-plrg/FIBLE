@@ -39,7 +39,7 @@ let run_ghidra ifile ghidra_path tmp_path cwd port =
         "-deleteProject";
         "-noanalysis";
       |]
-      Unix.stdin Unix.stdout Unix.stderr
+      Global.devnull Global.devnull Global.devnull
   in
   [%log debug "Running ghidra at pid %d" ghidra_pid];
   Global.install_pid ghidra_pid;

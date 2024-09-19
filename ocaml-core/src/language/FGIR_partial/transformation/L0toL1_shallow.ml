@@ -110,14 +110,17 @@ let translate_func (p0 : ILIR.Syn.Prog.t) (nameo : String.t option)
     (entry : Byte8.t) (cf : ILIR.Shallow_CFA.t)
     (known_addrs : LocSet.t LocMap.t) : Func.t =
   let boundary_entries = fst cf.boundary_point in
+  let in_degree_map = ILIR.JumpG.make_in_degree_map cf.sound_jump in
   let other_block_entires =
     ILIR.JumpG.G.fold_vertex
       (fun l s ->
-        match ILIR.JumpG.G.pred cf.sound_jump l with
-        | [ p ] ->
-            if ILIR.JumpG.G.out_degree cf.sound_jump p >= 2 then LocSet.add l s
-            else s
-        | _ -> LocSet.add l s)
+        if ILIR.JumpG.in_degree_fast in_degree_map l <> 1 then LocSet.add l s
+        else if ILIR.JumpG.G.out_degree cf.sound_jump l >= 2 then
+          List.fold_left
+            (fun s l -> LocSet.add l s)
+            s
+            (ILIR.JumpG.G.succ cf.sound_jump l)
+        else s)
       cf.sound_jump LocSet.empty
   in
   let entries = LocSetD.union other_block_entires boundary_entries in
