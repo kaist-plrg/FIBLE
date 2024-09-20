@@ -131,7 +131,7 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
       {
         Interop.params =
           ( [],
-            [ Interop.t64; Interop.immutable_charbuffer_fixed 24L; Interop.t64 ]
+            [ Interop.t64; Interop.mutable_charbuffer_fixed 24L; Interop.t64 ]
           );
         result = Some Interop.t64;
       }
