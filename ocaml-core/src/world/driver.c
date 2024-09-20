@@ -254,11 +254,21 @@ CAMLprim value unix_getcwd(value buf, value len)
 {
   CAMLparam2(buf, len);
   int retv = strlen((char *)Bytes_val(buf)) + 1;
-  char *ret = getcwd((char *)Bytes_val(buf), Int_val(len));;
+  char *ret = getcwd((char *)Bytes_val(buf), Int_val(len));
   if (ret == NULL) {
     retv = -errno;
   }
   CAMLreturn(Val_int(retv));
+}
+
+CAMLprim value unix_readlink(value path, value buf, value len)
+{
+  CAMLparam3(path, buf, len);
+  int ret = readlink((const char*)String_val(path), (char *)Bytes_val(buf), Int_val(len));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
 }
 
 CAMLprim value unix_chroot(value path)

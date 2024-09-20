@@ -138,6 +138,18 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
+  | 89L (* readlink *) ->
+      {
+        Interop.params =
+          ( [ ("x", T64) ],
+            [
+              Interop.const_string_ptr;
+              Interop.mutable_charbuffer_of "x";
+              Interop.id "x";
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
   | 161L (* chroot *) ->
       {
         Interop.params = ([], [ Interop.const_string_ptr ]);
@@ -321,6 +333,10 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       | _ -> Error "unimplemented fcntl")
   | 79L, [ VBuffer rdi; VArith (VInt (V64 rsi)) ] ->
       let retv = Util.getcwd rdi (Int64.to_int rsi) in
+      Interop.v64 (Int64.of_int retv) |> Result.ok
+  | 89L, [ VIBuffer rdi; VBuffer rsi; VArith (VInt (V64 rdx)) ] ->
+      let* path = Interop.vibuffer_to_string rdi |> Result.ok in
+      let retv = Util.readlink path rsi (rdx |> Int64.to_int) in
       Interop.v64 (Int64.of_int retv) |> Result.ok
   | 161L, [ VIBuffer rsi ] ->
       let* path = Interop.vibuffer_to_string rsi |> Result.ok in
