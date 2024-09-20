@@ -79,7 +79,20 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
       |> Option.some
   | 16L (* ioctl *) ->
       {
-        Interop.params = ([], [ Interop.t64; Interop.t64; Interop.tany ]);
+        Interop.params =
+          ( [ ("x", T64) ],
+            [
+              Interop.t64;
+              Interop.id "x";
+              Interop.TMatch
+                ( "x",
+                  [
+                    (0x5401L (* TCGETS *), Interop.mutable_charbuffer_fixed 36L);
+                    ( 0x5413L (* TIOCGWINSZ *),
+                      Interop.mutable_charbuffer_fixed 8L );
+                  ],
+                  Interop.tany );
+            ] );
         result = Some Interop.t64;
       }
       |> Option.some
@@ -159,8 +172,12 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
       {
         Interop.params =
           ( [],
-            [ Interop.t64; Interop.const_string_ptr; Interop.mutable_charbuffer_fixed 144L; Interop.t64 ]
-          );
+            [
+              Interop.t64;
+              Interop.const_string_ptr;
+              Interop.mutable_charbuffer_fixed 144L;
+              Interop.t64;
+            ] );
         result = Some Interop.t64;
       }
       |> Option.some
@@ -215,16 +232,21 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       else Error "Not supported mmap"
   | 11L, [ rdi; rsi ] -> Interop.v64 0L |> Result.ok
   | 12L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 rdi |> Result.ok
+  | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5401L)); VBuffer rdx ]
+    ->
+      (* TCGETS *)
+      let retv = Util.tcgets (rdi |> Int64.to_int) rdx in
+      Interop.v64 (Int64.of_int retv) |> Result.ok
+  | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5413L)); VBuffer rdx ]
+    ->
+      (* TIOCGWINSZ *)
+      let retv = Util.tiocgwinsz (rdi |> Int64.to_int) rdx in
+      Interop.v64 (Int64.of_int retv) |> Result.ok
   | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 rsi)); VOpaque ] ->
-      if
-        Int64.compare rsi 0x5413L = 0
-        (* TIOCGWINSZ *) && Util.fd_is_valid (Int64.to_int rdi)
-      then Interop.v64 0L |> Result.ok
-      else
-        Interop.v64
-          (Util.ioctl (rdi |> Int64.to_int) (rsi |> Int64.to_int) 0L
-          |> Int64.of_int)
-        |> Result.ok
+      Interop.v64
+        (Util.ioctl (rdi |> Int64.to_int) (rsi |> Int64.to_int) 0L
+        |> Int64.of_int)
+      |> Result.ok
   | 20L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ] ->
       [%log
         finfo "syscall" "WRITE ARG: %Ld %a %Ld" rdi Interop.pp (VIBuffer rsi)
@@ -318,7 +340,13 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
           (rcx |> Int64.to_int)
       in
       Interop.v64 (Int64.of_int retv) |> Result.ok
-  | 262L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VBuffer rdx; VArith (VInt (V64 rcx)) ] ->
+  | ( 262L,
+      [
+        VArith (VInt (V64 rdi));
+        VIBuffer rsi;
+        VBuffer rdx;
+        VArith (VInt (V64 rcx));
+      ] ) ->
       let* path = Interop.vibuffer_to_string rsi |> Result.ok in
       let retv =
         Util.newfstatat (rdi |> Int64.to_int) path rdx (rcx |> Int64.to_int)

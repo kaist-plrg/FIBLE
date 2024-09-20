@@ -4,7 +4,11 @@ type float_tag = TFloat | TDouble [@@deriving show]
 type arith_tag = TInt of int_tag | TFloat of float_tag [@@deriving show]
 type length_type = ZeroEnd | Dependent of String.t [@@deriving show]
 
-type prim_tag = TArith of arith_tag | TPtr of tag | TAny
+type prim_tag =
+  | TArith of arith_tag
+  | TPtr of tag
+  | TMatch of (String.t * (Int64.t * prim_tag) List.t * prim_tag)
+  | TAny
 
 and fixed_tag =
   | TPrim of prim_tag
@@ -80,9 +84,18 @@ and subst_id_fixed (f : fixed_tag) (x : String.t) (pr : int_tag_prim)
 and subst_id_prim (p : prim_tag) (x : String.t) (pr : int_tag_prim)
     (n : Int64.t) : prim_tag =
   match p with
-  | TArith (TInt (Id y)) when x = y -> TArith (TInt (Prim pr))
+  | TArith (TInt (Id y)) when String.equal x y -> TArith (TInt (Prim pr))
   | TArith a -> TArith a
   | TPtr t -> TPtr (subst_id t x pr n)
+  | TMatch (y, l, t) ->
+      if String.equal x y then
+        let m = Int64Map.of_list l in
+        Int64Map.find_opt n m |> Option.value ~default:t
+      else
+        TMatch
+          ( y,
+            List.map (fun (n, t) -> (n, subst_id_prim t x pr n)) l,
+            subst_id_prim t x pr n )
   | TAny -> TAny
 
 let rec typecheck (t : tag) (env : env_t) : Bool.t =
@@ -95,9 +108,7 @@ and typecheck_fixed (f : fixed_tag) (env : env_t) : Bool.t =
   | Abs ((x, pt), t) ->
       if List.exists (fun (y, _) -> x = y) env then false
       else typecheck_fixed t ((x, pt) :: env)
-  | TPrim (TArith a) -> typecheck_arith a env
-  | TPrim (TPtr t) -> typecheck t env
-  | TPrim TAny -> true
+  | TPrim p -> typecheck_prim p env
   | TBuffer (t, l) -> typecheck_arith t env
   | TIBuffer (t, l) -> typecheck_fixed t env
   | TStruct ts -> List.for_all (fun t -> typecheck_fixed t env) ts
@@ -114,6 +125,15 @@ and typecheck_arith (a : arith_tag) (env : env_t) : Bool.t =
   | TInt (Id x) -> List.exists (fun (y, _) -> x = y) env
   | TInt _ -> true
   | TFloat _ -> true
+
+and typecheck_prim (p : prim_tag) (env : env_t) : Bool.t =
+  match p with
+  | TArith a -> typecheck_arith a env
+  | TPtr t -> typecheck t env
+  | TMatch (_, l, t) ->
+      List.for_all (fun (_, t) -> typecheck_prim t env) l
+      && typecheck_prim t env
+  | TAny -> true
 
 type int_value =
   | V64 of Int64.t
@@ -172,7 +192,7 @@ let arith_int_size (p : int_tag_prim) : Int32.t =
 let arith_float_size (p : float_tag) : Int32.t =
   match p with TFloat -> 4l | TDouble -> 8l
 
-let prim_size (pr : prim_tag) (env : env_t) : (Int32.t, String.t) Result.t =
+let rec prim_size (pr : prim_tag) (env : env_t) : (Int32.t, String.t) Result.t =
   match pr with
   | TArith (TInt (Id x)) ->
       let* p = List.assoc_opt x env |> Option.to_result ~none:"not found" in
@@ -180,6 +200,7 @@ let prim_size (pr : prim_tag) (env : env_t) : (Int32.t, String.t) Result.t =
   | TArith (TInt (Prim p)) -> arith_int_size p |> Result.ok
   | TArith (TFloat f) -> arith_float_size f |> Result.ok
   | TPtr _ -> 8l |> Result.ok
+  | TMatch (_, _, t) -> prim_size t env
   | TAny -> 8l |> Result.ok
 
 let rec fixed_size (p : fixed_tag) (env : env_t) : (Int32.t, String.t) Result.t
@@ -385,6 +406,7 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
         (sides, VArith rv) |> Result.ok
     | TPtr t -> aux_ptr s t v env
     | TAny -> ([], VOpaque) |> Result.ok
+    | TMatch _ -> Error "unreachable 3"
   and aux_arith (s : 'store_t) (a : arith_tag) (v : 'value_t) (env : env_t) :
       (('value_t * Bytes.t) List.t * arith_value, String.t) Result.t =
     match a with

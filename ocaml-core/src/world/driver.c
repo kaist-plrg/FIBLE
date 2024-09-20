@@ -1,3 +1,6 @@
+#ifndef __APPLE__
+#include <asm/termbits.h>
+#endif
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
@@ -80,6 +83,34 @@ CAMLprim value unix_lstat(value path, value buf)
     ret = -errno;
   }
   CAMLreturn(Val_int(ret));
+}
+
+CAMLprim value unix_tcgets(value fd, value buf)
+{
+  CAMLparam2(fd, buf);
+#ifdef __APPLE__
+  CAMLreturn(Val_int(0));
+#else
+  int ret = ioctl(Int_val(fd), TCGETS, (struct termios *)Bytes_val(buf));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+#endif
+}
+
+CAMLprim value unix_tiocgwinsz(value fd, value buf)
+{
+  CAMLparam2(fd, buf);
+#ifdef __APPLE__
+  CAMLreturn(Val_int(0));
+#else
+  int ret = ioctl(Int_val(fd), TIOCGWINSZ, (struct winsize *)Bytes_val(buf));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+#endif
 }
 
 CAMLprim value unix_ioctl (value fd, value request, value arg)
