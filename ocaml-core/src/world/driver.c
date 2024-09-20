@@ -10,16 +10,6 @@
 #include <caml/custom.h>
 #include <caml/fail.h>
 
-CAMLprim value unix_getfl(value fd)
-{
-  CAMLparam1(fd);
-  int flags = fcntl(Int_val(fd), F_GETFL, 0);
-  if (flags == -1) {
-    flags = -errno;
-  }
-  CAMLreturn(Val_int(flags));
-}
-
 CAMLprim value unix_read (value fd, value buf, value len)
 {
   CAMLparam3(fd, buf, len);
@@ -94,6 +84,77 @@ CAMLprim value unix_ioctl (value fd, value request, value arg)
 {
   CAMLparam3(fd, request, arg);
   int ret = ioctl(Int_val(fd), Int_val(request), Int64_val(arg));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+}
+
+CAMLprim value unix_dupfd(value fd, value minfd)
+{
+  CAMLparam2(fd, minfd);
+  int ret = fcntl(Int_val(fd), F_DUPFD, Int_val(minfd));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+}
+
+CAMLprim value unix_getfl(value fd)
+{
+  CAMLparam1(fd);
+  int flags = fcntl(Int_val(fd), F_GETFL, 0);
+  if (flags == -1) {
+    flags = -errno;
+  }
+  CAMLreturn(Val_int(flags));
+}
+
+CAMLprim value unix_setfl(value fd, value flags)
+{
+  CAMLparam2(fd, flags);
+  int ret = fcntl(Int_val(fd), F_SETFL, Int_val(flags));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+}
+
+
+CAMLprim value unix_getfd(value fd)
+{
+  CAMLparam1(fd);
+  int flags = fcntl(Int_val(fd), F_GETFD, 0);
+  if (flags == -1) {
+    flags = -errno;
+  }
+  CAMLreturn(Val_int(flags));
+}
+
+CAMLprim value unix_setfd(value fd, value flags)
+{
+  CAMLparam2(fd, flags);
+  int ret = fcntl(Int_val(fd), F_SETFD, Int_val(flags));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+}
+
+CAMLprim value unix_getown(value fd)
+{
+  CAMLparam1(fd);
+  int pid = fcntl(Int_val(fd), F_GETOWN, 0);
+  if (pid == -1) {
+    pid = -errno;
+  }
+  CAMLreturn(Val_int(pid));
+}
+
+CAMLprim value unix_setown(value fd, value pid)
+{
+  CAMLparam2(fd, pid);
+  int ret = fcntl(Int_val(fd), F_SETOWN, Int_val(pid));
   if (ret == -1) {
     ret = -errno;
   }

@@ -69,7 +69,6 @@ let calc_stack_size (args : String.t List.t) (env : String.t List.t) : Int64.t =
     (Int64.add args_ptr_size env_ptr_size)
   |> Int64.add 64L
 
-external getfl : int -> int = "unix_getfl"
 external fd_is_valid : int -> bool = "unix_fd_is_valid"
 external open_ : string -> int -> int -> int = "unix_open"
 external close : int -> int = "unix_close"
@@ -79,6 +78,13 @@ external stat : string -> bytes -> int = "unix_stat"
 external fstat : int -> bytes -> int = "unix_fstat"
 external lstat : string -> bytes -> int = "unix_lstat"
 external ioctl : int -> int -> Int64.t -> int = "unix_ioctl"
+external dupfd : int -> int -> int = "unix_dupfd"
+external getfl : int -> int = "unix_getfl"
+external setfl : int -> int -> int = "unix_setfl"
+external getfd : int -> int = "unix_getfd"
+external setfd : int -> int -> int = "unix_setfd"
+external getown : int -> int = "unix_getown"
+external setown : int -> int -> int = "unix_setown"
 external getcwd : bytes -> int -> int = "unix_getcwd"
 external chroot : string -> int = "unix_chroot"
 external fadvise : int -> Int64.t -> Int64.t -> int -> int = "unix_fadvise"

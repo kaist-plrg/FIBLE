@@ -140,7 +140,9 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
   | 257L (* openat *) ->
       {
         Interop.params =
-          ([], [ Interop.t64; Interop.const_string_ptr; Interop.t64; Interop.t64 ]);
+          ( [],
+            [ Interop.t64; Interop.const_string_ptr; Interop.t64; Interop.t64 ]
+          );
         result = Some Interop.t64;
       }
       |> Option.some
@@ -234,8 +236,32 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       ] )
   (* FCNTL *) -> (
       match rsi with
+      | 0L (*DUPFD*) ->
+          Ok
+            (Interop.v64
+               (Util.dupfd (rdi |> Int64.to_int) (rdx |> Int64.to_int)
+               |> Int64.of_int))
+      | 1L (*GETFD*) ->
+          Ok (Interop.v64 (Util.getfd (rdi |> Int64.to_int) |> Int64.of_int))
+      | 2L (*SETFD*) ->
+          Ok
+            (Interop.v64
+               (Util.setfd (rdi |> Int64.to_int) (rdx |> Int64.to_int)
+               |> Int64.of_int))
       | 3L (*GETFL*) ->
           Ok (Interop.v64 (Util.getfl (rdi |> Int64.to_int) |> Int64.of_int))
+      | 4L (*SETFL*) ->
+          Ok
+            (Interop.v64
+               (Util.setfl (rdi |> Int64.to_int) (rdx |> Int64.to_int)
+               |> Int64.of_int))
+      | 8L (*SETOWN*) ->
+          Ok
+            (Interop.v64
+               (Util.setown (rdi |> Int64.to_int) (rdx |> Int64.to_int)
+               |> Int64.of_int))
+      | 9L (*GETOWN*) ->
+          Ok (Interop.v64 (Util.getown (rdi |> Int64.to_int) |> Int64.of_int))
       | _ -> Error "unimplemented fcntl")
   | 79L, [ VBuffer rdi; VArith (VInt (V64 rsi)) ] ->
       let retv = Util.getcwd rdi (Int64.to_int rsi) in
@@ -256,8 +282,13 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
         |> Int64.of_int)
       |> Result.ok
   | 231L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 0L |> Result.ok
-  | 257L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx));
-            VArith (VInt (V64 rcx)) ] ->
+  | ( 257L,
+      [
+        VArith (VInt (V64 rdi));
+        VIBuffer rsi;
+        VArith (VInt (V64 rdx));
+        VArith (VInt (V64 rcx));
+      ] ) ->
       let* path = Interop.vibuffer_to_string rsi |> Result.ok in
       let retv =
         Util.openat (rdi |> Int64.to_int) path (rdx |> Int64.to_int)
