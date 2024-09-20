@@ -88,6 +88,8 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
                 ( "x",
                   [
                     (0x5401L (* TCGETS *), Interop.mutable_charbuffer_fixed 36L);
+                    ( 0x5402L (* TCSETS *),
+                      Interop.immutable_charbuffer_fixed 36L );
                     ( 0x5403L (* TCSETSW *),
                       Interop.immutable_charbuffer_fixed 36L );
                     ( 0x5413L (* TIOCGWINSZ *),
@@ -238,6 +240,12 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
     ->
       (* TCGETS *)
       let retv = Util.tcgets (rdi |> Int64.to_int) rdx in
+      Interop.v64 (Int64.of_int retv) |> Result.ok
+  | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5402L)); VIBuffer rdx ]
+    ->
+      (* TCSETS *)
+      let* str = Interop.vibuffer_to_string rdx |> Result.ok in
+      let retv = Util.tcsets (rdi |> Int64.to_int) str in
       Interop.v64 (Int64.of_int retv) |> Result.ok
   | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5403L)); VIBuffer rdx ]
     ->
