@@ -45,7 +45,7 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
   | 3L (* close *) ->
       { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
       |> Option.some
-  | 9L ->
+  | 9L (* mmap *) ->
       {
         Interop.params =
           ( [],
@@ -60,22 +60,22 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
-  | 11L ->
+  | 11L (* munmap *) ->
       {
         Interop.params = ([], [ Interop.t64; Interop.t64 ]);
         result = Some Interop.t64;
       }
       |> Option.some
-  | 12L ->
+  | 12L (* brk *) ->
       { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
       |> Option.some
-  | 16L ->
+  | 16L (* ioctl *) ->
       {
         Interop.params = ([], [ Interop.t64; Interop.t64; Interop.tany ]);
         result = Some Interop.t64;
       }
       |> Option.some
-  | 20L ->
+  | 20L (* writev *) ->
       {
         Interop.params =
           ( [ ("x", T64) ],
@@ -102,9 +102,42 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
-  | 72L ->
+  | 60L (* exit *) ->
+      { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
+      |> Option.some
+  | 72L (* fcntl *) ->
       {
         Interop.params = ([], [ Interop.t64; Interop.t64; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 79L (* getcwd *) ->
+      {
+        Interop.params =
+          ( [ ("x", T64) ],
+            [
+              Interop.TPtr
+                (Dynamic
+                   (Interop.TArr
+                      (Interop.TInt (Interop.Prim Interop.T8), Dependent "x")));
+              Interop.id "x";
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 161L (* chroot *) ->
+      {
+        Interop.params =
+          ( [],
+            [
+              Interop.TPtr
+                (Interop.Dynamic
+                   (Interop.TIArr
+                      ( Interop.TPrim
+                          (Interop.TArith
+                             (Interop.TInt (Interop.Prim Interop.T8))),
+                        Interop.ZeroEnd )));
+            ] );
         result = Some Interop.t64;
       }
       |> Option.some
@@ -116,9 +149,6 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
       }
       |> Option.some
   | 231L (* fgetxattr; ignore *) ->
-      { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
-      |> Option.some
-  | 60L (* exit *) ->
       { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
       |> Option.some
   | _ -> Option.none
@@ -191,6 +221,7 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
           (String.length writestr |> Int64.of_int)
       in
       Interop.v64 retv |> Result.ok
+  | 60L, [ VArith (VInt (V64 rdi)) ] -> exit (Int64.to_int rdi)
   | ( 72L,
       [
         VArith (VInt (V64 rdi));
@@ -202,6 +233,13 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       | 3L (*GETFL*) ->
           Ok (Interop.v64 (Util.getfl (rdi |> Int64.to_int) |> Int64.of_int))
       | _ -> Error "unimplemented fcntl")
+  | 79L, [ VBuffer rdi; VArith (VInt (V64 rsi)) ] ->
+      let retv = Util.getcwd rdi (Int64.to_int rsi) in
+      Interop.v64 (Int64.of_int retv) |> Result.ok
+  | 161L, [ VIBuffer rsi ] ->
+      let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+      let retv = Util.chroot path in
+      Interop.v64 (Int64.of_int retv) |> Result.ok
   | ( 221L (* fadvise64 *),
       [
         VArith (VInt (V64 rdi));
@@ -214,7 +252,6 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
         |> Int64.of_int)
       |> Result.ok
   | 231L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 0L |> Result.ok
-  | 60L, [ VArith (VInt (V64 rdi)) ] -> exit (Int64.to_int rdi)
   | _ -> Error (Format.sprintf "unimplemented syscall %Ld" rax)
 
 let cgc_funcs : String.t List.t =

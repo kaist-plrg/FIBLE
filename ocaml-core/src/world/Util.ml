@@ -76,6 +76,8 @@ external close : int -> int = "unix_close"
 external read : int -> bytes -> Int64.t -> Int64.t = "unix_read"
 external write : int -> string -> Int64.t -> Int64.t = "unix_write"
 external ioctl : int -> int -> Int64.t -> int = "unix_ioctl"
+external getcwd : bytes -> int -> int = "unix_getcwd"
+external chroot : string -> int = "unix_chroot"
 external fadvise : int -> Int64.t -> Int64.t -> int -> int = "unix_fadvise"
 
 module SpaceInfo = struct
