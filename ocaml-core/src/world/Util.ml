@@ -87,6 +87,7 @@ external getown : int -> int = "unix_getown"
 external setown : int -> int -> int = "unix_setown"
 external getcwd : bytes -> int -> int = "unix_getcwd"
 external chroot : string -> int = "unix_chroot"
+external getdents64 : int -> bytes -> int -> int = "unix_getdents64"
 external fadvise : int -> Int64.t -> Int64.t -> int -> int = "unix_fadvise"
 external openat : int -> string -> int -> int -> int = "unix_openat"
 

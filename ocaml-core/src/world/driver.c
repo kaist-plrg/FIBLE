@@ -1,6 +1,7 @@
 #include <sys/ioctl.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
@@ -159,6 +160,20 @@ CAMLprim value unix_setown(value fd, value pid)
     ret = -errno;
   }
   CAMLreturn(Val_int(ret));
+}
+
+CAMLprim value unix_getdents64(value fd, value buf, value len)
+{
+  CAMLparam3(fd, buf, len);
+#ifdef __APPLE__
+  CAMLreturn(Val_int(0));
+#else
+  int ret = syscall(SYS_getdents, Int_val(fd), Bytes_val(buf), Int_val(len));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+#endif
 }
 
 CAMLprim value unix_fadvise(value fd, value offset, value len, value advice)
