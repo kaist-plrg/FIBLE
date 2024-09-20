@@ -33,6 +33,9 @@ let mutable_charbuffer_of x =
 let immutable_charbuffer_fixed l = TPtr (Fixed (TIBuffer (TPrim t8, l)))
 let mutable_charbuffer_fixed l = TPtr (Fixed (TBuffer (TInt (Prim T8), l)))
 
+let const_string_ptr =
+  TPtr (Dynamic (TIArr (TPrim (TArith (TInt (Prim T8))), ZeroEnd)))
+
 type func_sig = {
   params : (String.t * int_tag_prim) List.t * prim_tag List.t;
   result : prim_tag Option.t;

@@ -13,32 +13,15 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
       {
         Interop.params =
           ( [ ("x", T64) ],
-            [
-              Interop.t64;
-              Interop.TPtr
-                (Dynamic
-                   (Interop.TArr
-                      (Interop.TInt (Interop.Prim Interop.T8), Dependent "x")));
-              Interop.id "x";
-            ] );
+            [ Interop.t64; Interop.mutable_charbuffer_of "x"; Interop.id "x" ]
+          );
         result = Some Interop.t64;
       }
       |> Option.some
   | 2L (* open *) ->
       {
         Interop.params =
-          ( [],
-            [
-              Interop.TPtr
-                (Interop.Dynamic
-                   (Interop.TIArr
-                      ( Interop.TPrim
-                          (Interop.TArith
-                             (Interop.TInt (Interop.Prim Interop.T8))),
-                        Interop.ZeroEnd )));
-              Interop.t64;
-              Interop.t64;
-            ] );
+          ([], [ Interop.const_string_ptr; Interop.t64; Interop.t64 ]);
         result = Some Interop.t64;
       }
       |> Option.some
@@ -88,12 +71,7 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
                           ( ("y", T64),
                             TStruct
                               [
-                                TPrim
-                                  (TPtr
-                                     (Dynamic
-                                        (TIArr
-                                           ( TPrim (TArith (TInt (Prim T8))),
-                                             Dependent "y" ))));
+                                TPrim (Interop.immutable_charbuffer_of "y");
                                 TPrim (TArith (TInt (Id "y")));
                               ] ),
                         Interop.Dependent "x" )));
@@ -114,30 +92,13 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
   | 79L (* getcwd *) ->
       {
         Interop.params =
-          ( [ ("x", T64) ],
-            [
-              Interop.TPtr
-                (Dynamic
-                   (Interop.TArr
-                      (Interop.TInt (Interop.Prim Interop.T8), Dependent "x")));
-              Interop.id "x";
-            ] );
+          ([ ("x", T64) ], [ Interop.mutable_charbuffer_of "x"; Interop.id "x" ]);
         result = Some Interop.t64;
       }
       |> Option.some
   | 161L (* chroot *) ->
       {
-        Interop.params =
-          ( [],
-            [
-              Interop.TPtr
-                (Interop.Dynamic
-                   (Interop.TIArr
-                      ( Interop.TPrim
-                          (Interop.TArith
-                             (Interop.TInt (Interop.Prim Interop.T8))),
-                        Interop.ZeroEnd )));
-            ] );
+        Interop.params = ([], [ Interop.const_string_ptr ]);
         result = Some Interop.t64;
       }
       |> Option.some
