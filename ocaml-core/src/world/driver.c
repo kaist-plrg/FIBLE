@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
 #include <caml/mlvalues.h>
 #include <caml/memory.h>
 #include <caml/alloc.h>
@@ -193,8 +194,8 @@ CAMLprim value unix_fadvise64(value fd, value offset, value len, value advice)
 CAMLprim value unix_getcwd(value buf, value len)
 {
   CAMLparam2(buf, len);
-  char *ret = getcwd((char *)Bytes_val(buf), Int_val(len));
-  int retv = 0;
+  int retv = strlen((char *)Bytes_val(buf)) + 1;
+  char *ret = getcwd((char *)Bytes_val(buf), Int_val(len));;
   if (ret == NULL) {
     retv = -errno;
   }
