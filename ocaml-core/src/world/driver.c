@@ -176,7 +176,7 @@ CAMLprim value unix_getdents64(value fd, value buf, value len)
 #endif
 }
 
-CAMLprim value unix_fadvise(value fd, value offset, value len, value advice)
+CAMLprim value unix_fadvise64(value fd, value offset, value len, value advice)
 {
   CAMLparam4(fd, offset, len, advice);
 #ifdef __APPLE__
@@ -215,6 +215,16 @@ CAMLprim value unix_openat(value dirfd, value path, value flags, value perm)
 {
   CAMLparam4(dirfd, path, flags, perm);
   int ret = openat(Int_val(dirfd), String_val(path), Int_val(flags), Int_val(perm));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+}
+
+CAMLprim value unix_newfstatat(value dirfd, value path, value buf, value flags)
+{
+  CAMLparam4(dirfd, path, buf, flags);
+  int ret = fstatat(Int_val(dirfd), String_val(path), (struct stat *)Bytes_val(buf), Int_val(flags));
   if (ret == -1) {
     ret = -errno;
   }

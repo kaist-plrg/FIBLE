@@ -155,6 +155,15 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
+  | 262L (* newfstatat *) ->
+      {
+        Interop.params =
+          ( [],
+            [ Interop.t64; Interop.const_string_ptr; Interop.mutable_charbuffer_fixed 144L; Interop.t64 ]
+          );
+        result = Some Interop.t64;
+      }
+      |> Option.some
   | _ -> Option.none
 
 let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
@@ -292,7 +301,7 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
         VArith (VInt (V64 rcx));
       ] ) ->
       Interop.v64
-        (Util.fadvise (rdi |> Int64.to_int) rsi rdx (rcx |> Int64.to_int)
+        (Util.fadvise64 (rdi |> Int64.to_int) rsi rdx (rcx |> Int64.to_int)
         |> Int64.of_int)
       |> Result.ok
   | 231L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 0L |> Result.ok
@@ -307,6 +316,12 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       let retv =
         Util.openat (rdi |> Int64.to_int) path (rdx |> Int64.to_int)
           (rcx |> Int64.to_int)
+      in
+      Interop.v64 (Int64.of_int retv) |> Result.ok
+  | 262L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VBuffer rdx; VArith (VInt (V64 rcx)) ] ->
+      let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+      let retv =
+        Util.newfstatat (rdi |> Int64.to_int) path rdx (rcx |> Int64.to_int)
       in
       Interop.v64 (Int64.of_int retv) |> Result.ok
   | _ -> Error (Format.sprintf "unimplemented syscall %Ld" rax)
