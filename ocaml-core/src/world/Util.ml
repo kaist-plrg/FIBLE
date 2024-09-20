@@ -82,6 +82,7 @@ external ioctl : int -> int -> Int64.t -> int = "unix_ioctl"
 external getcwd : bytes -> int -> int = "unix_getcwd"
 external chroot : string -> int = "unix_chroot"
 external fadvise : int -> Int64.t -> Int64.t -> int -> int = "unix_fadvise"
+external openat : int -> string -> int -> int -> int = "unix_openat"
 
 module SpaceInfo = struct
   type t = SleighDef.SpaceInfo.t

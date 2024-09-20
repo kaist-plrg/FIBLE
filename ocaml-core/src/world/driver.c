@@ -135,6 +135,16 @@ CAMLprim value unix_chroot(value path)
   CAMLreturn(Val_int(ret));
 }
 
+CAMLprim value unix_openat(value dirfd, value path, value flags, value perm)
+{
+  CAMLparam4(dirfd, path, flags, perm);
+  int ret = openat(Int_val(dirfd), String_val(path), Int_val(flags), Int_val(perm));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+}
+
 CAMLprim value unix_fd_is_valid (value fd)
 {
   CAMLparam1(fd);
