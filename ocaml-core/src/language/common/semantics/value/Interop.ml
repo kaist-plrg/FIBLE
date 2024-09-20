@@ -355,7 +355,8 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
           in
           let* chars =
             List.init (Int32.to_int tsize) (fun v ->
-                i.add_num nptr (Int64.of_int v))
+                let* nnptr = i.add_num nptr (Int64.of_int v) in
+                i.load_mem s nnptr 1l)
             |> Result.join_list
           in
           let* chars =
