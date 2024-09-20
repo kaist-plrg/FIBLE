@@ -99,6 +99,20 @@ CAMLprim value unix_tcgets(value fd, value buf)
 #endif
 }
 
+CAMLprim value unix_tcsetsw(value fd, value buf)
+{
+  CAMLparam2(fd, buf);
+#ifdef __APPLE__
+  CAMLreturn(Val_int(0));
+#else
+  int ret = ioctl(Int_val(fd), TCSETSW, (const struct termios *)String_val(buf));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+#endif
+}
+
 CAMLprim value unix_tiocgwinsz(value fd, value buf)
 {
   CAMLparam2(fd, buf);
