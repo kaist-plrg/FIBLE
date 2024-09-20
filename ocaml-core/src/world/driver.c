@@ -1,6 +1,8 @@
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
 #include <errno.h>
 #include <caml/mlvalues.h>
 #include <caml/memory.h>
@@ -52,6 +54,36 @@ CAMLprim value unix_close(value fd)
 {
   CAMLparam1(fd);
   int ret = close(Int_val(fd));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+}
+
+CAMLprim value unix_stat(value path, value buf)
+{
+  CAMLparam2(path, buf);
+  int ret = stat(String_val(path), (struct stat *)Bytes_val(buf));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+}
+
+CAMLprim value unix_fstat(value fd, value buf)
+{
+  CAMLparam2(fd, buf);
+  int ret = fstat(Int_val(fd), (struct stat *)Bytes_val(buf));
+  if (ret == -1) {
+    ret = -errno;
+  }
+  CAMLreturn(Val_int(ret));
+}
+
+CAMLprim value unix_lstat(value path, value buf)
+{
+  CAMLparam2(path, buf);
+  int ret = lstat(String_val(path), (struct stat *)Bytes_val(buf));
   if (ret == -1) {
     ret = -errno;
   }

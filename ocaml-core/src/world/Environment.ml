@@ -28,6 +28,31 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
   | 3L (* close *) ->
       { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
       |> Option.some
+  | 4L (* stat *) ->
+      {
+        Interop.params =
+          ( [],
+            [ Interop.const_string_ptr; Interop.mutable_charbuffer_fixed 144L ]
+          );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 5L (* fstat *) ->
+      {
+        Interop.params =
+          ([], [ Interop.t64; Interop.mutable_charbuffer_fixed 144L ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 6L (* lstat *) ->
+      {
+        Interop.params =
+          ( [],
+            [ Interop.const_string_ptr; Interop.mutable_charbuffer_fixed 144L ]
+          );
+        result = Some Interop.t64;
+      }
+      |> Option.some
   | 9L (* mmap *) ->
       {
         Interop.params =
@@ -138,6 +163,17 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
   | 3L, [ VArith (VInt (V64 rdi)) ] ->
       Interop.v64 (Util.close (rdi |> Int64.to_int) |> Int64.of_int)
       |> Result.ok
+  | 4L, [ VIBuffer rsi; VBuffer rdx ] ->
+      let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+      let retv = Util.stat path rdx in
+      Interop.v64 (Int64.of_int retv) |> Result.ok
+  | 5L, [ VArith (VInt (V64 rdi)); VBuffer rsi ] ->
+      let retv = Util.fstat (rdi |> Int64.to_int) rsi in
+      Interop.v64 (Int64.of_int retv) |> Result.ok
+  | 6L, [ VIBuffer rsi; VBuffer rdx ] ->
+      let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+      let retv = Util.lstat path rdx in
+      Interop.v64 (Int64.of_int retv) |> Result.ok
   | 9L, [ VArith (VInt (V64 rdi)); rsi; rdx; rcx; VArith (VInt (V64 r8)); r9 ]
     ->
       if r8 = 0xffffffffffffffffL then
