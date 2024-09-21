@@ -393,7 +393,7 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
             let retv = Array.of_list (List.rev vs) in
             (sides, VIBuffer retv) |> Result.ok
           else
-            let* rsides, rv = aux_ptr s (Fixed tag) ptr env in
+            let* rsides, rv = aux_ptr s (Fixed tag) nptr env in
             aux_arr (k + 1) (List.append rsides sides) (rv :: vs)
         in
         aux_arr 0 [] []
