@@ -84,6 +84,7 @@
   NonNumericValueF
   Storable
   NumericValue
+  UndefVal
   UndefableValue
   NumericBop
   NumericUop

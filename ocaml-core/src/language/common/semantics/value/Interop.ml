@@ -169,6 +169,16 @@ let vstring (x : String.t) : t =
 
 type 'value_t side_t = ('value_t * Bytes.t) List.t
 
+let zero_of_tag (v : arith_tag) : arith_value =
+  match v with
+  | TInt (Id _) -> VInt (V64 0L)
+  | TInt (Prim T64) -> VInt (V64 0L)
+  | TInt (Prim T32) -> VInt (V32 0l)
+  | TInt (Prim T16) -> VInt (V16 0l)
+  | TInt (Prim T8) -> VInt (V8 '\x00')
+  | TFloat TFloat -> VFloat (VFloat Float32.zero)
+  | TFloat TDouble -> VFloat (VDouble Float64.zero)
+
 let arith_is_zero (v : arith_value) : Bool.t =
   match v with
   | VInt (V64 i) -> Int64.equal i 0L
@@ -308,12 +318,19 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
           |> Result.join_list
         in
         let* sides, rets =
-          Result.fold_left_M
+          (* Supports undefined bytes -- note that it breaks simulation, but it's
+             fine for now *)
+          List.fold_left
             (fun (sides, vs) ptr ->
-              let* v = i.load_mem s ptr tsize in
-              let* rsides, rv = aux_arith s tag v [] in
-              (List.append rsides sides, rv :: vs) |> Result.ok)
+              let rsides, rv =
+                (let* v = i.load_mem s ptr tsize in
+                 aux_arith s tag v [])
+                |> Result.to_option
+                |> Option.value ~default:([], zero_of_tag tag)
+              in
+              (List.append rsides sides, rv :: vs))
             ([], []) ptrs
+          |> Result.ok
         in
 
         let rets = create_bytes (Array.of_list (List.rev rets)) in
