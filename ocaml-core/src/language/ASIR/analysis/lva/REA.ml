@@ -17,12 +17,19 @@ let caller_saved_regs =
   [
     0l (* RAX *);
     8l (* RCX *);
+    16l (* RDX *);
     48l (* RSI *);
     56l (* RDI *);
     128l (* R8 *);
     136l (* R9 *);
     144l (* R10 *);
     152l (* R11 *);
+    272l (* FS *);
+    4608l (* XMM0 *);
+    4640l (* XMM1 *);
+    4672l (* XMM2 *);
+    4704l (* XMM3 *);
+    4736l (* XMM4 *);
   ]
 
 let default =

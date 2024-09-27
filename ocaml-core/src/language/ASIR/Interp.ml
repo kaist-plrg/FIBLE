@@ -185,6 +185,12 @@ let action_with_computed_extern (p : Prog.t) (s : State.t) (a : Action.t)
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   let* a =
+    if
+      Loc.equal
+        (State.get_cont s |> Cont.get_loc)
+        (Loc.of_addr_seq (0x406b0eL, 0))
+    then [%log info "interp: %a" State.pp s];
+
     step p s |> Fun.flip StopEvent.add_loc (Cont.get_loc (State.get_cont s))
   in
   let* s' =
