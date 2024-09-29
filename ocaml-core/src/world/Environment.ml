@@ -60,6 +60,12 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
+  | 8L (* lseek *) ->
+      {
+        Interop.params = ([], [ Interop.t64; Interop.t64; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
   | 9L (* mmap *) ->
       {
         Interop.params =
@@ -107,6 +113,28 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
+  | 19L (* readv *) ->
+      {
+        Interop.params =
+          ( [ ("x", T64) ],
+            [
+              Interop.t64;
+              Interop.TPtr
+                (Dynamic
+                   (Interop.TIArr
+                      ( Interop.Abs
+                          ( ("y", T64),
+                            TStruct
+                              [
+                                TPrim (Interop.mutable_charbuffer_of "y");
+                                TPrim (TArith (TInt (Id "y")));
+                              ] ),
+                        Interop.Dependent "x" )));
+              Interop.id "x";
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
   | 20L (* writev *) ->
       {
         Interop.params =
@@ -129,8 +157,35 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
+  | 33L (* dup2 *) ->
+      {
+        Interop.params = ([], [ Interop.t64; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 41L (* socket *) ->
+      {
+        Interop.params = ([], [ Interop.t64; Interop.t64; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 42L (* connect *) ->
+      {
+        Interop.params =
+          ( [],
+            [ Interop.t64; Interop.mutable_charbuffer_fixed 16L; Interop.t64 ]
+          );
+        result = Some Interop.t64;
+      }
+      |> Option.some
   | 60L (* exit *) ->
       { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
+      |> Option.some
+  | 63L (* uname *) ->
+      {
+        Interop.params = ([], [ Interop.mutable_charbuffer_fixed 325L ]);
+        result = Some Interop.t64;
+      }
       |> Option.some
   | 72L (* fcntl *) ->
       {
@@ -138,10 +193,40 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
+  | 75L (* fdatasync *) ->
+      { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
+      |> Option.some
+  | 77L (* ftruncate *) ->
+      {
+        Interop.params = ([], [ Interop.t64; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
   | 79L (* getcwd *) ->
       {
         Interop.params =
           ([ ("x", T64) ], [ Interop.mutable_charbuffer_of "x"; Interop.id "x" ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 80L (* chdir *) ->
+      {
+        Interop.params = ([], [ Interop.const_string_ptr ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 81L (* fchdir *) ->
+      { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
+      |> Option.some
+  | 84L (* rmdir *) ->
+      {
+        Interop.params = ([], [ Interop.const_string_ptr ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 87L (* unlink *) ->
+      {
+        Interop.params = ([], [ Interop.const_string_ptr ]);
         result = Some Interop.t64;
       }
       |> Option.some
@@ -157,6 +242,27 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
+  | 90L (* chmod *) ->
+      {
+        Interop.params = ([], [ Interop.const_string_ptr; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 91L (* fchmod *) ->
+      {
+        Interop.params = ([], [ Interop.t64; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 93L (* fchown *) ->
+      {
+        Interop.params = ([], [ Interop.t64; Interop.t64; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 95L (* umask *) ->
+      { Interop.params = ([], [ Interop.t64 ]); result = Some Interop.t64 }
+      |> Option.some
   | 96L (* gettimeofday *) ->
       {
         Interop.params =
@@ -165,6 +271,43 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
               Interop.mutable_charbuffer_fixed 16L;
               Interop.mutable_charbuffer_fixed 8L;
             ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 99L (* sysinfo *) ->
+      {
+        Interop.params = ([], [ Interop.mutable_charbuffer_fixed 112L ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 102L (* getuid *) ->
+      { Interop.params = ([], []); result = Some Interop.t64 } |> Option.some
+  | 104L (* getgid *) ->
+      { Interop.params = ([], []); result = Some Interop.t64 } |> Option.some
+  | 107L (* geteuid *) ->
+      { Interop.params = ([], []); result = Some Interop.t64 } |> Option.some
+  | 108L (* getegid *) ->
+      { Interop.params = ([], []); result = Some Interop.t64 } |> Option.some
+  | 115L (* getgroups *) ->
+      {
+        Interop.params =
+          ([ ("x", T64) ], [ Interop.id "x"; Interop.mutable_intbuffer_of "x" ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 137L (* statfs *) ->
+      {
+        Interop.params =
+          ( [],
+            [ Interop.const_string_ptr; Interop.mutable_charbuffer_fixed 120L ]
+          );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 138L (* fstatfs *) ->
+      {
+        Interop.params =
+          ([], [ Interop.t64; Interop.mutable_charbuffer_fixed 120L ]);
         result = Some Interop.t64;
       }
       |> Option.some
@@ -209,6 +352,36 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
+  | 258L (* mkdirat *) ->
+      {
+        Interop.params =
+          ([], [ Interop.t64; Interop.const_string_ptr; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 259L (* mknodat *) ->
+      {
+        Interop.params =
+          ( [],
+            [ Interop.t64; Interop.const_string_ptr; Interop.t64; Interop.t64 ]
+          );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 260L (* fchownat *) ->
+      {
+        Interop.params =
+          ( [],
+            [
+              Interop.t64;
+              Interop.const_string_ptr;
+              Interop.t64;
+              Interop.t64;
+              Interop.t64;
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
   | 262L (* newfstatat *) ->
       {
         Interop.params =
@@ -219,6 +392,138 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
               Interop.mutable_charbuffer_fixed 144L;
               Interop.t64;
             ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 263L (* unlinkat *) ->
+      {
+        Interop.params =
+          ([], [ Interop.t64; Interop.const_string_ptr; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 264L (* renameat *) ->
+      {
+        Interop.params =
+          ( [],
+            [
+              Interop.t64;
+              Interop.const_string_ptr;
+              Interop.t64;
+              Interop.const_string_ptr;
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 265L (* linkat *) ->
+      {
+        Interop.params =
+          ( [],
+            [
+              Interop.t64;
+              Interop.const_string_ptr;
+              Interop.t64;
+              Interop.const_string_ptr;
+              Interop.t64;
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 266L (* symlinkat *) ->
+      {
+        Interop.params =
+          ( [],
+            [ Interop.const_string_ptr; Interop.t64; Interop.const_string_ptr ]
+          );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 268L (* fchmodat *) ->
+      {
+        Interop.params =
+          ([], [ Interop.t64; Interop.const_string_ptr; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 269L (* faccessat *) ->
+      {
+        Interop.params =
+          ([], [ Interop.t64; Interop.const_string_ptr; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 280L (* utimensat *) ->
+      {
+        Interop.params =
+          ( [],
+            [
+              Interop.t64;
+              Interop.const_string_ptr;
+              Interop.mutable_charbuffer_fixed 16L;
+              Interop.t64;
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 285L (* fallocate *) ->
+      {
+        Interop.params =
+          ([], [ Interop.t64; Interop.t64; Interop.t64; Interop.t64 ]);
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 316L (* renameat2 *) ->
+      {
+        Interop.params =
+          ( [],
+            [
+              Interop.t64;
+              Interop.const_string_ptr;
+              Interop.t64;
+              Interop.const_string_ptr;
+              Interop.t64;
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 318L (* getrandom *) ->
+      {
+        Interop.params =
+          ( [ ("x", T64) ],
+            [ Interop.mutable_charbuffer_of "x"; Interop.id "x"; Interop.t64 ]
+          );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 332L (* statx *) ->
+      {
+        Interop.params =
+          ( [],
+            [
+              Interop.t64;
+              Interop.const_string_ptr;
+              Interop.t64;
+              Interop.t64;
+              Interop.mutable_charbuffer_fixed 256L;
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 439L (* faccessat2 *) ->
+      {
+        Interop.params =
+          ( [],
+            [ Interop.t64; Interop.const_string_ptr; Interop.t64; Interop.t64 ]
+          );
+        result = Some Interop.t64;
+      }
+      |> Option.some
+  | 452L (* fchmodat2 *) ->
+      {
+        Interop.params =
+          ( [],
+            [ Interop.t64; Interop.const_string_ptr; Interop.t64; Interop.t64 ]
+          );
         result = Some Interop.t64;
       }
       |> Option.some
@@ -267,8 +572,23 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
         let* path = Interop.vibuffer_to_string rsi |> Result.ok in
         let retv = Util.lstat path rdx in
         Interop.v64 retv |> Result.ok
-    | 9L, [ VArith (VInt (V64 rdi)); rsi; rdx; rcx; VArith (VInt (V64 r8)); r9 ]
-      ->
+    | ( 8L,
+        [
+          VArith (VInt (V64 rdi));
+          VArith (VInt (V64 rsi));
+          VArith (VInt (V64 rdx));
+        ] ) ->
+        let retv = Util.lseek (rdi |> Int64.to_int) rsi (rdx |> Int64.to_int) in
+        Interop.v64 retv |> Result.ok
+    | ( 9L,
+        [
+          VArith (VInt (V64 rdi));
+          VArith (VInt (V64 rsi));
+          VArith (VInt (V64 rdx));
+          VArith (VInt (V64 rcx));
+          VArith (VInt (V64 r8));
+          VArith (VInt (V64 r9));
+        ] ) ->
         if Int64.equal r8 0xffffffffffffffffL then
           if Int64.equal rdi 0L then
             let hval =
@@ -311,6 +631,42 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
         Interop.v64 retv |> Result.ok
     | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 rsi)); VOpaque ] ->
         [%log error "not implemented ioctl for %Ld %Ld" rdi rsi]
+    | 19L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ] ->
+        [%log
+          finfo "syscall" "READV ARG: %Ld %a %Ld" rdi Interop.pp (VIBuffer rsi)
+            rdx];
+        let* readarr =
+          Array.map
+            (fun x ->
+              match x with
+              | Interop.VStruct [ VBuffer b; _ ] -> b |> Result.ok
+              | _ -> "parse fail" |> Result.error)
+            rsi
+          |> Array.to_list |> Result.join_list
+        in
+        let readarr_len =
+          List.fold_left (fun acc x -> acc + Bytes.length x) 0 readarr
+        in
+        let newbytes = Bytes.create readarr_len in
+        let retv =
+          Util.read (rdi |> Int64.to_int) newbytes (readarr_len |> Int64.of_int)
+        in
+        if Int64.compare retv 0L < 0 then Interop.v64 retv |> Result.ok
+        else
+          let _ =
+            List.fold_left
+              (fun acc x ->
+                if Int.equal (Bytes.length acc) 0 then acc
+                else if Int.compare (Bytes.length acc) (Bytes.length x) < 0 then (
+                  Bytes.blit acc 0 x 0 (Bytes.length acc);
+                  Bytes.empty)
+                else (
+                  Bytes.blit acc 0 x 0 (Bytes.length x);
+                  Bytes.sub acc (Bytes.length x)
+                    (Bytes.length acc - Bytes.length x)))
+              newbytes readarr
+          in
+          Interop.v64 retv |> Result.ok
     | 20L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ] ->
         [%log
           finfo "syscall" "WRITE ARG: %Ld %a %Ld" rdi Interop.pp (VIBuffer rsi)
@@ -331,7 +687,29 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
             (String.length writestr |> Int64.of_int)
         in
         Interop.v64 retv |> Result.ok
+    | 33L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 rsi)) ] ->
+        let retv = Util.dup2 (rdi |> Int64.to_int) (rsi |> Int64.to_int) in
+        Interop.v64 retv |> Result.ok
+    | ( 41L,
+        [
+          VArith (VInt (V64 rdi));
+          VArith (VInt (V64 rsi));
+          VArith (VInt (V64 rdx));
+        ] ) ->
+        let retv =
+          Util.socket (rdi |> Int64.to_int) (rsi |> Int64.to_int)
+            (rdx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | 42L, [ VArith (VInt (V64 rdi)); VBuffer rsi; VArith (VInt (V64 rdx)) ] ->
+        let retv =
+          Util.connect (rdi |> Int64.to_int) rsi (rdx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
     | 60L, [ VArith (VInt (V64 rdi)) ] -> exit (Int64.to_int rdi)
+    | 63L, [ VBuffer rdi ] ->
+        let retv = Util.uname rdi in
+        Interop.v64 retv |> Result.ok
     | ( 72L,
         [
           VArith (VInt (V64 rdi));
@@ -360,15 +738,74 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
                  (Util.setown (rdi |> Int64.to_int) (rdx |> Int64.to_int)))
         | 9L (*GETOWN*) -> Ok (Interop.v64 (Util.getown (rdi |> Int64.to_int)))
         | _ -> Error "unimplemented fcntl")
+    | 75L, [ VArith (VInt (V64 rdi)) ] ->
+        let retv = Util.fdatasync (rdi |> Int64.to_int) in
+        Interop.v64 retv |> Result.ok
+    | 77L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 rsi)) ] ->
+        let retv = Util.ftruncate (rdi |> Int64.to_int) rsi in
+        Interop.v64 retv |> Result.ok
     | 79L, [ VBuffer rdi; VArith (VInt (V64 rsi)) ] ->
         let retv = Util.getcwd rdi (Int64.to_int rsi) in
+        Interop.v64 retv |> Result.ok
+    | 80L, [ VIBuffer rdi ] ->
+        let* path = Interop.vibuffer_to_string rdi |> Result.ok in
+        let retv = Util.chdir path in
+        Interop.v64 retv |> Result.ok
+    | 81L, [ VArith (VInt (V64 rdi)) ] ->
+        let retv = Util.fchdir (rdi |> Int64.to_int) in
+        Interop.v64 retv |> Result.ok
+    | 84L, [ VIBuffer rdi ] ->
+        let* path = Interop.vibuffer_to_string rdi |> Result.ok in
+        let retv = Util.rmdir path in
+        Interop.v64 retv |> Result.ok
+    | 87L, [ VIBuffer rdi ] ->
+        let* path = Interop.vibuffer_to_string rdi |> Result.ok in
+        let retv = Util.unlink path in
         Interop.v64 retv |> Result.ok
     | 89L, [ VIBuffer rdi; VBuffer rsi; VArith (VInt (V64 rdx)) ] ->
         let* path = Interop.vibuffer_to_string rdi |> Result.ok in
         let retv = Util.readlink path rsi (rdx |> Int64.to_int) in
         Interop.v64 retv |> Result.ok
+    | 90L, [ VIBuffer rdi; VArith (VInt (V64 rsi)) ] ->
+        let* path = Interop.vibuffer_to_string rdi |> Result.ok in
+        let retv = Util.chmod path (rsi |> Int64.to_int) in
+        Interop.v64 retv |> Result.ok
+    | 91L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 rsi)) ] ->
+        let retv = Util.fchmod (rdi |> Int64.to_int) (rsi |> Int64.to_int) in
+        Interop.v64 retv |> Result.ok
+    | ( 93L,
+        [
+          VArith (VInt (V64 rdi));
+          VArith (VInt (V64 rsi));
+          VArith (VInt (V64 rdx));
+        ] ) ->
+        let retv =
+          Util.fchown (rdi |> Int64.to_int) (rsi |> Int64.to_int)
+            (rdx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | 95L, [ VArith (VInt (V64 rdi)) ] ->
+        let retv = Util.umask (rdi |> Int64.to_int) in
+        Interop.v64 retv |> Result.ok
     | 96L, [ VBuffer rdi; VBuffer rsi ] ->
         let retv = Util.gettimeofday rdi rsi in
+        Interop.v64 retv |> Result.ok
+    | 99L, [ VBuffer rdi ] ->
+        let retv = Util.sysinfo rdi in
+        Interop.v64 retv |> Result.ok
+    | 102L, [] -> Interop.v64 (Unix.getuid () |> Int64.of_int) |> Result.ok
+    | 104L, [] -> Interop.v64 (Unix.getgid () |> Int64.of_int) |> Result.ok
+    | 107L, [] -> Interop.v64 (Unix.geteuid () |> Int64.of_int) |> Result.ok
+    | 108L, [] -> Interop.v64 (Unix.getegid () |> Int64.of_int) |> Result.ok
+    | 115L, [ VArith (VInt (V64 rdi)); VBuffer rsi ] ->
+        let retv = Util.getgroups (rdi |> Int64.to_int) rsi in
+        Interop.v64 retv |> Result.ok
+    | 137L, [ VIBuffer rdi; VBuffer rsi ] ->
+        let* path = Interop.vibuffer_to_string rdi |> Result.ok in
+        let retv = Util.statfs path rsi in
+        Interop.v64 retv |> Result.ok
+    | 138L, [ VArith (VInt (V64 rdi)); VBuffer rsi ] ->
+        let retv = Util.fstatfs (rdi |> Int64.to_int) rsi in
         Interop.v64 retv |> Result.ok
     | 161L, [ VIBuffer rsi ] ->
         let* path = Interop.vibuffer_to_string rsi |> Result.ok in
@@ -406,6 +843,40 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
             (rcx |> Int64.to_int)
         in
         Interop.v64 retv |> Result.ok
+    | 258L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ]
+      ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.mkdirat (rdi |> Int64.to_int) path (rdx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | ( 259L,
+        [
+          VArith (VInt (V64 rdi));
+          VIBuffer rsi;
+          VArith (VInt (V64 rdx));
+          VArith (VInt (V64 rcx));
+        ] ) ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.mknodat (rdi |> Int64.to_int) path (rdx |> Int64.to_int)
+            (rcx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | ( 260L,
+        [
+          VArith (VInt (V64 rdi));
+          VIBuffer rsi;
+          VArith (VInt (V64 rdx));
+          VArith (VInt (V64 rcx));
+          VArith (VInt (V64 r8));
+        ] ) ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.fchownat (rdi |> Int64.to_int) path (rdx |> Int64.to_int)
+            (rcx |> Int64.to_int) (r8 |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
     | ( 262L,
         [
           VArith (VInt (V64 rdi));
@@ -416,6 +887,141 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
         let* path = Interop.vibuffer_to_string rsi |> Result.ok in
         let retv =
           Util.newfstatat (rdi |> Int64.to_int) path rdx (rcx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | 263L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ]
+      ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.unlinkat (rdi |> Int64.to_int) path (Int64.to_int rdx)
+        in
+        Interop.v64 retv |> Result.ok
+    | ( 264L,
+        [
+          VArith (VInt (V64 rdi));
+          VIBuffer rsi;
+          VArith (VInt (V64 rdx));
+          VIBuffer rcx;
+        ] ) ->
+        let* path1 = Interop.vibuffer_to_string rsi |> Result.ok in
+        let* path2 = Interop.vibuffer_to_string rcx |> Result.ok in
+        let retv =
+          Util.renameat (rdi |> Int64.to_int) path1 (rdx |> Int64.to_int) path2
+        in
+        Interop.v64 retv |> Result.ok
+    | ( 265L,
+        [
+          VArith (VInt (V64 rdi));
+          VIBuffer rsi;
+          VArith (VInt (V64 rdx));
+          VIBuffer rcx;
+          VArith (VInt (V64 r8));
+        ] ) ->
+        let* path1 = Interop.vibuffer_to_string rsi |> Result.ok in
+        let* path2 = Interop.vibuffer_to_string rcx |> Result.ok in
+        let retv =
+          Util.linkat (rdi |> Int64.to_int) path1 (rdx |> Int64.to_int) path2
+            (r8 |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | 266L, [ VIBuffer rdi; VArith (VInt (V64 rsi)); VIBuffer rdx ] ->
+        let* path1 = Interop.vibuffer_to_string rdi |> Result.ok in
+        let* path2 = Interop.vibuffer_to_string rdx |> Result.ok in
+        let retv = Util.symlinkat path1 (rsi |> Int64.to_int) path2 in
+        Interop.v64 retv |> Result.ok
+    | 268L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ]
+      ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.fchmodat (rdi |> Int64.to_int) path (rdx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | 269L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ]
+      ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.faccessat (rdi |> Int64.to_int) path (rdx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | ( 280L,
+        [
+          VArith (VInt (V64 rdi));
+          VIBuffer rsi;
+          VBuffer rdx;
+          VArith (VInt (V64 rcx));
+        ] ) ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.utimensat (rdi |> Int64.to_int) path rdx (rcx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | ( 285L,
+        [
+          VArith (VInt (V64 rdi));
+          VArith (VInt (V64 rsi));
+          VArith (VInt (V64 rdx));
+          VArith (VInt (V64 rcx));
+        ] ) ->
+        let retv =
+          Util.fallocate (rdi |> Int64.to_int) (rsi |> Int64.to_int) rdx rcx
+        in
+        Interop.v64 retv |> Result.ok
+    | ( 316L,
+        [
+          VArith (VInt (V64 rdi));
+          VIBuffer rsi;
+          VArith (VInt (V64 rdx));
+          VIBuffer rcx;
+          VArith (VInt (V64 r8));
+        ] ) ->
+        let* path1 = Interop.vibuffer_to_string rsi |> Result.ok in
+        let* path2 = Interop.vibuffer_to_string rcx |> Result.ok in
+        let retv =
+          Util.renameat2 (rdi |> Int64.to_int) path1 (rdx |> Int64.to_int) path2
+            (r8 |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | 318L, [ VBuffer rdi; VArith (VInt (V64 rsi)); VArith (VInt (V64 rdx)) ] ->
+        let retv = Util.getrandom rdi rsi (rdx |> Int64.to_int) in
+        Interop.v64 retv |> Result.ok
+    | ( 332L,
+        [
+          VArith (VInt (V64 rdi));
+          VIBuffer rsi;
+          VArith (VInt (V64 rdx));
+          VArith (VInt (V64 rcx));
+          VBuffer r8;
+        ] ) ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.statx (rdi |> Int64.to_int) path (rdx |> Int64.to_int)
+            (rcx |> Int64.to_int) r8
+        in
+        Interop.v64 retv |> Result.ok
+    | ( 439L,
+        [
+          VArith (VInt (V64 rdi));
+          VIBuffer rsi;
+          VArith (VInt (V64 rdx));
+          VArith (VInt (V64 rcx));
+        ] ) ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.faccessat2 (rdi |> Int64.to_int) path (rdx |> Int64.to_int)
+            (rcx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | ( 452L,
+        [
+          VArith (VInt (V64 rdi));
+          VIBuffer rsi;
+          VArith (VInt (V64 rdx));
+          VArith (VInt (V64 rcx));
+        ] ) ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.fchmodat2 (rdi |> Int64.to_int) path (rdx |> Int64.to_int)
+            (rcx |> Int64.to_int)
         in
         Interop.v64 retv |> Result.ok
     | _ -> Error (Format.sprintf "unimplemented syscall %Ld" rax)

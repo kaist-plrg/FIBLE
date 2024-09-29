@@ -34,6 +34,9 @@ let immutable_charbuffer_of x = TPtr (Dynamic (TIArr (TPrim t8, Dependent x)))
 let mutable_charbuffer_of x =
   TPtr (Dynamic (TArr (TInt (Prim T8), Dependent x)))
 
+let mutable_intbuffer_of x =
+  TPtr (Dynamic (TArr (TInt (Prim T32), Dependent x)))
+
 let immutable_charbuffer_fixed l = TPtr (Fixed (TIBuffer (TPrim t8, l)))
 let mutable_charbuffer_fixed l = TPtr (Fixed (TBuffer (TInt (Prim T8), l)))
 

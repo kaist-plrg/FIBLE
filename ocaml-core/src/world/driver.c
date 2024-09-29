@@ -72,6 +72,13 @@ CAMLprim value unix_lstat(value path, value buf)
   DO_SYS (lstat, String_val(path), (struct stat *)Bytes_val(buf));
 }
 
+// 7: lseek
+CAMLprim value unix_lseek(value fd, value offset, value whence)
+{
+  CAMLparam3(fd, offset, whence);
+  DO_SYS (lseek, Int_val(fd), Int64_val(offset), Int_val(whence));
+}
+
 // 16-1: ioctl-tcgets
 CAMLprim value unix_tcgets(value fd, value buf)
 {
@@ -98,6 +105,34 @@ CAMLprim value unix_tiocgwinsz(value fd, value buf)
 {
   CAMLparam2(fd, buf);
   DO_SYS (ioctl, Int_val(fd), TIOCGWINSZ, (struct winsize *)Bytes_val(buf));
+}
+
+// 33: dup2
+CAMLprim value unix_dup2(value oldfd, value newfd)
+{
+  CAMLparam2(oldfd, newfd);
+  DO_SYS (dup2, Int_val(oldfd), Int_val(newfd));
+}
+
+// 41: socket
+CAMLprim value unix_socket(value domain, value type, value protocol)
+{
+  CAMLparam3(domain, type, protocol);
+  DO_SYS (socket, Int_val(domain), Int_val(type), Int_val(protocol));
+}
+
+// 42: connect
+CAMLprim value unix_connect(value fd, value addr, value addrlen)
+{
+  CAMLparam3(fd, addr, addrlen);
+  DO_SYS (connect, Int_val(fd), (struct sockaddr *)Bytes_val(addr), Int_val(addrlen));
+}
+
+// 63: uname
+CAMLprim value unix_uname(value buf)
+{
+  CAMLparam1(buf);
+  DO_SYS (uname, (struct utsname *)Bytes_val(buf));
 }
 
 // 72-1: fcntl-f_dupfd
@@ -149,11 +184,53 @@ CAMLprim value unix_setown(value fd, value pid)
   DO_SYS (fcntl, Int_val(fd), F_SETOWN, Int_val(pid));
 }
 
+// 75: fdatasync
+CAMLprim value unix_fdatasync(value fd)
+{
+  CAMLparam1(fd);
+  DO_SYS (fdatasync, Int_val(fd));
+}
+
+// 77: ftruncate
+CAMLprim value unix_ftruncate(value fd, value length)
+{
+  CAMLparam2(fd, length);
+  DO_SYS (ftruncate, Int_val(fd), Int64_val(length));
+}
+
 // 79: getcwd
 CAMLprim value unix_getcwd(value buf, value len)
 {
   CAMLparam2(buf, len);
   DO_SYS (getcwd, Bytes_val(buf), Int_val(len));
+}
+
+// 80: chdir
+CAMLprim value unix_chdir(value path)
+{
+  CAMLparam1(path);
+  DO_SYS (chdir, String_val(path));
+}
+
+// 81: fchdir
+CAMLprim value unix_fchdir(value fd)
+{
+  CAMLparam1(fd);
+  DO_SYS (fchdir, Int_val(fd));
+}
+
+// 84: rmdir
+CAMLprim value unix_rmdir(value path)
+{
+  CAMLparam1(path);
+  DO_SYS (rmdir, String_val(path));
+}
+
+// 87: unlink
+CAMLprim value unix_unlink(value path)
+{
+  CAMLparam1(path);
+  DO_SYS (unlink, String_val(path));
 }
 
 // 89: readlink
@@ -163,11 +240,67 @@ CAMLprim value unix_readlink(value path, value buf, value len)
   DO_SYS (readlink, String_val(path), Bytes_val(buf), Int_val(len));
 }
 
+// 90: chmod
+CAMLprim value unix_chmod(value path, value perm)
+{
+  CAMLparam2(path, perm);
+  DO_SYS (chmod, String_val(path), Int_val(perm));
+}
+
+// 91: fchmod
+CAMLprim value unix_fchmod(value fd, value perm)
+{
+  CAMLparam2(fd, perm);
+  DO_SYS (fchmod, Int_val(fd), Int_val(perm));
+}
+
+// 93: fchown
+CAMLprim value unix_fchown(value fd, value uid, value gid)
+{
+  CAMLparam3(fd, uid, gid);
+  DO_SYS (fchown, Int_val(fd), Int_val(uid), Int_val(gid));
+}
+
+// 95: umask
+CAMLprim value unix_umask(value mask)
+{
+  CAMLparam1(mask);
+  DO_SYS (umask, Int_val(mask));
+}
+
 // 96: gettimeofday
 CAMLprim value unix_gettimeofday(value tv, value tz)
 {
   CAMLparam2(tv, tz);
   DO_SYS (gettimeofday, (struct timeval *)Bytes_val(tv), (struct timezone *)Bytes_val(tz));
+}
+
+// 99: sysinfo
+CAMLprim value unix_sysinfo(value buf)
+{
+  CAMLparam1(buf);
+  DO_SYS (sysinfo, (struct sysinfo *)Bytes_val(buf));
+}
+
+// 115: getgroups
+CAMLprim value unix_getgroups(value buf)
+{
+  CAMLparam1(buf);
+  DO_SYS (getgroups, Int_val(buf), (gid_t *)Bytes_val(buf));
+}
+
+// 137: statfs
+CAMLprim value unix_statfs(value path, value buf)
+{
+  CAMLparam2(path, buf);
+  DO_SYS (statfs, String_val(path), (struct statfs *)Bytes_val(buf));
+}
+
+// 138: fstatfs
+CAMLprim value unix_fstatfs(value fd, value buf)
+{
+  CAMLparam2(fd, buf);
+  DO_SYS (fstatfs, Int_val(fd), (struct statfs *)Bytes_val(buf));
 }
 
 // 161: chroot
@@ -205,12 +338,125 @@ CAMLprim value unix_openat(value dirfd, value path, value flags, value perm)
   DO_SYS (openat, Int_val(dirfd), String_val(path), Int_val(flags), Int_val(perm));
 }
 
+// 258: mkdirat
+CAMLprim value unix_mkdirat(value dirfd, value path, value perm)
+{
+  CAMLparam3(dirfd, path, perm);
+  DO_SYS (mkdirat, Int_val(dirfd), String_val(path), Int_val(perm));
+}
+
+// 259: mknodat
+CAMLprim value unix_mknodat(value dirfd, value path, value mode, value dev)
+{
+  CAMLparam4(dirfd, path, mode, dev);
+  DO_SYS (mknodat, Int_val(dirfd), String_val(path), Int_val(mode), Int_val(dev));
+}
+
+// 260: fchownat
+CAMLprim value unix_fchownat(value dirfd, value path, value uid, value gid, value flags)
+{
+  CAMLparam5(dirfd, path, uid, gid, flags);
+  DO_SYS (fchownat, Int_val(dirfd), String_val(path), Int_val(uid), Int_val(gid), Int_val(flags));
+}
+
 // 262: newfstatat
 CAMLprim value unix_newfstatat(value dirfd, value path, value buf, value flags)
 {
   CAMLparam4(dirfd, path, buf, flags);
   DO_SYS (newfstatat, Int_val(dirfd), String_val(path), (struct stat *)Bytes_val(buf), Int_val(flags));
 }
+
+// 263: unlinkat
+CAMLprim value unix_unlinkat(value dirfd, value path, value flags)
+{
+  CAMLparam3(dirfd, path, flags);
+  DO_SYS (unlinkat, Int_val(dirfd), String_val(path), Int_val(flags));
+}
+
+// 264: renameat
+CAMLprim value unix_renameat(value oldfd, value oldpath, value newfd, value newpath)
+{
+  CAMLparam4(oldfd, oldpath, newfd, newpath);
+  DO_SYS (renameat, Int_val(oldfd), String_val(oldpath), Int_val(newfd), String_val(newpath));
+}
+
+// 265: linkat
+CAMLprim value unix_linkat(value oldfd, value oldpath, value newfd, value newpath, value flags)
+{
+  CAMLparam5(oldfd, oldpath, newfd, newpath, flags);
+  DO_SYS (linkat, Int_val(oldfd), String_val(oldpath), Int_val(newfd), String_val(newpath), Int_val(flags));
+}
+
+// 266: symlinkat
+CAMLprim value unix_symlinkat(value oldpath, value newfd, value newpath)
+{
+  CAMLparam3(oldpath, newfd, newpath);
+  DO_SYS (symlinkat, String_val(oldpath), Int_val(newfd), String_val(newpath));
+}
+
+// 268: fchmodat
+CAMLprim value unix_fchmodat(value dirfd, value path, value mode)
+{
+  CAMLparam3(dirfd, path, mode);
+  DO_SYS (fchmodat, Int_val(dirfd), String_val(path), Int_val(mode));
+}
+
+// 269: faccessat
+CAMLprim value unix_faccessat(value dirfd, value path, value mode)
+{
+  CAMLparam3(dirfd, path, mode);
+  DO_SYS (faccessat, Int_val(dirfd), String_val(path), Int_val(mode));
+}
+
+// 280: utimensat
+CAMLprim value unix_utimensat(value dirfd, value path, value times, value flags)
+{
+  CAMLparam4(dirfd, path, times, flags);
+  DO_SYS (utimensat, Int_val(dirfd), String_val(path), (const struct timespec *)Bytes_val(times), Int_val(flags));
+}
+
+// 285: fallocate
+CAMLprim value unix_fallocate(value fd, value mode, value offset, value len)
+{
+  CAMLparam4(fd, mode, offset, len);
+  DO_SYS (fallocate, Int_val(fd), Int_val(mode), Int64_val(offset), Int64_val(len));
+}
+
+// 316: renameat2
+CAMLprim value unix_renameat2(value oldfd, value oldpath, value newfd, value newpath, value flags)
+{
+  CAMLparam5(oldfd, oldpath, newfd, newpath, flags);
+  DO_SYS (renameat2, Int_val(oldfd), String_val(oldpath), Int_val(newfd), String_val(newpath), Int_val(flags));
+}
+
+// 318: getrandom
+CAMLprim value unix_getrandom(value buf, value len, value flags)
+{
+  CAMLparam3(buf, len, flags);
+  DO_SYS (getrandom, Bytes_val(buf), Int64_val(len), Int_val(flags));
+}
+
+// 332: statx
+CAMLprim value unix_statx(value dirfd, value path, value flags, value mask, value buf)
+{
+  CAMLparam5(dirfd, path, flags, mask, buf);
+  DO_SYS (statx, Int_val(dirfd), String_val(path), Int_val(flags), Int_val(mask), (struct statx *)Bytes_val(buf));
+}
+
+// 439: faccessat2
+CAMLprim value unix_faccessat2(value dirfd, value path, value mode, value flags)
+{
+  CAMLparam4(dirfd, path, mode, flags);
+  DO_SYS (faccessat2, Int_val(dirfd), String_val(path), Int_val(mode), Int_val(flags));
+}
+
+// 452: fchmodat2
+CAMLprim value unix_fchmodat2(value dirfd, value path, value mode, value flags)
+{
+  CAMLparam4(dirfd, path, mode, flags);
+  DO_SYS (fchmodat2, Int_val(dirfd), String_val(path), Int_val(mode), Int_val(flags));
+}
+
 
 CAMLprim value unix_fd_is_valid (value fd)
 {

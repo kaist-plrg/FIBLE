@@ -77,10 +77,15 @@ external write : int -> string -> Int64.t -> Int64.t = "unix_write"
 external stat : string -> bytes -> Int64.t = "unix_stat"
 external fstat : int -> bytes -> Int64.t = "unix_fstat"
 external lstat : string -> bytes -> Int64.t = "unix_lstat"
+external lseek : int -> Int64.t -> int -> Int64.t = "unix_lseek"
 external tcgets : int -> bytes -> Int64.t = "unix_tcgets"
 external tcsets : int -> string -> Int64.t = "unix_tcsets"
 external tcsetsw : int -> string -> Int64.t = "unix_tcsetsw"
 external tiocgwinsz : int -> bytes -> Int64.t = "unix_tiocgwinsz"
+external dup2 : int -> int -> Int64.t = "unix_dup2"
+external socket : int -> int -> int -> Int64.t = "unix_socket"
+external connect : int -> bytes -> int -> Int64.t = "unix_connect"
+external uname : bytes -> Int64.t = "unix_uname"
 external dupfd : int -> int -> Int64.t = "unix_dupfd"
 external getfl : int -> Int64.t = "unix_getfl"
 external setfl : int -> int -> Int64.t = "unix_setfl"
@@ -88,20 +93,61 @@ external getfd : int -> Int64.t = "unix_getfd"
 external setfd : int -> int -> Int64.t = "unix_setfd"
 external getown : int -> Int64.t = "unix_getown"
 external setown : int -> int -> Int64.t = "unix_setown"
+external fdatasync : int -> Int64.t = "unix_fdatasync"
+external ftruncate : int -> Int64.t -> Int64.t = "unix_ftruncate"
 external getcwd : bytes -> int -> Int64.t = "unix_getcwd"
+external chdir : string -> Int64.t = "unix_chdir"
+external fchdir : int -> Int64.t = "unix_fchdir"
+external rmdir : string -> Int64.t = "unix_rmdir"
+external unlink : string -> Int64.t = "unix_unlink"
 external readlink : string -> bytes -> int -> Int64.t = "unix_readlink"
+external chmod : string -> int -> Int64.t = "unix_chmod"
+external fchmod : int -> int -> Int64.t = "unix_fchmod"
+external fchown : int -> int -> int -> Int64.t = "unix_fchown"
+external umask : int -> Int64.t = "unix_umask"
+external gettimeofday : bytes -> bytes -> Int64.t = "unix_gettimeofday"
+external sysinfo : bytes -> Int64.t = "unix_sysinfo"
+external getgroups : int -> bytes -> Int64.t = "unix_getgroups"
+external statfs : string -> bytes -> Int64.t = "unix_statfs"
+external fstatfs : int -> bytes -> Int64.t = "unix_fstatfs"
 external chroot : string -> Int64.t = "unix_chroot"
 external getdents64 : int -> bytes -> int -> Int64.t = "unix_getdents64"
-external gettimeofday : bytes -> bytes -> Int64.t = "unix_gettimeofday"
 external clock_gettime : Int64.t -> bytes -> Int64.t = "unix_clock_gettime"
 
 external fadvise64 : int -> Int64.t -> Int64.t -> int -> Int64.t
   = "unix_fadvise64"
 
 external openat : int -> string -> int -> int -> Int64.t = "unix_openat"
+external mkdirat : int -> string -> int -> Int64.t = "unix_mkdirat"
+external mknodat : int -> string -> int -> int -> Int64.t = "unix_mknodat"
+
+external fchownat : int -> string -> int -> int -> int -> Int64.t
+  = "unix_fchownat"
 
 external newfstatat : int -> string -> bytes -> int -> Int64.t
   = "unix_newfstatat"
+
+external unlinkat : int -> string -> int -> Int64.t = "unix_unlinkat"
+external renameat : int -> string -> int -> string -> Int64.t = "unix_renameat"
+
+external linkat : int -> string -> int -> string -> int -> Int64.t
+  = "unix_linkat"
+
+external symlinkat : string -> int -> string -> Int64.t = "unix_symlinkat"
+external fchmodat : int -> string -> int -> Int64.t = "unix_fchmodat"
+external faccessat : int -> string -> int -> Int64.t = "unix_faccessat"
+external utimensat : int -> string -> bytes -> int -> Int64.t = "unix_utimensat"
+
+external fallocate : int -> int -> Int64.t -> Int64.t -> Int64.t
+  = "unix_fallocate"
+
+external renameat2 : int -> string -> int -> string -> int -> Int64.t
+  = "unix_renameat2"
+
+external getrandom : bytes -> Int64.t -> int -> Int64.t = "unix_getrandom"
+external statx : int -> string -> int -> int -> bytes -> Int64.t = "unix_statx"
+external faccessat2 : int -> string -> int -> int -> Int64.t = "unix_faccessat2"
+external fchmodat2 : int -> string -> int -> int -> Int64.t = "unix_fchmodat2"
 
 module SpaceInfo = struct
   type t = SleighDef.SpaceInfo.t
