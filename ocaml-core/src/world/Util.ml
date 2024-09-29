@@ -92,6 +92,8 @@ external getcwd : bytes -> int -> Int64.t = "unix_getcwd"
 external readlink : string -> bytes -> int -> Int64.t = "unix_readlink"
 external chroot : string -> Int64.t = "unix_chroot"
 external getdents64 : int -> bytes -> int -> Int64.t = "unix_getdents64"
+external gettimeofday : bytes -> bytes -> Int64.t = "unix_gettimeofday"
+external clock_gettime : Int64.t -> bytes -> Int64.t = "unix_clock_gettime"
 
 external fadvise64 : int -> Int64.t -> Int64.t -> int -> Int64.t
   = "unix_fadvise64"

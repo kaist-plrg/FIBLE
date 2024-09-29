@@ -149,20 +149,6 @@ CAMLprim value unix_setown(value fd, value pid)
   DO_SYS (fcntl, Int_val(fd), F_SETOWN, Int_val(pid));
 }
 
-// 217: getdents64
-CAMLprim value unix_getdents64(value fd, value buf, value len)
-{
-  CAMLparam3(fd, buf, len);
-  DO_SYS (getdents64, Int_val(fd), Bytes_val(buf), Int_val(len));
-}
-
-// 221: fadvise64
-CAMLprim value unix_fadvise64(value fd, value offset, value len, value advice)
-{
-  CAMLparam4(fd, offset, len, advice);
-  DO_SYS (fadvise64, Int_val(fd), Int64_val(offset), Int64_val(len), Int_val(advice));
-}
-
 // 79: getcwd
 CAMLprim value unix_getcwd(value buf, value len)
 {
@@ -177,11 +163,39 @@ CAMLprim value unix_readlink(value path, value buf, value len)
   DO_SYS (readlink, String_val(path), Bytes_val(buf), Int_val(len));
 }
 
+// 96: gettimeofday
+CAMLprim value unix_gettimeofday(value tv, value tz)
+{
+  CAMLparam2(tv, tz);
+  DO_SYS (gettimeofday, (struct timeval *)Bytes_val(tv), (struct timezone *)Bytes_val(tz));
+}
+
 // 161: chroot
 CAMLprim value unix_chroot(value path)
 {
   CAMLparam1(path);
   DO_SYS (chroot, String_val(path));
+}
+
+// 217: getdents64
+CAMLprim value unix_getdents64(value fd, value buf, value len)
+{
+  CAMLparam3(fd, buf, len);
+  DO_SYS (getdents64, Int_val(fd), Bytes_val(buf), Int_val(len));
+}
+
+// 221: fadvise64
+CAMLprim value unix_fadvise64(value fd, value offset, value len, value advice)
+{
+  CAMLparam4(fd, offset, len, advice);
+  DO_SYS (fadvise64, Int_val(fd), Int64_val(offset), Int64_val(len), Int_val(advice));
+}
+
+// 228: clock_gettime
+CAMLprim value unix_clock_gettime(value clk_id, value tp)
+{
+  CAMLparam2(clk_id, tp);
+  DO_SYS (clock_gettime, Int64_val(clk_id), (struct timespec *)Bytes_val(tp));
 }
 
 // 257: openat
