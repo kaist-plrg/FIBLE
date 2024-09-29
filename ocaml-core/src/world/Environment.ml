@@ -159,8 +159,8 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
   | 217L (* getdents64 *) ->
       {
         Interop.params =
-          ( [],
-            [ Interop.t64; Interop.mutable_charbuffer_fixed 24L; Interop.t64 ]
+          ( [ ("x", T64) ],
+            [ Interop.t64; Interop.mutable_charbuffer_of "x"; Interop.id "x" ]
           );
         result = Some Interop.t64;
       }
@@ -271,10 +271,7 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       let retv = Util.tiocgwinsz (rdi |> Int64.to_int) rdx in
       Interop.v64 (Int64.of_int retv) |> Result.ok
   | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 rsi)); VOpaque ] ->
-      Interop.v64
-        (Util.ioctl (rdi |> Int64.to_int) (rsi |> Int64.to_int) 0L
-        |> Int64.of_int)
-      |> Result.ok
+      [%log error "not implemented ioctl for %Ld %Ld" rdi rsi]
   | 20L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ] ->
       [%log
         finfo "syscall" "WRITE ARG: %Ld %a %Ld" rdi Interop.pp (VIBuffer rsi)
