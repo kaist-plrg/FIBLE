@@ -7,6 +7,12 @@ type hidden_fn = Hide : ('a -> 'b) fn -> hidden_fn
 let env : String.t List.t = Unix.environment () |> Array.to_list
 let global_syscall_offset = ref 0L
 
+let global_brk =
+  ref
+    ((String.hash (Format.asprintf "%Lx" !global_syscall_offset)
+     |> Int64.of_int |> Int64.shift_left)
+       24)
+
 let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
   [%log finfo "syscall" "SYSCALL NUM: %Ld" n];
   match n with
@@ -245,8 +251,8 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
         Interop.v64 retv |> Result.ok
     | 9L, [ VArith (VInt (V64 rdi)); rsi; rdx; rcx; VArith (VInt (V64 r8)); r9 ]
       ->
-        if r8 = 0xffffffffffffffffL then
-          if rdi = 0L then
+        if Int64.equal r8 0xffffffffffffffffL then
+          if Int64.equal rdi 0L then
             let hval =
               (String.hash (Format.asprintf "%Lx" !global_syscall_offset)
               |> Int64.of_int |> Int64.shift_left)
@@ -256,7 +262,11 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
           else Interop.v64 rdi |> Result.ok
         else Error "Not supported mmap"
     | 11L, [ rdi; rsi ] -> Interop.v64 0L |> Result.ok
-    | 12L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 rdi |> Result.ok
+    | 12L, [ VArith (VInt (V64 rdi)) ] ->
+        if Int64.equal rdi 0L then Interop.v64 !global_brk |> Result.ok
+        else (
+          global_brk := rdi;
+          Interop.v64 rdi |> Result.ok)
     | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5401L)); VBuffer rdx ]
       ->
         (* TCGETS *)
