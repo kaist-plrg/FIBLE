@@ -70,31 +70,36 @@ let calc_stack_size (args : String.t List.t) (env : String.t List.t) : Int64.t =
   |> Int64.add 64L
 
 external fd_is_valid : int -> bool = "unix_fd_is_valid"
-external open_ : string -> int -> int -> int = "unix_open"
+external open_ : string -> int -> int -> Int64.t = "unix_open"
 external close : int -> int = "unix_close"
 external read : int -> bytes -> Int64.t -> Int64.t = "unix_read"
 external write : int -> string -> Int64.t -> Int64.t = "unix_write"
-external stat : string -> bytes -> int = "unix_stat"
-external fstat : int -> bytes -> int = "unix_fstat"
-external lstat : string -> bytes -> int = "unix_lstat"
-external tcgets : int -> bytes -> int = "unix_tcgets"
-external tcsets : int -> string -> int = "unix_tcsets"
-external tcsetsw : int -> string -> int = "unix_tcsetsw"
-external tiocgwinsz : int -> bytes -> int = "unix_tiocgwinsz"
-external dupfd : int -> int -> int = "unix_dupfd"
-external getfl : int -> int = "unix_getfl"
-external setfl : int -> int -> int = "unix_setfl"
-external getfd : int -> int = "unix_getfd"
-external setfd : int -> int -> int = "unix_setfd"
-external getown : int -> int = "unix_getown"
-external setown : int -> int -> int = "unix_setown"
-external getcwd : bytes -> int -> int = "unix_getcwd"
-external readlink : string -> bytes -> int -> int = "unix_readlink"
-external chroot : string -> int = "unix_chroot"
-external getdents64 : int -> bytes -> int -> int = "unix_getdents64"
-external fadvise64 : int -> Int64.t -> Int64.t -> int -> int = "unix_fadvise64"
-external openat : int -> string -> int -> int -> int = "unix_openat"
-external newfstatat : int -> string -> bytes -> int -> int = "unix_newfstatat"
+external stat : string -> bytes -> Int64.t = "unix_stat"
+external fstat : int -> bytes -> Int64.t = "unix_fstat"
+external lstat : string -> bytes -> Int64.t = "unix_lstat"
+external tcgets : int -> bytes -> Int64.t = "unix_tcgets"
+external tcsets : int -> string -> Int64.t = "unix_tcsets"
+external tcsetsw : int -> string -> Int64.t = "unix_tcsetsw"
+external tiocgwinsz : int -> bytes -> Int64.t = "unix_tiocgwinsz"
+external dupfd : int -> int -> Int64.t = "unix_dupfd"
+external getfl : int -> Int64.t = "unix_getfl"
+external setfl : int -> int -> Int64.t = "unix_setfl"
+external getfd : int -> Int64.t = "unix_getfd"
+external setfd : int -> int -> Int64.t = "unix_setfd"
+external getown : int -> Int64.t = "unix_getown"
+external setown : int -> int -> Int64.t = "unix_setown"
+external getcwd : bytes -> int -> Int64.t = "unix_getcwd"
+external readlink : string -> bytes -> int -> Int64.t = "unix_readlink"
+external chroot : string -> Int64.t = "unix_chroot"
+external getdents64 : int -> bytes -> int -> Int64.t = "unix_getdents64"
+
+external fadvise64 : int -> Int64.t -> Int64.t -> int -> Int64.t
+  = "unix_fadvise64"
+
+external openat : int -> string -> int -> int -> Int64.t = "unix_openat"
+
+external newfstatat : int -> string -> bytes -> int -> Int64.t
+  = "unix_newfstatat"
 
 module SpaceInfo = struct
   type t = SleighDef.SpaceInfo.t
