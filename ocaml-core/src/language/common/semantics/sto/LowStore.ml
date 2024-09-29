@@ -372,7 +372,6 @@ struct
           | VArith (VInt (V64 rax)) -> rax |> Result.ok
           | _ -> "rax is not a 64-bit integer" |> Result.error
         in
-        [%log finfo "syscall" "SYSCALL NUM: %Ld" snum];
         let* fsig =
           match syscall_table snum with
           | Some fsig -> fsig |> Result.ok

@@ -71,7 +71,7 @@ let calc_stack_size (args : String.t List.t) (env : String.t List.t) : Int64.t =
 
 external fd_is_valid : int -> bool = "unix_fd_is_valid"
 external open_ : string -> int -> int -> Int64.t = "unix_open"
-external close : int -> int = "unix_close"
+external close : int -> Int64.t = "unix_close"
 external read : int -> bytes -> Int64.t -> Int64.t = "unix_read"
 external write : int -> string -> Int64.t -> Int64.t = "unix_write"
 external stat : string -> bytes -> Int64.t = "unix_stat"

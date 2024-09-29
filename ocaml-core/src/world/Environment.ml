@@ -8,6 +8,7 @@ let env : String.t List.t = Unix.environment () |> Array.to_list
 let global_syscall_offset = ref 0L
 
 let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
+  [%log finfo "syscall" "SYSCALL NUM: %Ld" n];
   match n with
   | 0L (* read *) ->
       {
@@ -201,179 +202,192 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
 
 let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
   global_syscall_offset := Int64.add !global_syscall_offset 1L;
+  [%log
+    finfo "syscall" "SYSCALL ARGS: %a"
+      (Format.pp_print_list
+         ~pp_sep:(fun fmt () -> Format.pp_print_string fmt ", ")
+         Interop.pp)
+      args];
   let* rax, args =
     match args with
     | Interop.VArith (VInt (V64 rax)) :: rest -> Ok (rax, rest)
     | _ -> Error "syscall: invalid syscall number"
   in
-  match (rax, args) with
-  | 0L, [ VArith (VInt (V64 rdi)); VBuffer rsi; VArith (VInt (V64 rdx)) ] ->
-      let retv = Util.read (rdi |> Int64.to_int) rsi rdx in
-      [%log
-        finfo "syscall" "READ ARG: %Ld %a %Ld" rdi Interop.pp (VBuffer rsi) rdx];
-      [%log finfo "syscall" "READ RET: %Ld" retv];
-      Interop.v64 retv |> Result.ok
-  | 2L, [ VIBuffer sname; VArith (VInt (V64 flags)); VArith (VInt (V64 mode)) ]
-    ->
-      let name = Interop.vibuffer_to_string sname in
-      let retv =
-        Util.open_ name (flags |> Int64.to_int) (mode |> Int64.to_int)
-      in
-      Interop.v64 retv |> Result.ok
-  | 3L, [ VArith (VInt (V64 rdi)) ] ->
-      Interop.v64 (Util.close (rdi |> Int64.to_int) |> Int64.of_int)
-      |> Result.ok
-  | 4L, [ VIBuffer rsi; VBuffer rdx ] ->
-      let* path = Interop.vibuffer_to_string rsi |> Result.ok in
-      let retv = Util.stat path rdx in
-      Interop.v64 retv |> Result.ok
-  | 5L, [ VArith (VInt (V64 rdi)); VBuffer rsi ] ->
-      let retv = Util.fstat (rdi |> Int64.to_int) rsi in
-      Interop.v64 retv |> Result.ok
-  | 6L, [ VIBuffer rsi; VBuffer rdx ] ->
-      let* path = Interop.vibuffer_to_string rsi |> Result.ok in
-      let retv = Util.lstat path rdx in
-      Interop.v64 retv |> Result.ok
-  | 9L, [ VArith (VInt (V64 rdi)); rsi; rdx; rcx; VArith (VInt (V64 r8)); r9 ]
-    ->
-      if r8 = 0xffffffffffffffffL then
-        if rdi = 0L then
-          let hval =
-            (String.hash (Format.asprintf "%Lx" !global_syscall_offset)
-            |> Int64.of_int |> Int64.shift_left)
-              24
-          in
-          Interop.v64 hval |> Result.ok
-        else Interop.v64 rdi |> Result.ok
-      else Error "Not supported mmap"
-  | 11L, [ rdi; rsi ] -> Interop.v64 0L |> Result.ok
-  | 12L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 rdi |> Result.ok
-  | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5401L)); VBuffer rdx ]
-    ->
-      (* TCGETS *)
-      let retv = Util.tcgets (rdi |> Int64.to_int) rdx in
-      Interop.v64 retv |> Result.ok
-  | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5402L)); VIBuffer rdx ]
-    ->
-      (* TCSETS *)
-      let* str = Interop.vibuffer_to_string rdx |> Result.ok in
-      let retv = Util.tcsets (rdi |> Int64.to_int) str in
-      Interop.v64 retv |> Result.ok
-  | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5403L)); VIBuffer rdx ]
-    ->
-      (* TCSETSW *)
-      let* str = Interop.vibuffer_to_string rdx |> Result.ok in
-      let retv = Util.tcsetsw (rdi |> Int64.to_int) str in
-      Interop.v64 retv |> Result.ok
-  | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5413L)); VBuffer rdx ]
-    ->
-      (* TIOCGWINSZ *)
-      let retv = Util.tiocgwinsz (rdi |> Int64.to_int) rdx in
-      Interop.v64 retv |> Result.ok
-  | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 rsi)); VOpaque ] ->
-      [%log error "not implemented ioctl for %Ld %Ld" rdi rsi]
-  | 20L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ] ->
-      [%log
-        finfo "syscall" "WRITE ARG: %Ld %a %Ld" rdi Interop.pp (VIBuffer rsi)
-          rdx];
-      let* writearr =
-        Array.map
-          (fun x ->
-            match x with
-            | Interop.VStruct [ VIBuffer b; _ ] ->
-                Interop.vibuffer_to_string b |> Result.ok
-            | _ -> "parse fail" |> Result.error)
-          rsi
-        |> Array.to_list |> Result.join_list
-      in
-      let writestr = String.concat "" writearr in
-      let retv =
-        Util.write (Int64.to_int rdi) writestr
-          (String.length writestr |> Int64.of_int)
-      in
-      Interop.v64 retv |> Result.ok
-  | 60L, [ VArith (VInt (V64 rdi)) ] -> exit (Int64.to_int rdi)
-  | ( 72L,
-      [
-        VArith (VInt (V64 rdi));
-        VArith (VInt (V64 rsi));
-        VArith (VInt (V64 rdx));
-      ] )
-  (* FCNTL *) -> (
-      match rsi with
-      | 0L (*DUPFD*) ->
-          Ok
-            (Interop.v64
-               (Util.dupfd (rdi |> Int64.to_int) (rdx |> Int64.to_int)))
-      | 1L (*GETFD*) -> Ok (Interop.v64 (Util.getfd (rdi |> Int64.to_int)))
-      | 2L (*SETFD*) ->
-          Ok
-            (Interop.v64
-               (Util.setfd (rdi |> Int64.to_int) (rdx |> Int64.to_int)))
-      | 3L (*GETFL*) -> Ok (Interop.v64 (Util.getfl (rdi |> Int64.to_int)))
-      | 4L (*SETFL*) ->
-          Ok
-            (Interop.v64
-               (Util.setfl (rdi |> Int64.to_int) (rdx |> Int64.to_int)))
-      | 8L (*SETOWN*) ->
-          Ok
-            (Interop.v64
-               (Util.setown (rdi |> Int64.to_int) (rdx |> Int64.to_int)))
-      | 9L (*GETOWN*) -> Ok (Interop.v64 (Util.getown (rdi |> Int64.to_int)))
-      | _ -> Error "unimplemented fcntl")
-  | 79L, [ VBuffer rdi; VArith (VInt (V64 rsi)) ] ->
-      let retv = Util.getcwd rdi (Int64.to_int rsi) in
-      Interop.v64 retv |> Result.ok
-  | 89L, [ VIBuffer rdi; VBuffer rsi; VArith (VInt (V64 rdx)) ] ->
-      let* path = Interop.vibuffer_to_string rdi |> Result.ok in
-      let retv = Util.readlink path rsi (rdx |> Int64.to_int) in
-      Interop.v64 retv |> Result.ok
-  | 161L, [ VIBuffer rsi ] ->
-      let* path = Interop.vibuffer_to_string rsi |> Result.ok in
-      let retv = Util.chroot path in
-      Interop.v64 retv |> Result.ok
-  | 217L, [ VArith (VInt (V64 rdi)); VBuffer rsi; VArith (VInt (V64 rdx)) ] ->
-      let retv =
-        Util.getdents64 (rdi |> Int64.to_int) rsi (rdx |> Int64.to_int)
-      in
-      Interop.v64 retv |> Result.ok
-  | ( 221L (* fadvise64 *),
-      [
-        VArith (VInt (V64 rdi));
-        VArith (VInt (V64 rsi));
-        VArith (VInt (V64 rdx));
-        VArith (VInt (V64 rcx));
-      ] ) ->
-      Interop.v64
-        (Util.fadvise64 (rdi |> Int64.to_int) rsi rdx (rcx |> Int64.to_int))
-      |> Result.ok
-  | 231L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 0L |> Result.ok
-  | ( 257L,
-      [
-        VArith (VInt (V64 rdi));
-        VIBuffer rsi;
-        VArith (VInt (V64 rdx));
-        VArith (VInt (V64 rcx));
-      ] ) ->
-      let* path = Interop.vibuffer_to_string rsi |> Result.ok in
-      let retv =
-        Util.openat (rdi |> Int64.to_int) path (rdx |> Int64.to_int)
-          (rcx |> Int64.to_int)
-      in
-      Interop.v64 retv |> Result.ok
-  | ( 262L,
-      [
-        VArith (VInt (V64 rdi));
-        VIBuffer rsi;
-        VBuffer rdx;
-        VArith (VInt (V64 rcx));
-      ] ) ->
-      let* path = Interop.vibuffer_to_string rsi |> Result.ok in
-      let retv =
-        Util.newfstatat (rdi |> Int64.to_int) path rdx (rcx |> Int64.to_int)
-      in
-      Interop.v64 retv |> Result.ok
-  | _ -> Error (Format.sprintf "unimplemented syscall %Ld" rax)
+  let* res =
+    match (rax, args) with
+    | 0L, [ VArith (VInt (V64 rdi)); VBuffer rsi; VArith (VInt (V64 rdx)) ] ->
+        let retv = Util.read (rdi |> Int64.to_int) rsi rdx in
+        [%log
+          finfo "syscall" "READ ARG: %Ld %a %Ld" rdi Interop.pp (VBuffer rsi)
+            rdx];
+        [%log finfo "syscall" "READ RET: %Ld" retv];
+        Interop.v64 retv |> Result.ok
+    | ( 2L,
+        [ VIBuffer sname; VArith (VInt (V64 flags)); VArith (VInt (V64 mode)) ]
+      ) ->
+        let name = Interop.vibuffer_to_string sname in
+        let retv =
+          Util.open_ name (flags |> Int64.to_int) (mode |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | 3L, [ VArith (VInt (V64 rdi)) ] ->
+        Interop.v64 (Util.close (rdi |> Int64.to_int)) |> Result.ok
+    | 4L, [ VIBuffer rsi; VBuffer rdx ] ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv = Util.stat path rdx in
+        Interop.v64 retv |> Result.ok
+    | 5L, [ VArith (VInt (V64 rdi)); VBuffer rsi ] ->
+        let retv = Util.fstat (rdi |> Int64.to_int) rsi in
+        Interop.v64 retv |> Result.ok
+    | 6L, [ VIBuffer rsi; VBuffer rdx ] ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv = Util.lstat path rdx in
+        Interop.v64 retv |> Result.ok
+    | 9L, [ VArith (VInt (V64 rdi)); rsi; rdx; rcx; VArith (VInt (V64 r8)); r9 ]
+      ->
+        if r8 = 0xffffffffffffffffL then
+          if rdi = 0L then
+            let hval =
+              (String.hash (Format.asprintf "%Lx" !global_syscall_offset)
+              |> Int64.of_int |> Int64.shift_left)
+                24
+            in
+            Interop.v64 hval |> Result.ok
+          else Interop.v64 rdi |> Result.ok
+        else Error "Not supported mmap"
+    | 11L, [ rdi; rsi ] -> Interop.v64 0L |> Result.ok
+    | 12L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 rdi |> Result.ok
+    | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5401L)); VBuffer rdx ]
+      ->
+        (* TCGETS *)
+        let retv = Util.tcgets (rdi |> Int64.to_int) rdx in
+        Interop.v64 retv |> Result.ok
+    | ( 16L,
+        [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5402L)); VIBuffer rdx ] )
+      ->
+        (* TCSETS *)
+        let* str = Interop.vibuffer_to_string rdx |> Result.ok in
+        let retv = Util.tcsets (rdi |> Int64.to_int) str in
+        Interop.v64 retv |> Result.ok
+    | ( 16L,
+        [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5403L)); VIBuffer rdx ] )
+      ->
+        (* TCSETSW *)
+        let* str = Interop.vibuffer_to_string rdx |> Result.ok in
+        let retv = Util.tcsetsw (rdi |> Int64.to_int) str in
+        Interop.v64 retv |> Result.ok
+    | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x5413L)); VBuffer rdx ]
+      ->
+        (* TIOCGWINSZ *)
+        let retv = Util.tiocgwinsz (rdi |> Int64.to_int) rdx in
+        Interop.v64 retv |> Result.ok
+    | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 rsi)); VOpaque ] ->
+        [%log error "not implemented ioctl for %Ld %Ld" rdi rsi]
+    | 20L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ] ->
+        [%log
+          finfo "syscall" "WRITE ARG: %Ld %a %Ld" rdi Interop.pp (VIBuffer rsi)
+            rdx];
+        let* writearr =
+          Array.map
+            (fun x ->
+              match x with
+              | Interop.VStruct [ VIBuffer b; _ ] ->
+                  Interop.vibuffer_to_string b |> Result.ok
+              | _ -> "parse fail" |> Result.error)
+            rsi
+          |> Array.to_list |> Result.join_list
+        in
+        let writestr = String.concat "" writearr in
+        let retv =
+          Util.write (Int64.to_int rdi) writestr
+            (String.length writestr |> Int64.of_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | 60L, [ VArith (VInt (V64 rdi)) ] -> exit (Int64.to_int rdi)
+    | ( 72L,
+        [
+          VArith (VInt (V64 rdi));
+          VArith (VInt (V64 rsi));
+          VArith (VInt (V64 rdx));
+        ] )
+    (* FCNTL *) -> (
+        match rsi with
+        | 0L (*DUPFD*) ->
+            Ok
+              (Interop.v64
+                 (Util.dupfd (rdi |> Int64.to_int) (rdx |> Int64.to_int)))
+        | 1L (*GETFD*) -> Ok (Interop.v64 (Util.getfd (rdi |> Int64.to_int)))
+        | 2L (*SETFD*) ->
+            Ok
+              (Interop.v64
+                 (Util.setfd (rdi |> Int64.to_int) (rdx |> Int64.to_int)))
+        | 3L (*GETFL*) -> Ok (Interop.v64 (Util.getfl (rdi |> Int64.to_int)))
+        | 4L (*SETFL*) ->
+            Ok
+              (Interop.v64
+                 (Util.setfl (rdi |> Int64.to_int) (rdx |> Int64.to_int)))
+        | 8L (*SETOWN*) ->
+            Ok
+              (Interop.v64
+                 (Util.setown (rdi |> Int64.to_int) (rdx |> Int64.to_int)))
+        | 9L (*GETOWN*) -> Ok (Interop.v64 (Util.getown (rdi |> Int64.to_int)))
+        | _ -> Error "unimplemented fcntl")
+    | 79L, [ VBuffer rdi; VArith (VInt (V64 rsi)) ] ->
+        let retv = Util.getcwd rdi (Int64.to_int rsi) in
+        Interop.v64 retv |> Result.ok
+    | 89L, [ VIBuffer rdi; VBuffer rsi; VArith (VInt (V64 rdx)) ] ->
+        let* path = Interop.vibuffer_to_string rdi |> Result.ok in
+        let retv = Util.readlink path rsi (rdx |> Int64.to_int) in
+        Interop.v64 retv |> Result.ok
+    | 161L, [ VIBuffer rsi ] ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv = Util.chroot path in
+        Interop.v64 retv |> Result.ok
+    | 217L, [ VArith (VInt (V64 rdi)); VBuffer rsi; VArith (VInt (V64 rdx)) ] ->
+        let retv =
+          Util.getdents64 (rdi |> Int64.to_int) rsi (rdx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | ( 221L (* fadvise64 *),
+        [
+          VArith (VInt (V64 rdi));
+          VArith (VInt (V64 rsi));
+          VArith (VInt (V64 rdx));
+          VArith (VInt (V64 rcx));
+        ] ) ->
+        Interop.v64
+          (Util.fadvise64 (rdi |> Int64.to_int) rsi rdx (rcx |> Int64.to_int))
+        |> Result.ok
+    | 231L, [ VArith (VInt (V64 rdi)) ] -> Interop.v64 0L |> Result.ok
+    | ( 257L,
+        [
+          VArith (VInt (V64 rdi));
+          VIBuffer rsi;
+          VArith (VInt (V64 rdx));
+          VArith (VInt (V64 rcx));
+        ] ) ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.openat (rdi |> Int64.to_int) path (rdx |> Int64.to_int)
+            (rcx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | ( 262L,
+        [
+          VArith (VInt (V64 rdi));
+          VIBuffer rsi;
+          VBuffer rdx;
+          VArith (VInt (V64 rcx));
+        ] ) ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.newfstatat (rdi |> Int64.to_int) path rdx (rcx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
+    | _ -> Error (Format.sprintf "unimplemented syscall %Ld" rax)
+  in
+  [%log finfo "syscall" "SYSCALL RET: %a" Interop.pp res];
+  res |> Result.ok
 
 let cgc_funcs : String.t List.t =
   [
