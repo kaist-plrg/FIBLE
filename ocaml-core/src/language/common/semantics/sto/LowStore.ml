@@ -209,7 +209,8 @@ struct
     let nmem, nsp, argptrs = alloc_strings nmem args nsp in
     let nmem, nsp, envpptr = alloc_array nmem nsp envptrs in
     let nmem, nsp, argpptr = alloc_array nmem nsp argptrs in
-    let nmem, nsp, _ = alloc_pointer nmem (Int64.add init_sp 8L) 0xDEADBEEFL in
+    let nsp = Int64.logand nsp 0xFFFFFFFFFFFFFFF0L (* ABI Alignment *) in
+    let nmem, nsp, _ = alloc_pointer nmem nsp 0xDEADBEEFL in
     (nmem, nsp, argpptr, envpptr)
 
   let init_from_sig_libc (dmem : DMem.t) (rspec : int32 Int32Map.t)

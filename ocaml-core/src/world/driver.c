@@ -1,5 +1,6 @@
 #ifndef __APPLE__
 #include <asm/termbits.h>
+#include <asm/unistd.h>
 #endif
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -19,9 +20,12 @@
 #define DO_SYS(sname, ...) caml_failwith("syscall " #sname " not supported on macOS")
 #else
 #define DO_SYS(sname, ...) ({ \
-  CAMLreturn(caml_copy_int64(syscall(SYS_ ## sname, ##__VA_ARGS__))); \
+  CAMLreturn(caml_copy_int64(syscall(__NR_ ## sname, ##__VA_ARGS__))); \
 })
 #endif
+
+#define __NR_faccessat2 439
+#define __NR_fchmodat2 452
 
 // 0: read
 CAMLprim value unix_read (value fd, value buf, value len)
