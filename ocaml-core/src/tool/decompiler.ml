@@ -144,12 +144,22 @@ let make_l1 (ifile : String.t) (symtab : Artifact.Data.symbol_table)
     Util.DMemWrapper.read_file (!dump_path ^ "/" ^ ifile_base ^ ".dmem")
   in
   let c0 = Sys.time () in
+  let externs = Util.ExternalFunction.to_addrMap server.external_function in
+  let externs =
+    match
+      List.find_opt
+        (fun (_, s) -> String.equal s "libc_start_init")
+        symtab.funcs
+    with
+    | Some (e, _) -> Byte8Map.add e "libc_start_init" externs
+    | None -> externs
+  in
   let l0 : ILIR.Syn.Prog.t =
     {
       ins_mem = server.instfunc;
       rom;
       rspec = server.regspec.base_size;
-      externs = Util.ExternalFunction.to_addrMap server.external_function;
+      externs;
       objects = symtab.objects;
       entries =
         symtab.funcs

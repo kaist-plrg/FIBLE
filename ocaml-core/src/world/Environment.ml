@@ -1044,6 +1044,9 @@ let cgc_funcs : String.t List.t =
 let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
   StringMap.of_list
     [
+      ( "libc_start_init",
+        ( { Interop.params = ([], []); result = Some Interop.t32 },
+          Hide (int @-> returning int) ) );
       ( "_terminate",
         ( { Interop.params = ([], [ Interop.t32 ]); result = Some Interop.t32 },
           Hide (int @-> returning int) ) );
@@ -1195,7 +1198,8 @@ let rec call_with_signature : type a. a fn -> a -> Interop.t list -> Interop.t =
 type event_t = EventTerminate | EventReturn of Interop.t
 
 let request_call (fname : String.t) (arg : Interop.t list) : event_t =
-  if List.mem fname cgc_funcs then (
+  if String.equal fname "libc_start_init" then EventReturn (Interop.v32 0l)
+  else if List.mem fname cgc_funcs then (
     Global.initialize_cgc_lib ();
     match fname with
     | "_terminate" -> EventTerminate
