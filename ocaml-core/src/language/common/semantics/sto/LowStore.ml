@@ -80,11 +80,25 @@ struct
       (mem, sp, 0L) ptrs
 
   let init_libc_glob (v : t) (objects : (Int64.t * String.t) List.t)
-      (argv_reg : Int32.t) : t =
-    let swaped_objects = objects |> List.map (fun (a, b) -> (b, a)) in
+      (argv_reg : Int32.t) (argc_reg : Int32.t) : t =
+    let objMap =
+      objects |> List.map (fun (a, b) -> (b, a)) |> StringMap.of_list
+    in
     let argv =
       RegFile.get_reg v.regs
         { id = RegId.Register argv_reg; offset = 0l; width = 8l }
+    in
+    let argc =
+      RegFile.get_reg v.regs
+        { id = RegId.Register argc_reg; offset = 0l; width = 8l }
+      |> NumericValue.value_64 |> Result.get_ok
+    in
+    let envp =
+      NumericBop.eval Bint_add argv
+        (Value.of_num
+           (NumericValue.of_int64 (Int64.mul (Int64.add argc 1L) 8L) 8l))
+        8l
+      |> Result.get_ok
     in
     match
       let* argv_ptr = NumericValue.try_addr argv in
@@ -96,30 +110,91 @@ struct
         | None -> 0L
         | Some idx -> Int64.of_int (idx + 1)
       in
-      let* nmem =
-        match List.assoc_opt "program_invocation_name" swaped_objects with
-        | None -> v.mem |> Result.ok
-        | Some addr ->
-            let* addrp =
-              NumericValue.of_int64 addr 8l |> NumericValue.try_addr
-            in
-            Memory.store_mem v.mem addrp argv0 |> Result.ok
-      in
-      let* nmem =
-        match List.assoc_opt "program_invocation_short_name" swaped_objects with
-        | None -> nmem |> Result.ok
-        | Some addr ->
-            let* addrp =
-              NumericValue.of_int64 addr 8l |> NumericValue.try_addr
-            in
-            let* short_prog =
-              NumericBop.eval Bint_add argv0
-                (Value.of_num (NumericValue.of_int64 short_prog_idx 8l))
-                8l
-            in
-            Memory.store_mem nmem addrp short_prog |> Result.ok
-      in
-      { v with mem = nmem } |> Result.ok
+      match
+        ( StringMap.find_opt "__libc" objMap,
+          StringMap.find_opt "builtin_tls" objMap,
+          StringMap.find_opt "environ" objMap,
+          StringMap.find_opt "program_invocation_name" objMap,
+          StringMap.find_opt "program_invocation_short_name" objMap )
+      with
+      | ( Some libcaddr,
+          Some tlsaddr,
+          Some envaddr,
+          Some pnameaddr,
+          Some pshortaddr ) ->
+          let* addrp =
+            NumericValue.of_int64 pnameaddr 8l |> NumericValue.try_addr
+          in
+          let nvmem = Memory.store_mem v.mem addrp argv0 in
+          let* addrp =
+            NumericValue.of_int64 pshortaddr 8l |> NumericValue.try_addr
+          in
+          let* short_prog =
+            NumericBop.eval Bint_add argv0
+              (Value.of_num (NumericValue.of_int64 short_prog_idx 8l))
+              8l
+          in
+          let nvmem = Memory.store_mem nvmem addrp short_prog in
+          let* addrp =
+            NumericValue.of_int64 envaddr 8l |> NumericValue.try_addr
+          in
+          let nvmem = Memory.store_mem nvmem addrp envp in
+          let tlsv = NumericValue.of_int64 tlsaddr 8l in
+          let* tlsp = tlsv |> NumericValue.try_addr in
+          let libcv = NumericValue.of_int64 libcaddr 8l in
+          let* tls_plus_x10p =
+            NumericBop.eval Bint_add tlsv
+              (Value.of_num (NumericValue.of_int64 0x10L 8l))
+              8l
+            |> Fun.flip Result.bind NumericValue.try_addr
+          in
+          let* tls_plus_x18p =
+            NumericBop.eval Bint_add tlsv
+              (Value.of_num (NumericValue.of_int64 0x18L 8l))
+              8l
+            |> Fun.flip Result.bind NumericValue.try_addr
+          in
+          let* tls_plus_x38p =
+            NumericBop.eval Bint_add tlsv
+              (Value.of_num (NumericValue.of_int64 0x38L 8l))
+              8l
+            |> Fun.flip Result.bind NumericValue.try_addr
+          in
+          let* tls_plus_x88 =
+            NumericBop.eval Bint_add tlsv
+              (Value.of_num (NumericValue.of_int64 0x88L 8l))
+              8l
+          in
+          let* tls_plus_x88p = tls_plus_x88 |> NumericValue.try_addr in
+          let* tls_plus_xa8p =
+            NumericBop.eval Bint_add tlsv
+              (Value.of_num (NumericValue.of_int64 0xa8L 8l))
+              8l
+            |> Fun.flip Result.bind NumericValue.try_addr
+          in
+          let* libc_plus_x38 =
+            NumericBop.eval Bint_add libcv
+              (Value.of_num (NumericValue.of_int64 0x38L 8l))
+              8l
+          in
+          let nvmem = Memory.store_mem nvmem tlsp tlsv in
+          let nvmem =
+            Memory.store_mem nvmem tls_plus_x38p
+              (Value.of_num (NumericValue.of_int64 2L 4l))
+          in
+          let nvmem = Memory.store_mem nvmem tls_plus_x10p tlsv in
+          let nvmem = Memory.store_mem nvmem tls_plus_x18p tlsv in
+          let nvmem = Memory.store_mem nvmem tls_plus_x88p tls_plus_x88 in
+          let nvmem = Memory.store_mem nvmem tls_plus_xa8p libc_plus_x38 in
+          {
+            regs =
+              RegFile.add_reg v.regs
+                { id = RegId.Register 272l; offset = 0l; width = 8l }
+                tlsv;
+            mem = nvmem;
+          }
+          |> Result.ok
+      | _ -> v |> Result.ok
     with
     | Ok v -> v
     | Error s -> failwith s

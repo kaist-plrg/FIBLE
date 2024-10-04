@@ -11,7 +11,7 @@ let from_signature (p : Prog.t) (args : String.t List.t) (env : String.t List.t)
     sto =
       Store.init_libc_glob
         (Store.init_from_sig_main p.rom p.rspec init_sp args env stack_size)
-        p.objects 48l;
+        p.objects 48l 56l;
     cursor = { func = Loc.of_addr entry; tick = () };
     cont = Cont.of_func_entry_loc p (Loc.of_addr entry) |> Result.get_ok;
     stack = [];
@@ -26,7 +26,7 @@ let from_signature_libc (p : Prog.t) (args : String.t List.t)
       Store.init_libc_glob
         (Store.init_from_sig_libc p.rom p.rspec init_sp entry args env
            stack_size)
-        p.objects 16l;
+        p.objects 16l 48l;
     cursor = { func = Loc.of_addr libc_entry; tick = () };
     cont = Cont.of_func_entry_loc p (Loc.of_addr libc_entry) |> Result.get_ok;
     stack = [];
