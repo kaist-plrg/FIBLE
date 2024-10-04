@@ -154,6 +154,13 @@ let make_l1 (ifile : String.t) (symtab : Artifact.Data.symbol_table)
     | Some (e, _) -> Byte8Map.add e "libc_start_init" externs
     | None -> externs
   in
+  let externs =
+    match
+      List.find_opt (fun (_, s) -> String.equal s "libc_exit_fini") symtab.funcs
+    with
+    | Some (e, _) -> Byte8Map.add e "libc_exit_fini" externs
+    | None -> externs
+  in
   let l0 : ILIR.Syn.Prog.t =
     {
       ins_mem = server.instfunc;
