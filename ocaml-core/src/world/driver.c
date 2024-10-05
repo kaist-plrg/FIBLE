@@ -111,6 +111,13 @@ CAMLprim value unix_tiocgwinsz(value fd, value buf)
   DO_SYS (ioctl, Int_val(fd), TIOCGWINSZ, (struct winsize *)Bytes_val(buf));
 }
 
+// 16-5: ioctl-fionread
+CAMLprim value unix_fionread(value fd, value buf)
+{
+  CAMLparam2(fd, buf);
+  DO_SYS (ioctl, Int_val(fd), FIONREAD, (int *)Bytes_val(buf));
+}
+
 // 33: dup2
 CAMLprim value unix_dup2(value oldfd, value newfd)
 {

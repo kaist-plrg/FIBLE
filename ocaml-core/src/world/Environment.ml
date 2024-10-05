@@ -107,6 +107,7 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
                       Interop.immutable_charbuffer_fixed 36L );
                     ( 0x5413L (* TIOCGWINSZ *),
                       Interop.mutable_charbuffer_fixed 8L );
+                    (0x541BL (* FIONREAD *), Interop.mutable_charbuffer_fixed 4L);
                   ],
                   Interop.tany );
             ] );
@@ -628,6 +629,11 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       ->
         (* TIOCGWINSZ *)
         let retv = Util.tiocgwinsz (rdi |> Int64.to_int) rdx in
+        Interop.v64 retv |> Result.ok
+    | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 0x541bL)); VBuffer rdx ]
+      ->
+        (* FIONREAD *)
+        let retv = Util.fionread (rdi |> Int64.to_int) rdx in
         Interop.v64 retv |> Result.ok
     | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 rsi)); VOpaque ] ->
         [%log error "not implemented ioctl for %Ld %Ld" rdi rsi]
