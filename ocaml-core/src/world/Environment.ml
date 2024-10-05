@@ -761,7 +761,7 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
               (Interop.v64
                  (Util.setown (rdi |> Int64.to_int) (rdx |> Int64.to_int)))
         | 9L (*GETOWN*) -> Ok (Interop.v64 (Util.getown (rdi |> Int64.to_int)))
-        | _ -> Error "unimplemented fcntl")
+        | _ -> Error (Format.sprintf "unimplemented fcntl %Ld" rsi))
     | 75L, [ VArith (VInt (V64 rdi)) ] ->
         let retv = Util.fdatasync (rdi |> Int64.to_int) in
         Interop.v64 retv |> Result.ok
