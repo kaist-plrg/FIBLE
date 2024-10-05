@@ -25,6 +25,15 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
+  | 1L (* write *) ->
+      {
+        Interop.params =
+          ( [ ("x", T64) ],
+            [ Interop.t64; Interop.immutable_charbuffer_of "x"; Interop.id "x" ]
+          );
+        result = Some Interop.t64;
+      }
+      |> Option.some
   | 2L (* open *) ->
       {
         Interop.params =
@@ -551,6 +560,15 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
           finfo "syscall" "READ ARG: %Ld %a %Ld" rdi Interop.pp (VBuffer rsi)
             rdx];
         [%log finfo "syscall" "READ RET: %Ld" retv];
+        Interop.v64 retv |> Result.ok
+    | 1L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ] ->
+        let retv =
+          Util.write (rdi |> Int64.to_int) (Interop.vibuffer_to_string rsi) rdx
+        in
+        [%log
+          finfo "syscall" "WRITE ARG: %Ld %a %Ld" rdi Interop.pp (VIBuffer rsi)
+            rdx];
+        [%log finfo "syscall" "WRITE RET: %Ld" retv];
         Interop.v64 retv |> Result.ok
     | ( 2L,
         [ VIBuffer sname; VArith (VInt (V64 flags)); VArith (VInt (V64 mode)) ]
