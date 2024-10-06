@@ -19,9 +19,11 @@
 #ifdef __APPLE__
 #define DO_SYS(sname, ...) caml_failwith("syscall " #sname " not supported on macOS")
 #else
-#define DO_SYS(sname, ...) ({ \
-  CAMLreturn(caml_copy_int64(syscall(__NR_ ## sname, ##__VA_ARGS__))); \
-})
+#define DO_SYS(sname, ...) do { \
+  long retv = syscall(__NR_ ## sname, ##__VA_ARGS__); \
+  if (retv == -1) CAMLreturn(caml_copy_int64((long)errno)); \
+  CAMLreturn(caml_copy_int64(retv)); \
+} while (0)
 #endif
 
 #define __NR_faccessat2 439
