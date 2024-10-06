@@ -21,7 +21,7 @@
 #else
 #define DO_SYS(sname, ...) do { \
   long retv = syscall(__NR_ ## sname, ##__VA_ARGS__); \
-  if (retv == -1) CAMLreturn(caml_copy_int64((long)errno)); \
+  if (retv == -1) CAMLreturn(caml_copy_int64((long)-errno)); \
   CAMLreturn(caml_copy_int64(retv)); \
 } while (0)
 #endif
