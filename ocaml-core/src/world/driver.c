@@ -195,6 +195,13 @@ CAMLprim value unix_setown(value fd, value pid)
   DO_SYS (fcntl, Int_val(fd), F_SETOWN, Int_val(pid));
 }
 
+// 72-8: fcntl-f_dupfd_cloexec
+CAMLprim value unix_dupfd_cloexec(value fd, value minfd)
+{
+  CAMLparam2(fd, minfd);
+  DO_SYS (fcntl, Int_val(fd), F_DUPFD_CLOEXEC, Int_val(minfd));
+}
+
 // 75: fdatasync
 CAMLprim value unix_fdatasync(value fd)
 {
