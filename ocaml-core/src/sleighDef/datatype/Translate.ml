@@ -42,7 +42,8 @@ let pcode_to_common (si : SpaceInfo.t) (rspec : RegSpec.t)
         target =
           (match inputs 0 with
           | Ram ({ value = a; _ }, _) -> Common.Loc.of_addr a
-          | Const { value = offset; _ } ->
+          | Const { value = offset; width } ->
+              let offset = Int64.sext offset width 8l in
               Common.Loc.of_addr_seq (addr, seqn + Int64.to_int offset)
           | _ ->
               [%log
