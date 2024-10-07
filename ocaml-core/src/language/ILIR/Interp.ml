@@ -61,7 +61,9 @@ let handle_extern (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
         StringMap.find_opt name World.Environment.signature_map
         |> Option.to_result ~none:(StopEvent.FailStop "No external function")
       in
-      let* sides, args = Store.build_args s.sto fsig |> StopEvent.of_str_res in
+      let* sides, args =
+        Store.build_args s.sto fsig false |> StopEvent.of_str_res
+      in
       match World.Environment.request_call name args with
       | World.Environment.EventTerminate -> Error StopEvent.NormalStop
       | World.Environment.EventReturn retv ->

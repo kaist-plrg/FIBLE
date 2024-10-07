@@ -57,6 +57,7 @@ end) (Store : sig
   val build_args :
     t ->
     Interop.func_sig ->
+    Bool.t ->
     ((Value.t * Bytes.t) List.t * Interop.t List.t, String.t) Result.t
 
   val build_sides : t -> (Value.t * Bytes.t) List.t -> (t, String.t) Result.t
@@ -178,7 +179,7 @@ struct
       StringMap.find_opt name Environment.signature_map
       |> Option.to_result ~none:(Format.asprintf "No external function %s" name)
     in
-    let* sides, args = Store.build_args s fsig in
+    let* sides, args = Store.build_args s fsig false in
     [%log
       debug "Call args: %a"
         (Format.pp_print_list ~pp_sep:Format.pp_print_space Interop.pp)

@@ -468,11 +468,14 @@ struct
       (Value.of_num (NumericValue.of_int64 rv 8l))
     |> Result.ok
 
-  let build_args (s : t) (fsig : Interop.func_sig) :
+  let build_args (s : t) (fsig : Interop.func_sig) (is_syscall : Bool.t) :
       ((Value.t * Bytes.t) list * Interop.t list, String.t) Result.t =
     if List.length (snd fsig.params) > 6 then
       [%log fatal "At most 6 argument is supported for external functions"];
-    let reg_list = [ 56l; 48l; 16l; 8l; 128l; 136l ] in
+    let reg_list =
+      if is_syscall then [ 56l; 48l; 16l; 144l; 128l; 136l ]
+      else [ 56l; 48l; 16l; 8l; 128l; 136l ]
+    in
     let val_list =
       List.map
         (fun r -> get_reg s { id = RegId.Register r; offset = 0l; width = 8l })
@@ -510,7 +513,7 @@ struct
           | Some fsig -> fsig |> Result.ok
           | None -> Format.sprintf "syscall %Ld not found" snum |> Result.error
         in
-        let* sides, args = build_args s fsig in
+        let* sides, args = build_args s fsig true in
         Ok (Action.of_special "syscall" sides (rax :: args))
     | _ -> Ok (Action.of_special name [] [])
 
