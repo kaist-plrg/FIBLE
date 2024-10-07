@@ -303,10 +303,10 @@ CAMLprim value unix_sysinfo(value buf)
 }
 
 // 115: getgroups
-CAMLprim value unix_getgroups(value buf)
+CAMLprim value unix_getgroups(value size, value buf)
 {
-  CAMLparam1(buf);
-  DO_SYS (getgroups, Int_val(buf), (gid_t *)Bytes_val(buf));
+  CAMLparam2(size, buf);
+  DO_SYS (getgroups, Int_val(size), (gid_t *)Bytes_val(buf));
 }
 
 // 137: statfs
