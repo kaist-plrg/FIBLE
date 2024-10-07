@@ -77,6 +77,15 @@ let make_server ifile ghidra_path tmp_path cwd : t =
   [%log debug "Accepted connection"];
   let spaceinfo = SpaceInfo.get fd in
   let regspec = RegSpec.get fd in
+  (* add XCR0:4 for x64 intel *)
+  let regspec =
+    {
+      regspec with
+      all_regs =
+        SleighDef.RegSpec.TMap.add (1536l, 4l) ("XCR0_4", 1536l, 0l)
+          regspec.all_regs;
+    }
+  in
   let external_function = ExternalFunction.get fd in
   [%log
     debug "Got stateinfo %ld %ld %ld" spaceinfo.unique spaceinfo.register
