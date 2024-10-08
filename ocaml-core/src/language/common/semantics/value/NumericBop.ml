@@ -124,18 +124,22 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
   | Bint_div ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_div: different bitwidth"
+      else if Z.equal rn Z.zero then Error "int_div: divide by zero"
       else NumericValue.of_z (Z.div ln rn) outwidth |> Result.ok
   | Bint_rem ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_rem: different bitwidth"
+      else if Z.equal rn Z.zero then Error "int_rem: divide by zero"
       else NumericValue.of_z (Z.rem ln rn) outwidth |> Result.ok
   | Bint_sdiv ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_sdiv: different bitwidth"
+      else if Z.equal rn_s Z.zero then Error "int_sdiv: divide by zero"
       else NumericValue.of_z (Z.div ln_s rn_s) outwidth |> Result.ok
   | Bint_srem ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_srem: different bitwidth"
+      else if Z.equal rn_s Z.zero then Error "int_srem: divide by zero"
       else NumericValue.of_z (Z.rem ln_s rn_s) outwidth |> Result.ok
   | Bbool_xor ->
       if NumericValue.width lv <> NumericValue.width rv then
