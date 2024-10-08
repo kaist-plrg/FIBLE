@@ -114,7 +114,10 @@ external statfs : string -> bytes -> Int64.t = "unix_statfs"
 external fstatfs : int -> bytes -> Int64.t = "unix_fstatfs"
 external chroot : string -> Int64.t = "unix_chroot"
 external getdents64 : int -> bytes -> int -> Int64.t = "unix_getdents64"
-external fadvise64 : int -> Int64.t -> Int64.t -> int -> Int64.t = "unix_fadvise64"
+
+external fadvise64 : int -> Int64.t -> Int64.t -> int -> Int64.t
+  = "unix_fadvise64"
+
 external clock_gettime : Int64.t -> bytes -> Int64.t = "unix_clock_gettime"
 external openat : int -> string -> int -> int -> Int64.t = "unix_openat"
 external mkdirat : int -> string -> int -> Int64.t = "unix_mkdirat"

@@ -18,7 +18,7 @@ let from_signature (p : Prog.t) (args : String.t List.t) (env : String.t List.t)
            (Frame.empty (fst f.attr.sp_boundary)
               (Int64.add (snd f.attr.sp_boundary) stack_size))
            (Value.sp init_sp) args env stack_size)
-        p.objects 48l;
+        p.objects 48l 56l;
     cursor = { func = Loc.of_addr a; tick = 0L };
     cont = Cont.of_func_entry_loc p (Loc.of_addr a) |> Result.get_ok;
     stack = [];
@@ -45,7 +45,7 @@ let from_signature_libc (p : Prog.t) (args : String.t List.t)
            (Frame.empty (fst f.attr.sp_boundary)
               (Int64.add (snd f.attr.sp_boundary) stack_size))
            (Value.sp init_sp) a args env stack_size)
-        p.objects 16l;
+        p.objects 16l 48l;
     cursor = { func = Loc.of_addr libc_a; tick = 0L };
     cont = Cont.of_func_entry_loc p (Loc.of_addr libc_a) |> Result.get_ok;
     stack = [];

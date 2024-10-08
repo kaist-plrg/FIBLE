@@ -19,7 +19,24 @@ let compare (a : t) (b : t) =
 
 let eval_uop (u : Uop.t) (v : t) (outwidth : Int32.t) :
     (NumericValue.t, t) Either.t =
-  Right (Undef (UndefVal.of_width outwidth))
+  match (u, v) with
+  | Uop.Uint_2comp, SP o ->
+      Right
+        (SP
+           {
+             o with
+             multiplier = Int64.neg o.multiplier;
+             offset = Int64.neg o.offset;
+           })
+  | Uop.Uint_negate, SP o ->
+      Right
+        (SP
+           {
+             o with
+             multiplier = Int64.neg o.multiplier;
+             offset = Int64.sub (-1L) o.offset;
+           })
+  | _ -> Right (Undef (UndefVal.of_width outwidth))
 
 let add_sp_arith (o : SPVal.t) (v : Int64.t) : t =
   SP
@@ -29,6 +46,25 @@ let add_sp_arith (o : SPVal.t) (v : Int64.t) : t =
       multiplier = o.multiplier;
       offset = Int64.add o.offset v;
     }
+
+let get_mask (v : Int64.t) : Int64.t =
+  if Int64.equal (Int64.logand 0xFFFFFFFFFFFFFFF0L v) 0xFFFFFFFFFFFFFFF0L then
+    match Int64.logand 0xFL v with
+    | 0x0L -> -0x10L
+    | 0x8L -> -0x8L
+    | 0xCL -> -0x4L
+    | 0xEL -> -0x2L
+    | 0xFL -> -0x1L
+    | _ -> 0L
+  else if Int64.equal (Int64.logand 0xFFFFFFFFFFFFFFF0L v) 0x0L then
+    match Int64.logand 0xFL v with
+    | 0xFL -> 0x10L
+    | 0x7L -> 0x8L
+    | 0x3L -> 0x4L
+    | 0x1L -> 0x2L
+    | 0x0L -> 0x1L
+    | _ -> 0L
+  else 0L
 
 let eval_bop (b : Bop.t)
     (vs : (t * t, t * NumericValue.t, NumericValue.t * t) Either3.t)
@@ -109,6 +145,48 @@ let eval_bop (b : Bop.t)
       if (match v1 with Undef _ -> false | _ -> true) && compare v1 v2 = 0
       then Right v1
       else Right (Undef (UndefVal.of_width outwidth))
+  | Bop.Bint_and, Second (SP o, lv) | Bop.Bint_and, Third (lv, SP o) -> (
+      match NumericValue.value_64 lv with
+      | Ok rn ->
+          let masked = get_mask rn in
+          if Int64.compare masked 0L < 0 then
+            Right
+              (SP
+                 {
+                   o with
+                   offset =
+                     Int64.sub o.offset
+                       (Int64.unsigned_rem
+                          (Int64.add (Int64.mul 8L o.multiplier) o.offset)
+                          (Int64.neg masked));
+                 })
+          else if Int64.compare masked 0L > 0 then
+            Left
+              (NumericValue.of_int64
+                 (Int64.unsigned_rem
+                    (Int64.add (Int64.mul 8L o.multiplier) o.offset)
+                    masked)
+                 outwidth)
+          else Right (Undef (UndefVal.of_width outwidth))
+      | _ -> Right (Undef (UndefVal.of_width outwidth)))
+  | Bop.Bint_rem, Second (SP o, lv) | Bop.Bint_rem, Third (lv, SP o) -> (
+      match NumericValue.value_64 lv with
+      | Ok 16L ->
+          Left
+            (NumericValue.of_int64
+               (Int64.unsigned_rem
+                  (Int64.add (Int64.mul 8L o.multiplier) o.offset)
+                  16L)
+               outwidth)
+      | Ok 8L ->
+          Left (NumericValue.of_int64 (Int64.unsigned_rem o.offset 8L) outwidth)
+      | Ok 4L ->
+          Left (NumericValue.of_int64 (Int64.unsigned_rem o.offset 4L) outwidth)
+      | Ok 2L ->
+          Left (NumericValue.of_int64 (Int64.unsigned_rem o.offset 2L) outwidth)
+      | Ok 1L ->
+          Left (NumericValue.of_int64 (Int64.unsigned_rem o.offset 1L) outwidth)
+      | _ -> Right (Undef (UndefVal.of_width outwidth)))
   | Bop.Bint_equal, First (SP o1, SP o2) ->
       if SPVal.compare o1 o2 = 0 then Left (NumericValue.of_int64 1L 1l)
       else Left (NumericValue.of_int64 0L 1l)
