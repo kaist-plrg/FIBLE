@@ -117,6 +117,7 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
                     ( 0x5413L (* TIOCGWINSZ *),
                       Interop.mutable_charbuffer_fixed 8L );
                     (0x541BL (* FIONREAD *), Interop.mutable_charbuffer_fixed 4L);
+                    (0x40049409L (* BTRFS_IOC_CLONE *), Interop.t64);
                   ],
                   Interop.tany );
             ] );
@@ -448,6 +449,19 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
         result = Some Interop.t64;
       }
       |> Option.some
+  | 267L (* readlinkat *) ->
+      {
+        Interop.params =
+          ( [ ("x", T64) ],
+            [
+              Interop.t64;
+              Interop.const_string_ptr;
+              Interop.mutable_charbuffer_of "x";
+              Interop.id "x";
+            ] );
+        result = Some Interop.t64;
+      }
+      |> Option.some
   | 268L (* fchmodat *) ->
       {
         Interop.params =
@@ -652,6 +666,17 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
       ->
         (* FIONREAD *)
         let retv = Util.fionread (rdi |> Int64.to_int) rdx in
+        Interop.v64 retv |> Result.ok
+    | ( 16L,
+        [
+          VArith (VInt (V64 rdi));
+          VArith (VInt (V64 0x40049409L));
+          VArith (VInt (V64 rdx));
+        ] ) ->
+        (* BTRFS_IOC_CLONE *)
+        let retv =
+          Util.btrfs_ioc_clone (rdi |> Int64.to_int) (rdx |> Int64.to_int)
+        in
         Interop.v64 retv |> Result.ok
     | 16L, [ VArith (VInt (V64 rdi)); VArith (VInt (V64 rsi)); VOpaque ] ->
         [%log error "not implemented ioctl for %Ld %Ld" rdi rsi]
@@ -956,6 +981,18 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
         let* path1 = Interop.vibuffer_to_string rdi |> Result.ok in
         let* path2 = Interop.vibuffer_to_string rdx |> Result.ok in
         let retv = Util.symlinkat path1 (rsi |> Int64.to_int) path2 in
+        Interop.v64 retv |> Result.ok
+    | ( 267L,
+        [
+          VArith (VInt (V64 rdi));
+          VIBuffer rsi;
+          VBuffer rdx;
+          VArith (VInt (V64 rcx));
+        ] ) ->
+        let* path = Interop.vibuffer_to_string rsi |> Result.ok in
+        let retv =
+          Util.readlinkat (rdi |> Int64.to_int) path rdx (rcx |> Int64.to_int)
+        in
         Interop.v64 retv |> Result.ok
     | 268L, [ VArith (VInt (V64 rdi)); VIBuffer rsi; VArith (VInt (V64 rdx)) ]
       ->

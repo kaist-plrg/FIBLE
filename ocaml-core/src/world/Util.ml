@@ -83,6 +83,7 @@ external tcsets : int -> string -> Int64.t = "unix_tcsets"
 external tcsetsw : int -> string -> Int64.t = "unix_tcsetsw"
 external tiocgwinsz : int -> bytes -> Int64.t = "unix_tiocgwinsz"
 external fionread : int -> bytes -> Int64.t = "unix_fionread"
+external btrfs_ioc_clone : int -> int -> Int64.t = "unix_btrfs_ioc_clone"
 external dup2 : int -> int -> Int64.t = "unix_dup2"
 external socket : int -> int -> int -> Int64.t = "unix_socket"
 external connect : int -> bytes -> int -> Int64.t = "unix_connect"
@@ -136,6 +137,10 @@ external linkat : int -> string -> int -> string -> int -> Int64.t
   = "unix_linkat"
 
 external symlinkat : string -> int -> string -> Int64.t = "unix_symlinkat"
+
+external readlinkat : int -> string -> bytes -> int -> Int64.t
+  = "unix_readlinkat"
+
 external fchmodat : int -> string -> int -> Int64.t = "unix_fchmodat"
 external faccessat : int -> string -> int -> Int64.t = "unix_faccessat"
 external utimensat : int -> string -> bytes -> int -> Int64.t = "unix_utimensat"

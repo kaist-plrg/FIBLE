@@ -120,6 +120,14 @@ CAMLprim value unix_fionread(value fd, value buf)
   DO_SYS (ioctl, Int_val(fd), FIONREAD, (int *)Bytes_val(buf));
 }
 
+// 16-6: ioctl-btrfs_ioc_clone
+# define BTRFS_IOC_CLONE 1074041865
+CAMLprim value unix_btrfs_ioc_clone(value destfd, value srcfd)
+{
+  CAMLparam2(destfd, srcfd);
+  DO_SYS (ioctl, Int_val(destfd), BTRFS_IOC_CLONE, Int_val(srcfd));
+}
+
 // 33: dup2
 CAMLprim value unix_dup2(value oldfd, value newfd)
 {
@@ -412,6 +420,13 @@ CAMLprim value unix_symlinkat(value oldpath, value newfd, value newpath)
 {
   CAMLparam3(oldpath, newfd, newpath);
   DO_SYS (symlinkat, String_val(oldpath), Int_val(newfd), String_val(newpath));
+}
+
+// 267: readlinkat
+CAMLprim value unix_readlinkat(value fd, value path, value buf, value bufsize)
+{
+  CAMLparam4(fd, path, buf, bufsize);
+  DO_SYS (readlinkat, Int_val(fd), String_val(path), Bytes_val(buf), Int_val(bufsize));
 }
 
 // 268: fchmodat
