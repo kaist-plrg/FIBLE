@@ -1151,8 +1151,9 @@ let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
                 ] );
             result = Some Interop.t32;
           },
-          Hide (int @-> ptr char @-> int64_t @-> ptr char @-> returning int) )
-      );
+          Hide
+            (int @-> ocaml_string @-> int64_t @-> ocaml_bytes @-> returning int)
+        ) );
       ( "receive",
         ( {
             Interop.params =
@@ -1165,8 +1166,9 @@ let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
                 ] );
             result = Some Interop.t32;
           },
-          Hide (int @-> ptr char @-> int64_t @-> ptr char @-> returning int) )
-      );
+          Hide
+            (int @-> ocaml_bytes @-> int64_t @-> ocaml_bytes @-> returning int)
+        ) );
       ( "fdwait",
         ( {
             Interop.params =
@@ -1181,8 +1183,8 @@ let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
             result = Some Interop.t32;
           },
           Hide
-            (int @-> ptr char @-> ptr char @-> ptr char @-> ptr char
-           @-> returning int) ) );
+            (int @-> ocaml_bytes @-> ocaml_bytes @-> ocaml_string
+           @-> ocaml_bytes @-> returning int) ) );
       ( "allocate",
         ( {
             Interop.params =
@@ -1192,7 +1194,7 @@ let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
                 ] );
             result = Some Interop.t32;
           },
-          Hide (int64_t @-> int @-> ptr char @-> returning int) ) );
+          Hide (int64_t @-> int @-> ocaml_bytes @-> returning int) ) );
       ( "deallocate",
         ( {
             Interop.params = ([], [ Interop.t64; Interop.t64 ]);
@@ -1210,7 +1212,7 @@ let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
                 ] );
             result = Some Interop.t32;
           },
-          Hide (ptr char @-> int64_t @-> ptr char @-> returning int) ) );
+          Hide (ocaml_bytes @-> int64_t @-> ocaml_bytes @-> returning int) ) );
       ( "random",
         ( {
             Interop.params =
@@ -1222,7 +1224,7 @@ let signature_map : (Interop.func_sig * hidden_fn) StringMap.t =
                 ] );
             result = Some Interop.t32;
           },
-          Hide (ptr char @-> int64_t @-> ptr char @-> returning int) ) );
+          Hide (ocaml_bytes @-> int64_t @-> ocaml_bytes @-> returning int) ) );
     ]
 
 let to_ctype : type t. t typ -> Interop.t -> t =
@@ -1242,12 +1244,22 @@ let to_ctype : type t. t typ -> Interop.t -> t =
       Unsigned.UInt32.of_int32 x
   | Ctypes_static.Primitive Uint64_t, Interop.VArith (VInt (V64 x)) ->
       Unsigned.UInt64.of_int64 x
-  | Ctypes_static.Pointer (Ctypes_static.Primitive Char), Interop.VBuffer x ->
-      Ctypes_std_views.char_ptr_of_string (Bytes.unsafe_to_string x)
-  | Ctypes_static.Pointer (Ctypes_static.Primitive Char), Interop.VIBuffer x ->
-      Ctypes_std_views.char_ptr_of_string (Interop.vibuffer_to_string x)
-  | Ctypes_static.Pointer (Ctypes_static.Primitive Char), Interop.VNullPtr ->
-      Ctypes.coerce (ptr void) (ptr char) Ctypes.null
+  | ( Ctypes_static.View
+        { ty = Ctypes_static.Pointer (Ctypes_static.Primitive Char) },
+      Interop.VBuffer x ) ->
+      Obj.magic (Bytes.to_string x)
+  | Ctypes_static.OCaml Ctypes_static.Bytes, Interop.VBuffer x ->
+      Ctypes.ocaml_bytes_start x
+  | Ctypes_static.OCaml Ctypes_static.String, Interop.VIBuffer x ->
+      Ctypes.ocaml_string_start (Interop.vibuffer_to_string x)
+  | Ctypes_static.OCaml Ctypes_static.Bytes, Interop.VNullPtr ->
+      Ctypes.ocaml_bytes_start Bytes.empty
+  | Ctypes_static.OCaml Ctypes_static.String, Interop.VNullPtr ->
+      Ctypes.ocaml_string_start String.empty
+  | ( Ctypes_static.View
+        { ty = Ctypes_static.Pointer (Ctypes_static.Primitive Char) },
+      Interop.VNullPtr ) ->
+      Obj.magic String.empty
   | _ -> [%log fatal "Not implemented"]
 
 let to_interop : type t. t typ -> t -> Interop.t =
@@ -1266,6 +1278,9 @@ let to_interop : type t. t typ -> t -> Interop.t =
       Interop.v32 (Unsigned.UInt32.to_int32 arg)
   | Ctypes_static.Primitive Uint64_t ->
       Interop.v64 (Unsigned.UInt64.to_int64 arg)
+  | Ctypes_static.View
+      { ty = Ctypes_static.Pointer (Ctypes_static.Primitive Char) } ->
+      Interop.vstring (Obj.magic arg : String.t)
   | _ -> [%log fatal "Not implemented"]
 
 let rec call_with_signature : type a. a fn -> a -> Interop.t list -> Interop.t =
