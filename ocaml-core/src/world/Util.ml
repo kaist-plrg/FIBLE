@@ -145,6 +145,9 @@ external fchmodat : int -> string -> int -> Int64.t = "unix_fchmodat"
 external faccessat : int -> string -> int -> Int64.t = "unix_faccessat"
 external utimensat : int -> string -> bytes -> int -> Int64.t = "unix_utimensat"
 
+external utimensat_pathnull : int -> bytes -> int -> Int64.t
+  = "unix_utimensat_pathnull"
+
 external fallocate : int -> int -> Int64.t -> Int64.t -> Int64.t
   = "unix_fallocate"
 

@@ -450,6 +450,13 @@ CAMLprim value unix_utimensat(value dirfd, value path, value times, value flags)
   DO_SYS (utimensat, Int_val(dirfd), String_val(path), (const struct timespec *)Bytes_val(times), Int_val(flags));
 }
 
+// 280-1: utimensat-pathnull
+CAMLprim value unix_utimensat_pathnull(value dirfd, value times, value flags)
+{
+  CAMLparam3(dirfd, times, flags);
+  DO_SYS (utimensat, Int_val(dirfd), NULL, (const struct timespec *)Bytes_val(times), Int_val(flags));
+}
+
 // 285: fallocate
 CAMLprim value unix_fallocate(value fd, value mode, value offset, value len)
 {

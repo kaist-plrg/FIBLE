@@ -1020,6 +1020,17 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
           Util.utimensat (rdi |> Int64.to_int) path rdx (rcx |> Int64.to_int)
         in
         Interop.v64 retv |> Result.ok
+    | ( 280L,
+        [
+          VArith (VInt (V64 rdi));
+          VNullPtr;
+          VBuffer rdx;
+          VArith (VInt (V64 rcx));
+        ] ) ->
+        let retv =
+          Util.utimensat_pathnull (rdi |> Int64.to_int) rdx (rcx |> Int64.to_int)
+        in
+        Interop.v64 retv |> Result.ok
     | ( 285L,
         [
           VArith (VInt (V64 rdi));
