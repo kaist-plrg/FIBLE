@@ -689,7 +689,9 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
             (fun x ->
               match x with
               | Interop.VStruct [ VBuffer b; _ ] -> b |> Result.ok
-              | _ -> "parse fail" |> Result.error)
+              | Interop.VStruct [ VNullPtr; _ ] -> Bytes.empty |> Result.ok
+              | _ ->
+                  Format.asprintf "parse error: %a" Interop.pp x |> Result.error)
             rsi
           |> Array.to_list |> Result.join_list
         in
@@ -726,7 +728,9 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
               match x with
               | Interop.VStruct [ VIBuffer b; _ ] ->
                   Interop.vibuffer_to_string b |> Result.ok
-              | _ -> "parse fail" |> Result.error)
+              | Interop.VStruct [ VNullPtr; _ ] -> String.empty |> Result.ok
+              | _ ->
+                  Format.asprintf "parse error: %a" Interop.pp x |> Result.error)
             rsi
           |> Array.to_list |> Result.join_list
         in
