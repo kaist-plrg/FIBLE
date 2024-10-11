@@ -158,6 +158,7 @@ type t =
   | VBuffer of Bytes.t
   | VIBuffer of t Array.t
   | VStruct of t List.t
+  | VNullPtr
   | VOpaque
 [@@deriving show]
 
@@ -424,7 +425,13 @@ let get_accessor (i : ('store_t, 'value_t) interface_t) :
     | TArith t ->
         let* sides, rv = aux_arith s t v env in
         (sides, VArith rv) |> Result.ok
-    | TPtr t -> aux_ptr s t v env
+    | TPtr t -> (
+        match i.try_num v with
+        | Ok n ->
+            if NumericValue.isZero n |> Option.value ~default:false then
+              ([], VNullPtr) |> Result.ok
+            else aux_ptr s t v env
+        | Error _ -> aux_ptr s t v env)
     | TAny -> ([], VOpaque) |> Result.ok
     | TMatch _ -> Error "unreachable 3"
   and aux_arith (s : 'store_t) (a : arith_tag) (v : 'value_t) (env : env_t) :
