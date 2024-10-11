@@ -1100,7 +1100,13 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
             (rcx |> Int64.to_int)
         in
         Interop.v64 retv |> Result.ok
-    | _ -> Error (Format.sprintf "unimplemented syscall %Ld" rax)
+    | _ ->
+        Error
+          (Format.asprintf "unimplemented syscall %Ld ARGS: %a" rax
+             (Format.pp_print_list
+                ~pp_sep:(fun fmt () -> Format.pp_print_string fmt ", ")
+                Interop.pp)
+             args)
   in
   [%log finfo "syscall" "SYSCALL RET: %a" Interop.pp res];
   res |> Result.ok
