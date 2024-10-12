@@ -164,6 +164,10 @@ let eval_bop (b : Bop.t)
                  outwidth)
           else Right (Undef (UndefVal.of_width outwidth))
       | _ -> Right (Undef (UndefVal.of_width outwidth)))
+  | Bop.Bint_or, Second (SP o, lv) | Bop.Bint_or, Third (lv, SP o) -> (
+      match NumericValue.value_64 lv with
+      | Ok 0L -> Right (SP o)
+      | _ -> Right (Undef (UndefVal.of_width outwidth)))
   | Bop.Bint_rem, Second (SP o, lv) | Bop.Bint_rem, Third (lv, SP o) -> (
       match NumericValue.value_64 lv with
       | Ok 16L ->
