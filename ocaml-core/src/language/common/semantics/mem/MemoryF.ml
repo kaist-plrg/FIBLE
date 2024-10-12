@@ -106,4 +106,7 @@ struct
 
   let add_local_frame (loc : Loc.t * Int64.t) (frame : Frame.t) (m : t) : t =
     { m with local = LocalMemory.add loc frame m.local }
+
+  let remove_local_frame (m : t) (loc : Loc.t * Int64.t) : t =
+    { m with local = LocalMemory.remove loc m.local }
 end

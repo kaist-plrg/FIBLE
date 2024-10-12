@@ -55,7 +55,7 @@ let step_ret (s : State.t) (p : Prog.t) ({ attr } : SRet.t)
     (calln, sp_saved, retn') : (Store.t, StopEvent.t) Result.t =
   Ok
     {
-      s.sto with
+      mem = Memory.remove_local_frame s.sto.mem (s.cursor.func, s.cursor.tick);
       regs =
         RegFile.add_reg s.sto.regs
           { id = RegId.Register p.sp_num; offset = 0l; width = 8l }
