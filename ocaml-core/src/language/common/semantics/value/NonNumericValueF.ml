@@ -12,6 +12,8 @@ module type S = sig
     Int32.t ->
     (NumericValue.t, t) Either.t
 
+  val get : t -> Int32.t -> Int32.t -> t
+
   val sp : SPVal.t -> t
   val get_sp : t -> SPVal.t option
 end

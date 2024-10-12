@@ -118,10 +118,7 @@ struct
   let get (x : t) (offset : Int32.t) (size : Int32.t) : t =
     match x with
     | Num n -> Num (NumericValue.get n offset size)
-    | NonNum n ->
-        if Int32.equal offset Int32.zero && size = NonNumericValue.width n then
-          NonNum n
-        else NonNum (NonNumericValue.undefined size)
+    | NonNum n -> NonNum (NonNumericValue.get n offset size)
 
   let extend (x : t) (size : Int32.t) =
     match x with
