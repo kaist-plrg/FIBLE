@@ -483,7 +483,7 @@ let x64_syscall_table (n : Int64.t) : Interop.func_sig Option.t =
             [
               Interop.t64;
               Interop.const_string_ptr;
-              Interop.mutable_charbuffer_fixed 16L;
+              Interop.mutable_charbuffer_fixed 32L;
               Interop.t64;
             ] );
         result = Some Interop.t64;
