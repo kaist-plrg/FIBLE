@@ -10,6 +10,7 @@ let from_signature (p : Prog.t) (args : String.t List.t) (env : String.t List.t)
       SPVal.func = Loc.of_addr a;
       timestamp = 0L;
       multiplier = 1L;
+      bitshift = 0L;
       offset = 0L;
       width = 8l;
     }
@@ -38,6 +39,7 @@ let from_signature_libc (p : Prog.t) (args : String.t List.t)
       SPVal.func = Loc.of_addr libc_a;
       timestamp = 0L;
       multiplier = 1L;
+      bitshift = 0L;
       offset = 0L;
       width = 8l;
     }

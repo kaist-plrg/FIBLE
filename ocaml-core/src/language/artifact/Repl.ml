@@ -143,6 +143,7 @@ struct
       SPVal.func = lc;
       timestamp = Int64.of_int n;
       multiplier = 1L;
+      bitshift = 0L;
       offset = Int64.of_int off;
       width = 8l;
     }

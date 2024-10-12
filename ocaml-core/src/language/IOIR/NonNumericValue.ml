@@ -44,6 +44,7 @@ let add_sp_arith (o : SPVal.t) (v : Int64.t) : t =
       timestamp = o.timestamp;
       func = o.func;
       multiplier = o.multiplier;
+      bitshift = 0L;
       offset = Int64.add o.offset v;
       width = o.width;
     }
@@ -120,6 +121,7 @@ let eval_bop (b : Bop.t)
                  timestamp = o1.timestamp;
                  func = o1.func;
                  multiplier = Int64.sub o1.multiplier o2.multiplier;
+                 bitshift = 0L;
                  offset = Int64.sub o1.offset o2.offset;
                  width = Int32.max o1.width o2.width;
                })

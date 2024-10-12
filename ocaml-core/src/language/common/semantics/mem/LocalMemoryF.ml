@@ -26,7 +26,11 @@ struct
   let remove = FuncTimestampMap.remove
 
   let load_mem (s : t) (addr : SPVal.t) (width : Int32.t) : Value.t =
-    if FuncTimestampMap.mem (addr.func, addr.timestamp) s then
+    if
+      Int64.equal addr.multiplier 1L
+      && Int64.equal addr.bitshift 0L
+      && FuncTimestampMap.mem (addr.func, addr.timestamp) s
+    then
       Frame.load_mem
         (FuncTimestampMap.find (addr.func, addr.timestamp) s)
         addr.offset width

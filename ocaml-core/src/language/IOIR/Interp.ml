@@ -79,6 +79,7 @@ let step_call_internal (s : State.t) (p : Prog.t)
            func = calln;
            timestamp = TimeStamp.succ s.timestamp;
            multiplier = 1L;
+           bitshift = 0L;
            offset = 0L;
            width = 8l;
          })

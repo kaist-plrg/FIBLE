@@ -415,6 +415,7 @@ struct
               func = HighCursor.get_func_loc curr;
               timestamp = HighCursor.get_timestamp curr;
               multiplier = 1L;
+              bitshift = 0L;
               offset;
               width = 8l;
             }
@@ -429,6 +430,7 @@ struct
               func = HighCursor.get_func_loc curr;
               timestamp = HighCursor.get_timestamp curr;
               multiplier = 1L;
+              bitshift = 0L;
               offset;
               width = 8l;
             }
