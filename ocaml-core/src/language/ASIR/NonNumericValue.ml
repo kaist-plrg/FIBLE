@@ -30,6 +30,7 @@ let eval_uop (u : Uop.t) (v : t) (outwidth : Int32.t) :
              multiplier = Int64.neg o.multiplier;
              offset = Int64.sub (-1L) o.offset;
            })
+  | Uop.Uint_zext, SP o -> Right (SP o)
   | _ -> Right (Undef (UndefVal.of_width outwidth))
 
 let add_sp_arith (o : SPVal.t) (v : Int64.t) : t =
@@ -210,6 +211,12 @@ let eval_bop (b : Bop.t)
         Left
           (NumericValue.of_int64 (if o1.offset < o2.offset then 1L else 0L) 8l)
       else Right (Undef (UndefVal.of_width outwidth))
+  | Bop.Bsubpiece, Second (SP o, lv) -> (
+      match NumericValue.value_64 lv with
+      | Ok 0L ->
+          if Int32.compare 8l outwidth <= 0 then Right (SP o)
+          else Right (Undef (UndefVal.of_width outwidth))
+      | _ -> Right (Undef (UndefVal.of_width outwidth)))
   | _ -> Right (Undef (UndefVal.of_width outwidth))
 
 let width (v : t) : Int32.t =
