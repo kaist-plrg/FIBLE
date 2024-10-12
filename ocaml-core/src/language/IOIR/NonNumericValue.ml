@@ -45,6 +45,7 @@ let add_sp_arith (o : SPVal.t) (v : Int64.t) : t =
       func = o.func;
       multiplier = o.multiplier;
       offset = Int64.add o.offset v;
+      width = o.width;
     }
 
 let get_mask (v : Int64.t) : Int64.t =
@@ -120,6 +121,7 @@ let eval_bop (b : Bop.t)
                  func = o1.func;
                  multiplier = Int64.sub o1.multiplier o2.multiplier;
                  offset = Int64.sub o1.offset o2.offset;
+                 width = Int32.max o1.width o2.width;
                })
       else Right (Undef (UndefVal.of_width ~must_nonzero:true outwidth))
   | Bop.Bint_sub, First (v1, v2) ->
@@ -219,7 +221,10 @@ let eval_bop (b : Bop.t)
   | _ -> Right (Undef (UndefVal.of_width outwidth))
 
 let width (v : t) : Int32.t =
-  match v with Undef udf -> UndefVal.width udf | _ -> 8l
+  match v with
+  | Undef udf -> UndefVal.width udf
+  | SP { width; _ } -> width
+  | _ -> 8l
 
 let undefined (width : Int32.t) : t = Undef (UndefVal.of_width width)
 let sp (v : SPVal.t) : t = SP v

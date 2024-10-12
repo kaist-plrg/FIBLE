@@ -416,6 +416,7 @@ struct
               timestamp = HighCursor.get_timestamp curr;
               multiplier = 1L;
               offset;
+              width = 8l;
             }
         in
         let* lv = load_mem s addrv output.width in
@@ -429,6 +430,7 @@ struct
               timestamp = HighCursor.get_timestamp curr;
               multiplier = 1L;
               offset;
+              width = 8l;
             }
         in
         let* sv = eval_vn s value in

@@ -6,7 +6,13 @@ let from_signature (p : Prog.t) (args : String.t List.t) (env : String.t List.t)
     (a : Byte8.t) : State.t =
   let stack_size = World.Util.calc_stack_size args env in
   let init_sp =
-    { SPVal.func = Loc.of_addr a; timestamp = 0L; multiplier = 1L; offset = 0L }
+    {
+      SPVal.func = Loc.of_addr a;
+      timestamp = 0L;
+      multiplier = 1L;
+      offset = 0L;
+      width = 8l;
+    }
   in
   let f = Prog.get_func_opt p (Loc.of_addr a) |> Option.get in
   {
@@ -33,6 +39,7 @@ let from_signature_libc (p : Prog.t) (args : String.t List.t)
       timestamp = 0L;
       multiplier = 1L;
       offset = 0L;
+      width = 8l;
     }
   in
   let f = Prog.get_func_opt p (Loc.of_addr libc_a) |> Option.get in

@@ -80,6 +80,7 @@ let step_call_internal (s : State.t) (p : Prog.t)
            timestamp = TimeStamp.succ s.timestamp;
            multiplier = 1L;
            offset = 0L;
+           width = 8l;
          })
   in
   let sto : Store.t =

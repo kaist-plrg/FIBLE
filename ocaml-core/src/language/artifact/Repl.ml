@@ -144,6 +144,7 @@ struct
       timestamp = Int64.of_int n;
       multiplier = 1L;
       offset = Int64.of_int off;
+      width = 8l;
     }
   (* [%a@%Ld]+%Ld *)
 
