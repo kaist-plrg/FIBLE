@@ -857,6 +857,9 @@ let x64_do_syscall (args : Interop.t list) : (Interop.t, String.t) Result.t =
     | 115L, [ VArith (VInt (V64 rdi)); VBuffer rsi ] ->
         let retv = Util.getgroups (rdi |> Int64.to_int) rsi in
         Interop.v64 retv |> Result.ok
+    | 115L, [ VArith (VInt (V64 rdi)); VNullPtr ] ->
+        let retv = Util.getgroups_null (rdi |> Int64.to_int) in
+        Interop.v64 retv |> Result.ok
     | 137L, [ VIBuffer rdi; VBuffer rsi ] ->
         let* path = Interop.vibuffer_to_string rdi |> Result.ok in
         let retv = Util.statfs path rsi in

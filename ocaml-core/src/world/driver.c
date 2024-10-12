@@ -317,6 +317,13 @@ CAMLprim value unix_getgroups(value size, value buf)
   DO_SYS (getgroups, Int_val(size), (gid_t *)Bytes_val(buf));
 }
 
+// 115-1: getgroups_null
+CAMLprim value unix_getgroups_null(value size)
+{
+  CAMLparam1(size);
+  DO_SYS (getgroups, Int_val(size), NULL);
+}
+
 // 137: statfs
 CAMLprim value unix_statfs(value path, value buf)
 {
