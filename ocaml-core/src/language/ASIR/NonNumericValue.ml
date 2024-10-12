@@ -236,7 +236,8 @@ let undefined (width : Int32.t) : t = Undef (UndefVal.of_width width)
 
 let get (n : t) (offset : Int32.t) (size : Int32.t) : t =
   if Int32.equal offset Int32.zero then
-    match n with SP o -> SP { o with width = size } | _ -> undefined size
+    if Int32.equal size (width n) then n
+    else match n with SP o -> SP { o with width = size } | _ -> undefined size
   else undefined size
 
 let sp (v : SPVal.t) : t = SP v
