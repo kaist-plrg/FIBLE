@@ -264,7 +264,9 @@ let eval_bop (b : Bop.t)
         && Int64.equal o1.bitshift o2.bitshift
       then
         Left
-          (NumericValue.of_int64 (if o1.offset < o2.offset then 1L else 0L) 8l)
+          (NumericValue.of_int64
+             (if o1.offset < o2.offset then 1L else 0L)
+             outwidth)
       else Right (Undef (UndefVal.of_width outwidth))
   | Bop.Bint_less, First (SP o1, SP o2) ->
       if
@@ -274,7 +276,9 @@ let eval_bop (b : Bop.t)
         && Int64.equal o1.bitshift o2.bitshift
       then
         Left
-          (NumericValue.of_int64 (if o1.offset < o2.offset then 1L else 0L) 8l)
+          (NumericValue.of_int64
+             (if o1.offset < o2.offset then 1L else 0L)
+             outwidth)
       else Right (Undef (UndefVal.of_width outwidth))
   | Bop.Bsubpiece, Second (SP o, lv) -> (
       match NumericValue.value_64 lv with

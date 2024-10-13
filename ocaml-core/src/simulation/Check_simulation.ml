@@ -151,7 +151,9 @@ let run (l1 : FGIR.Syn.Prog.t) (l2 : ASIR.Syn.Prog.t) (l3 : IOIR.Syn.Prog.t)
   let sps =
     FuncTimestampMap.singleton
       (Loc.of_addr addr, 0L)
-      (FGIR.Sem.Value.of_int64 0x7FFFFFFFC000L 8l)
+      (FGIR.Sem.Store.get_reg
+         (FGIR.Sem.State.get_store l1_state)
+         { id = RegId.Register 32l; offset = 0l; width = 8l })
   in
   let rec aux (l1_state : FGIR.Sem.State.t) (l2_state : ASIR.Sem.State.t)
       (l3_state : IOIR.Sem.State.t)

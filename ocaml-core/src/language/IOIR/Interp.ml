@@ -43,32 +43,32 @@ let step_call_internal (s : State.t) (p : Prog.t)
     if f.attr.sp_diff = sp_diff then Ok ()
     else Error (StopEvent.FailStop "jcall_ind: spdiff not match")
   in
-
-  (* TODO: think ind copydepth
-     let* _ =
-       if snd f.sp_boundary <= copydepth then Ok ()
-       else Error "jcall_ind: copydepth not match"
-     in
-  *)
   let* saved_sp =
     Store.build_saved_sp s.sto p sp_diff |> StopEvent.of_str_res
   in
-  let* ndepth, regs, outputs =
+  let cur_sp = Store.get_sp_curr s.sto p in
+  let ndepth =
+    match Value.try_pointer cur_sp with
+    | Ok (Right { offset }) when Int64.compare offset 0L < 0 -> Int64.neg offset
+    | _ -> (
+        match attr with Some _ -> copydepth | None -> snd f.attr.sp_boundary)
+  in
+  let* regs, outputs =
     match attr with
     | Some { inputs; outputs } ->
         let* regs =
           reg_build_from_values s.sto inputs f |> StopEvent.of_str_res
         in
-        (copydepth, regs, outputs) |> Result.ok
+        (regs, outputs) |> Result.ok
     | None ->
         let* regs =
           reg_build_from_input s.sto (build_inputs_from_sig f) f
           |> StopEvent.of_str_res
         in
-        (snd f.attr.sp_boundary, regs, f.attr.outputs) |> Result.ok
+        (regs, f.attr.outputs) |> Result.ok
   in
   let* nlocal =
-    Store.build_local_frame s.sto p f.attr.sp_boundary ndepth
+    Store.build_local_frame s.sto p (fst f.attr.sp_boundary, ndepth) ndepth
     |> StopEvent.of_str_res
   in
   let regs =
@@ -129,7 +129,8 @@ let step_ret (s : State.t) (p : Prog.t) ({ attr } : SRet.t)
   in
   Ok
     {
-      s.sto with
+      Store.mem =
+        Memory.remove_local_frame s.sto.mem (s.cursor.func, s.cursor.tick);
       regs =
         RegFile.add_reg merge_reg
           { id = RegId.Register p.sp_num; offset = 0l; width = 8l }
