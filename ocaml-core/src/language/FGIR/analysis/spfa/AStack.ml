@@ -2,6 +2,13 @@ open Common
 
 type t = TopHoleMap of AbsVal.t Byte8Map.t | Bottom
 
+let pp fmt = function
+  | TopHoleMap m ->
+      Byte8Map.iter
+        (fun k v -> Format.fprintf fmt "%a: %a" Byte8.pp k AbsVal.pp v)
+        m
+  | Bottom -> Format.fprintf fmt "Bottom"
+
 let join (c1 : t) (c2 : t) : t =
   match (c1, c2) with
   | TopHoleMap m1, TopHoleMap m2 ->

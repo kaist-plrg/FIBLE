@@ -2,6 +2,7 @@ module Make (A : sig
   type t
 
   val pp : Format.formatter -> t -> unit
+  val equal : t -> t -> bool
 end) =
 struct
   type t = Top | Bot | Flat of A.t
@@ -15,7 +16,7 @@ struct
     | _, Top -> Top
     | Bot, x -> x
     | x, Bot -> x
-    | Flat x, Flat y -> if x = y then Flat x else Top
+    | Flat x, Flat y -> if A.equal x y then Flat x else Top
 
   let meet a b =
     match (a, b) with
@@ -23,7 +24,7 @@ struct
     | _, Bot -> Bot
     | Top, x -> x
     | x, Top -> x
-    | Flat x, Flat y -> if x = y then Flat x else Bot
+    | Flat x, Flat y -> if A.equal x y then Flat x else Bot
 
   let widen a b = join a b
 
@@ -33,7 +34,7 @@ struct
     | Bot, _ -> true
     | _, Bot -> false
     | Top, Flat _ -> false
-    | Flat x, Flat y -> x = y
+    | Flat x, Flat y -> A.equal x y
 
   let pp fmt = function
     | Top -> Format.fprintf fmt "Top"
@@ -45,6 +46,7 @@ module MakeValue (A : sig
   type t
 
   val pp : Format.formatter -> t -> unit
+  val equal : t -> t -> bool
   val eval_bop : Common.Bop.t -> t -> t -> Int32.t -> t Option.t
   val eval_uop : Common.Uop.t -> t -> Int32.t -> t Option.t
 end) =

@@ -43,15 +43,17 @@ let join a b =
 let post_single_instr (i : Inst.t) (c : t) : AccessD.t * t =
   Inst.fold
     (function
-      | Load { pointer; output; _ } ->
-          let pointer = eval_varnode c pointer in
-          [%log debug "load: %a" AbsVal.pp pointer];
+      | Load { pointer = pointerc; output; _ } ->
+          let pointer = eval_varnode c pointerc in
+          [%log debug "load: %a %a" AbsVal.pp pointer VarNode.pp pointerc];
           ( AccessD.log_access output.width pointer,
             process_load c pointer output )
-      | Store { pointer; value } ->
-          let pointer = eval_varnode c pointer in
+      | Store { pointer = pointerc; value } ->
+          let pointer = eval_varnode c pointerc in
           let value' = eval_varnode c value in
-          [%log debug "store: %a" AbsVal.pp pointer];
+          [%log
+            debug "store: %a %a %a" AbsVal.pp pointer VarNode.pp pointerc
+              AbsVal.pp value'];
           ( AccessD.log_access (VarNode.get_width value) pointer,
             process_store c pointer value' ))
     (fun { expr; output } -> (AccessD.bottom, process_assignment c expr output))

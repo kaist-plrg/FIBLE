@@ -7,6 +7,8 @@ let compare a b =
   | Undef, _ -> -1
   | _, Undef -> 1
 
+let equal a b = compare a b = 0
+
 let subsume a b =
   match (a, b) with
   | Byte a, Byte b -> Char.equal a b

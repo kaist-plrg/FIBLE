@@ -2,11 +2,23 @@ open Common
 
 type t = TopHoleMap of AbsVal.t RegIdMap.t | Bottom
 
+let pp fmt = function
+  | TopHoleMap m ->
+      RegIdMap.iter
+        (fun k v -> Format.fprintf fmt "%a: %a" RegId.pp k AbsVal.pp v)
+        m
+  | Bottom -> Format.fprintf fmt "Bottom"
+
 let join (c1 : t) (c2 : t) : t =
   match (c1, c2) with
   | TopHoleMap m1, TopHoleMap m2 ->
       TopHoleMap
-        (RegIdMap.union (fun _ s1 s2 -> Some (AbsVal.join s1 s2)) m1 m2)
+        (RegIdMap.merge
+           (fun _ s1 s2 ->
+             match (s1, s2) with
+             | Some s1, Some s2 -> Some (AbsVal.join s1 s2)
+             | _, _ -> None)
+           m1 m2)
   | Bottom, v | v, Bottom -> v
 
 let le (c1 : t) (c2 : t) : bool =

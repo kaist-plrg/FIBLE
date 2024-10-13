@@ -85,7 +85,7 @@ module Immutable = struct
     let naccess, np = AbsState.post_single_block bb na_pre sp_num fp_num in
     match FSAbsD.AbsLocMapD.find_opt bb.loc ca.states.post_state with
     | Some a ->
-        if AbsState.le a np then
+        if AbsState.le np a then
           ({ accesses = ca.accesses; states = abs_1 }, false)
         else
           ( {

@@ -4,6 +4,13 @@ open Basic_domain
 module Inner = struct
   type t = SP of Int64.t | Const of NumericValue.t | RVal
 
+  let equal x y =
+    match (x, y) with
+    | SP x, SP y -> Int64.equal x y
+    | Const x, Const y -> (List.equal Storable.equal) x y
+    | RVal, RVal -> true
+    | _ -> false
+
   let pp fmt x =
     match x with
     | SP x -> Format.fprintf fmt "SP %Ld" x
