@@ -145,7 +145,7 @@ CAMLprim value caml_float32_floor(value v)
 CAMLprim value caml_float32_round(value v)
 {
   CAMLparam1(v);
-  CAMLreturn(alloc_float(roundf(Float32_val(v))));
+  CAMLreturn(alloc_float(floorf(Float32_val(v))));
 }
 
 CAMLprim value caml_float32_is_nan(value v)

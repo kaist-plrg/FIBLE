@@ -147,7 +147,7 @@ CAMLprim value caml_float64_floor(value v)
 CAMLprim value caml_float64_round(value v)
 {
   CAMLparam1(v);
-  CAMLreturn(alloc_double(round(Float64_val(v))));
+  CAMLreturn(alloc_double(floor(Float64_val(v))));
 }
 
 CAMLprim value caml_float64_is_nan(value v)
