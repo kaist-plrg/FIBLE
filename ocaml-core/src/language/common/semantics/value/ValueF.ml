@@ -88,10 +88,11 @@ struct
   let eval_uop (u : Uop.t) (v : t) (outwidth : Int32.t) : (t, String.t) Result.t
       =
     match v with
-    | Num vn ->
+    | Num vn when NumericValue.fully_defined vn ->
         let* vn' = NumericUop.eval u vn outwidth in
         Ok (Num vn')
     | NonNum nvn -> Ok (NonNumericValue.eval_uop u nvn outwidth |> of_either)
+    | _ -> Ok (NonNum (NonNumericValue.undefined outwidth))
 
   let eval_bop (b : Bop.t) (lv : t) (rv : t) (outwidth : Int32.t) :
       (t, String.t) Result.t =
