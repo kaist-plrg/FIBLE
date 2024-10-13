@@ -5,6 +5,11 @@ type t = Storable.t List.t
 let zero width = List.init (Int32.to_int width) (fun _ -> Byte '\x00')
 let undefined width = List.init (Int32.to_int width) (fun _ -> Undef)
 
+let fully_defined (v : t) =
+  List.for_all
+    (fun (x : Storable.t) -> match x with Byte _ -> true | Undef -> false)
+    v
+
 let isZero (x : t) : Bool.t Option.t =
   if List.for_all (fun s -> Storable.compare (Byte '\x00') s = 0) x then
     Some true

@@ -96,7 +96,8 @@ struct
   let eval_bop (b : Bop.t) (lv : t) (rv : t) (outwidth : Int32.t) :
       (t, String.t) Result.t =
     match (lv, rv) with
-    | Num lv, Num rv ->
+    | Num lv, Num rv
+      when NumericValue.fully_defined lv && NumericValue.fully_defined rv ->
         let* vn' = NumericBop.eval b lv rv outwidth in
         Ok (Num vn')
     | Num lv, NonNum rv ->
@@ -114,6 +115,7 @@ struct
           NonNumericValue.eval_bop b (First (lv, rv)) outwidth |> of_either
         in
         Ok vn'
+    | _ -> Ok (NonNum (NonNumericValue.undefined outwidth))
 
   let get (x : t) (offset : Int32.t) (size : Int32.t) : t =
     match x with
