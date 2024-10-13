@@ -67,12 +67,7 @@ let post_single_jmp (i : Jmp.t) (c : t) (sp_num : Int32.t) (fp_num : Int32.t) :
         {
           regs =
             ( ARegFile.TopHoleMap RegIdMap.empty |> fun r ->
-              ARegFile.add r (RegId.Register sp_num)
-                (AbsVal.eval_bop Bint_add
-                   (ARegFile.get c.regs (RegId.Register sp_num))
-                   (AbsVal.of_const (NumericValue.of_int64 8L 8l))
-                   8l)
-              |> fun r ->
+              ARegFile.add r (RegId.Register sp_num) AbsVal.top |> fun r ->
               ARegFile.add r (RegId.Register fp_num)
                 (ARegFile.get c.regs (RegId.Register fp_num)) );
           stack = AStack.TopHoleMap Byte8Map.empty;

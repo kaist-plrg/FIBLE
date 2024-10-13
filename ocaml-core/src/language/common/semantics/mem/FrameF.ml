@@ -34,7 +34,7 @@ module Make (Value : ValueF.S) = struct
       match
         Byte8Map.find_opt addr s.right
         |> Fun.flip Option.bind (fun v ->
-               if Value.width v = width then Some v else None)
+               if Int32.equal (Value.width v) width then Some v else None)
       with
       | Some v -> v
       | None -> (
