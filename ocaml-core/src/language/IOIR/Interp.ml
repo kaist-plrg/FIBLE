@@ -20,8 +20,8 @@ let reg_build_from_values (sto : Store.t) (values : (RegId.t * Value.t) List.t)
     (f : Func.t) : (RegFile.t, String.t) Result.t =
   List.fold_left
     (fun r (i, v) ->
-      if List.mem i f.attr.inputs then
-        RegFile.add_reg r { id = i; offset = 0l; width = 8l } v
+      if List.exists (fun x -> RegId.compare x i = 0) f.attr.inputs then
+        RegIdMap.add i v r
       else r)
     (RegFile.mapi (fun r _ -> Value.NonNum (Reg r)) sto.regs)
     values
@@ -113,7 +113,8 @@ let step_ret (s : State.t) (p : Prog.t) ({ attr } : SRet.t)
     List.fold_left
       (fun x (o, v) ->
         let* rf = x in
-        if List.mem o outputs then RegIdMap.add o v rf |> Result.ok
+        if List.exists (fun x -> RegId.compare o x = 0) outputs then
+          RegIdMap.add o v rf |> Result.ok
         else "ret: output not match" |> Result.error)
       (Ok regs') values
     |> StopEvent.of_str_res
