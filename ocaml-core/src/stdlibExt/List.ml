@@ -8,6 +8,12 @@ let take (n : int) (xs : 'a list) : 'a list =
   in
   aux n xs []
 
+let drop (n : int) (xs : 'a list) : 'a list =
+  let rec aux (n : int) (xs : 'a list) : 'a list =
+    match (n, xs) with 0, _ | _, [] -> xs | _, _ :: xs -> aux (n - 1) xs
+  in
+  aux n xs
+
 let hd_opt (xs : 'a list) : 'a option =
   match xs with [] -> None | x :: _ -> Some x
 

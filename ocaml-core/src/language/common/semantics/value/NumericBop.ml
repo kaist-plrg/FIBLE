@@ -15,13 +15,10 @@ let sborrow (l : Z.t) (r : Z.t) (width : int32) : bool =
 
 let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
     (outwidth : Int32.t) : (NumericValue.t, String.t) Result.t =
-  let* ln = NumericValue.value_z lv in
-  let* ln_s = NumericValue.value_signed_z lv in
-  let* rn = NumericValue.value_z rv in
-  let* rn_s = NumericValue.value_signed_z rv in
   match b with
   | Bpiece -> List.append rv lv |> Result.ok
   | Bsubpiece ->
+      let* rn = NumericValue.value_z rv in
       NumericValue.sublist lv (Z.to_int rn) (Int32.to_int outwidth) |> Result.ok
   | Bint_equal ->
       if NumericValue.width lv <> NumericValue.width rv then
@@ -39,6 +36,8 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_less: different bitwidth"
       else
+        let* ln = NumericValue.value_z lv in
+        let* rn = NumericValue.value_z rv in
         NumericValue.of_z
           (if Z.compare ln rn < 0 then Z.one else Z.zero)
           outwidth
@@ -47,6 +46,8 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_sless: different bitwidth"
       else
+        let* ln_s = NumericValue.value_signed_z lv in
+        let* rn_s = NumericValue.value_signed_z rv in
         NumericValue.of_z
           (if Z.compare ln_s rn_s < 0 then Z.one else Z.zero)
           outwidth
@@ -55,6 +56,8 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_lessequal: different bitwidth"
       else
+        let* ln = NumericValue.value_z lv in
+        let* rn = NumericValue.value_z rv in
         NumericValue.of_z
           (if Z.compare ln rn <= 0 then Z.one else Z.zero)
           outwidth
@@ -63,6 +66,8 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_slessequal: different bitwidth"
       else
+        let* ln_s = NumericValue.value_signed_z lv in
+        let* rn_s = NumericValue.value_signed_z rv in
         NumericValue.of_z
           (if Z.compare ln_s rn_s <= 0 then Z.one else Z.zero)
           outwidth
@@ -70,15 +75,23 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
   | Bint_add ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_add: different bitwidth"
-      else NumericValue.of_z (Z.add ln rn) outwidth |> Result.ok
+      else
+        let* ln = NumericValue.value_z lv in
+        let* rn = NumericValue.value_z rv in
+        NumericValue.of_z (Z.add ln rn) outwidth |> Result.ok
   | Bint_sub ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_sub: different bitwidth"
-      else NumericValue.of_z (Z.sub ln rn) outwidth |> Result.ok
+      else
+        let* ln = NumericValue.value_z lv in
+        let* rn = NumericValue.value_z rv in
+        NumericValue.of_z (Z.sub ln rn) outwidth |> Result.ok
   | Bint_carry ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_carry: different bitwidth"
       else
+        let* ln = NumericValue.value_z lv in
+        let* rn = NumericValue.value_z rv in
         NumericValue.of_z
           (if carry ln rn (NumericValue.width lv) then Z.one else Z.zero)
           outwidth
@@ -87,6 +100,8 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_scarry: different bitwidth"
       else
+        let* ln = NumericValue.value_z lv in
+        let* rn = NumericValue.value_z rv in
         NumericValue.of_z
           (if scarry ln rn (NumericValue.width lv) then Z.one else Z.zero)
           outwidth
@@ -95,76 +110,92 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_sborrow: different bitwidth"
       else
+        let* ln = NumericValue.value_z lv in
+        let* rn = NumericValue.value_z rv in
         NumericValue.of_z
           (if sborrow ln rn (NumericValue.width lv) then Z.one else Z.zero)
           outwidth
         |> Result.ok
   | Bint_xor ->
       if NumericValue.width lv <> NumericValue.width rv then
-        Error "int_add: different bitwidth"
-      else NumericValue.of_z (Z.logxor ln rn) outwidth |> Result.ok
+        Error "int_xor: different bitwidth"
+      else NumericValue.bitwise_xor lv rv |> Result.ok
   | Bint_and ->
       if NumericValue.width lv <> NumericValue.width rv then
-        Error "int_add: different bitwidth"
-      else NumericValue.of_z (Z.logand ln rn) outwidth |> Result.ok
+        Error "int_and: different bitwidth"
+      else NumericValue.bitwise_and lv rv |> Result.ok
   | Bint_or ->
       if NumericValue.width lv <> NumericValue.width rv then
-        Error "int_add: different bitwidth"
-      else NumericValue.of_z (Z.logor ln rn) outwidth |> Result.ok
+        Error "int_or: different bitwidth"
+      else NumericValue.bitwise_or lv rv |> Result.ok
   | Bint_left ->
+      let* ln = NumericValue.value_z lv in
+      let* rn = NumericValue.value_z rv in
+
       NumericValue.of_z (Z.shift_left ln (Z.to_int rn)) outwidth |> Result.ok
   | Bint_right ->
+      let* ln = NumericValue.value_z lv in
+
+      let* rn = NumericValue.value_z rv in
+
       NumericValue.of_z (Z.shift_right ln (Z.to_int rn)) outwidth |> Result.ok
   | Bint_sright ->
+      let* ln_s = NumericValue.value_signed_z lv in
+
+      let* rn = NumericValue.value_z rv in
+
       NumericValue.of_z (Z.shift_right ln_s (Z.to_int rn)) outwidth |> Result.ok
   | Bint_mult ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_mul: different bitwidth"
-      else NumericValue.of_z (Z.mul ln rn) outwidth |> Result.ok
+      else
+        let* ln = NumericValue.value_z lv in
+        let* rn = NumericValue.value_z rv in
+        NumericValue.of_z (Z.mul ln rn) outwidth |> Result.ok
   | Bint_div ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_div: different bitwidth"
-      else if Z.equal rn Z.zero then Error "int_div: divide by zero"
-      else NumericValue.of_z (Z.div ln rn) outwidth |> Result.ok
+      else
+        let* ln = NumericValue.value_z lv in
+        let* rn = NumericValue.value_z rv in
+        if Z.equal rn Z.zero then Error "int_div: divide by zero"
+        else NumericValue.of_z (Z.div ln rn) outwidth |> Result.ok
   | Bint_rem ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_rem: different bitwidth"
-      else if Z.equal rn Z.zero then Error "int_rem: divide by zero"
-      else NumericValue.of_z (Z.rem ln rn) outwidth |> Result.ok
+      else
+        let* ln = NumericValue.value_z lv in
+        let* rn = NumericValue.value_z rv in
+        if Z.equal rn Z.zero then Error "int_rem: divide by zero"
+        else NumericValue.of_z (Z.rem ln rn) outwidth |> Result.ok
   | Bint_sdiv ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_sdiv: different bitwidth"
-      else if Z.equal rn_s Z.zero then Error "int_sdiv: divide by zero"
-      else NumericValue.of_z (Z.div ln_s rn_s) outwidth |> Result.ok
+      else
+        let* ln_s = NumericValue.value_signed_z lv in
+        let* rn_s = NumericValue.value_signed_z rv in
+        if Z.equal rn_s Z.zero then Error "int_sdiv: divide by zero"
+        else NumericValue.of_z (Z.div ln_s rn_s) outwidth |> Result.ok
   | Bint_srem ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_srem: different bitwidth"
-      else if Z.equal rn_s Z.zero then Error "int_srem: divide by zero"
-      else NumericValue.of_z (Z.rem ln_s rn_s) outwidth |> Result.ok
+      else
+        let* ln_s = NumericValue.value_signed_z lv in
+        let* rn_s = NumericValue.value_signed_z rv in
+        if Z.equal rn_s Z.zero then Error "int_srem: divide by zero"
+        else NumericValue.of_z (Z.rem ln_s rn_s) outwidth |> Result.ok
   | Bbool_xor ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "bool_xor: different bitwidth"
-      else
-        NumericValue.of_z
-          (Z.logxor (Z.logand ln Z.one) (Z.logand rn Z.one))
-          outwidth
-        |> Result.ok
+      else List.take 1 (NumericValue.bitwise_xor lv rv) |> Result.ok
   | Bbool_and ->
       if NumericValue.width lv <> NumericValue.width rv then
-        Error "bool_xor: different bitwidth"
-      else
-        NumericValue.of_z
-          (Z.logand (Z.logand ln Z.one) (Z.logand rn Z.one))
-          outwidth
-        |> Result.ok
+        Error "bool_and: different bitwidth"
+      else List.take 1 (NumericValue.bitwise_and lv rv) |> Result.ok
   | Bbool_or ->
       if NumericValue.width lv <> NumericValue.width rv then
-        Error "bool_xor: different bitwidth"
-      else
-        NumericValue.of_z
-          (Z.logor (Z.logand ln Z.one) (Z.logand rn Z.one))
-          outwidth
-        |> Result.ok
+        Error "bool_or: different bitwidth"
+      else List.take 1 (NumericValue.bitwise_or lv rv) |> Result.ok
   | Bfloat_equal ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "float_equal: different bitwidth"

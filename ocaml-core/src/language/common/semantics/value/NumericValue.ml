@@ -22,6 +22,22 @@ let try_isZero (x : t) : (Bool.t, String.t) Result.t =
 
 let width (x : t) = Int32.of_int (List.length x)
 
+let bitwise (op : Char.t -> Char.t -> Char.t) (a : t) (b : t) : t =
+  List.map2
+    (fun (a : Storable.t) (b : Storable.t) ->
+      match (a, b) with Byte a, Byte b -> Byte (op a b) | _ -> Undef)
+    a b
+
+let bitwise_xor = bitwise (fun a b -> Char.chr (Char.code a lxor Char.code b))
+let bitwise_and = bitwise (fun a b -> Char.chr (Char.code a land Char.code b))
+let bitwise_or = bitwise (fun a b -> Char.chr (Char.code a lor Char.code b))
+
+let left_shift (x : t) (n : Int.t) : t =
+  List.init n (fun _ -> Byte '\x00') @ List.take (List.length x - n) x
+
+let right_shift (x : t) (n : Int.t) : t =
+  List.drop n x @ List.init n (fun _ -> Byte '\x00')
+
 let extend (x : t) (size : Int32.t) =
   if List.length x >= Int32.to_int size then x
   else
