@@ -11,11 +11,7 @@ let eval (u : Uop.t) (v : NumericValue.t) (outwidth : Int32.t) :
       NumericValue.of_int64_safe
         (Int64.sub (Int64.of_int32 (NumericValue.width v)) (Int64.bitwidth n))
         outwidth
-  | Uint_zext ->
-      let* n = NumericValue.value_64 v in
-      NumericValue.of_int64_safe
-        (Int64.zext n (NumericValue.width v) outwidth)
-        outwidth
+  | Uint_zext -> NumericValue.extend v outwidth |> Result.ok
   | Uint_sext ->
       let* n = NumericValue.value_64 v in
       NumericValue.of_int64_safe
