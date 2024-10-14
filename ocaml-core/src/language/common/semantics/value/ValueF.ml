@@ -88,19 +88,19 @@ struct
   let eval_uop (u : Uop.t) (v : t) (outwidth : Int32.t) : (t, String.t) Result.t
       =
     match v with
-    | Num vn when NumericValue.fully_defined vn ->
-        let* vn' = NumericUop.eval u vn outwidth in
-        Ok (Num vn')
+    | Num vn -> (
+        match NumericUop.eval u vn outwidth with
+        | Ok vn' -> Ok (Num vn')
+        | Error _ -> Ok (NonNum (NonNumericValue.undefined outwidth)))
     | NonNum nvn -> Ok (NonNumericValue.eval_uop u nvn outwidth |> of_either)
-    | _ -> Ok (NonNum (NonNumericValue.undefined outwidth))
 
   let eval_bop (b : Bop.t) (lv : t) (rv : t) (outwidth : Int32.t) :
       (t, String.t) Result.t =
     match (lv, rv) with
-    | Num lv, Num rv
-      when NumericValue.fully_defined lv && NumericValue.fully_defined rv ->
-        let* vn' = NumericBop.eval b lv rv outwidth in
-        Ok (Num vn')
+    | Num lv, Num rv -> (
+        match NumericBop.eval b lv rv outwidth with
+        | Ok vn' -> Ok (Num vn')
+        | Error _ -> Ok (NonNum (NonNumericValue.undefined outwidth)))
     | Num lv, NonNum rv ->
         let vn' =
           NonNumericValue.eval_bop b (Third (lv, rv)) outwidth |> of_either
@@ -116,7 +116,6 @@ struct
           NonNumericValue.eval_bop b (First (lv, rv)) outwidth |> of_either
         in
         Ok vn'
-    | _ -> Ok (NonNum (NonNumericValue.undefined outwidth))
 
   let get (x : t) (offset : Int32.t) (size : Int32.t) : t =
     match x with
