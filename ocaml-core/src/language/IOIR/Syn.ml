@@ -15,12 +15,12 @@ module Inst = struct
   include InstFullF.Make (Inst_)
 end
 
-module CTAnnot = Common.InputOutputAnnot.Make (VarNode)
+module CTAnnot = Common.InputOutputAnnot
 module CallTarget = CallTargetF.Make (VarNode) (CTAnnot)
 module JCall = JCallF.Make (CallTarget) (StackSpaceAnnot)
-module TAnnot = Common.IORAnnot.Make (VarNode)
+module TAnnot = Common.IORAnnot
 module JTailCall = JTailCallF.Make (CallTarget) (TAnnot)
-module RAnnot = Common.ReturnValueAnnot.Make (VarNode)
+module RAnnot = Common.ReturnValueAnnot
 module JRet = JRetF.Make (RAnnot)
 module JIntra = JIntraF.Make (VarNode)
 module Jmp = JmpFullF.MakeFromJmps (JIntra) (JCall) (JTailCall) (JRet)

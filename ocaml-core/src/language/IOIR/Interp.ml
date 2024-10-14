@@ -2,33 +2,30 @@ open Common
 open Syn
 open Sem
 
-let build_inputs_from_sig (f : Func.t) : VarNode.t List.t =
-  f.attr.inputs
-  |> List.map (fun v -> VarNodeF.Register { id = v; offset = 0l; width = 8l })
-
-let reg_build_from_values (sto : Store.t) (values : Value.t List.t) (f : Func.t)
-    : (RegFile.t, String.t) Result.t =
-  let* fv =
-    try Ok (List.combine f.attr.inputs values)
-    with Invalid_argument _ ->
-      Error
-        (Format.asprintf
-           "Mismatched number of arguments for call inputs,\n\
-           \                      %d for %s and %d for call instruction"
-           (List.length f.attr.inputs)
-           (f.nameo |> Option.value ~default:"noname")
-           (List.length values))
+let build_inputs_from_sig (sto : Store.t) (f : Func.t) :
+    ((RegId.t * Value.t) List.t, String.t) Result.t =
+  let* inputs =
+    List.fold_right
+      (fun vn lst ->
+        let v =
+          Common.RegIdMap.find_opt vn (Store.get_regfile sto)
+          |> Option.value ~default:(Value.undefined 1l)
+        in
+        Result.map (fun lst -> (vn, v) :: lst) lst)
+      f.attr.inputs (Ok [])
   in
-  List.fold_left
-    (fun r (i, v) -> RegFile.add_reg r { id = i; offset = 0l; width = 8l } v)
-    (RegFile.mapi (fun r _ -> Value.NonNum (Reg r)) sto.regs)
-    fv
-  |> Result.ok
+  inputs |> Result.ok
 
-let reg_build_from_input (sto : Store.t) (inputs : VarNode.t List.t)
+let reg_build_from_values (sto : Store.t) (values : (RegId.t * Value.t) List.t)
     (f : Func.t) : (RegFile.t, String.t) Result.t =
-  let* inputs = Store.eval_vn_list sto inputs in
-  reg_build_from_values sto inputs f
+  List.fold_left
+    (fun r (i, v) ->
+      if List.mem i f.attr.inputs then
+        RegFile.add_reg r { id = i; offset = 0l; width = 8l } v
+      else r)
+    (RegFile.mapi (fun r _ -> Value.NonNum (Reg r)) sto.regs)
+    values
+  |> Result.ok
 
 let step_call_internal (s : State.t) (p : Prog.t)
     ({
@@ -61,9 +58,9 @@ let step_call_internal (s : State.t) (p : Prog.t)
         in
         (regs, outputs) |> Result.ok
     | None ->
+        let* values = build_inputs_from_sig s.sto f |> StopEvent.of_str_res in
         let* regs =
-          reg_build_from_input s.sto (build_inputs_from_sig f) f
-          |> StopEvent.of_str_res
+          reg_build_from_values s.sto values f |> StopEvent.of_str_res
         in
         (regs, f.attr.outputs) |> Result.ok
   in
@@ -112,19 +109,13 @@ let step_ret (s : State.t) (p : Prog.t) ({ attr } : SRet.t)
      } :
       Stack.elem_t) : (Store.t, StopEvent.t) Result.t =
   let values = attr in
-  let* output_values =
-    try Ok (List.combine outputs values)
-    with Invalid_argument _ ->
-      Error "Mismatched number of outputs for call outputs"
-      |> StopEvent.of_str_res
-  in
   let* merge_reg =
     List.fold_left
       (fun x (o, v) ->
         let* rf = x in
-        (* TODO: ret match check using regs' *)
-        RegFile.add_reg rf { id = o; offset = 0l; width = 8l } v |> Result.ok)
-      (Ok regs') output_values
+        if List.mem o outputs then RegIdMap.add o v rf |> Result.ok
+        else "ret: output not match" |> Result.error)
+      (Ok regs') values
     |> StopEvent.of_str_res
   in
   Ok

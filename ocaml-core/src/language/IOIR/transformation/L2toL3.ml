@@ -30,20 +30,7 @@ let translate_jmp (j : ASIR.Syn.Jmp.t_full)
         in
         JC
           {
-            target =
-              Cdirect
-                {
-                  target;
-                  attr =
-                    {
-                      outputs;
-                      inputs =
-                        inputs
-                        |> List.map (fun n ->
-                               VarNodeF.Register
-                                 { id = n; offset = 0l; width = 8l });
-                    };
-                };
+            target = Cdirect { target; attr = { outputs; inputs } };
             fallthrough;
             attr = { reserved_stack; sp_diff };
           }
@@ -66,47 +53,18 @@ let translate_jmp (j : ASIR.Syn.Jmp.t_full)
           | Some (i, o) -> (i, o)
           | None -> (default_input, default_output)
         in
-        let returns =
-          snd la
-          |> List.map (fun n ->
-                 VarNodeF.Register { id = n; offset = 0l; width = 8l })
-        in
         JT
           {
-            target =
-              Cdirect
-                {
-                  target;
-                  attr =
-                    {
-                      outputs;
-                      inputs =
-                        inputs
-                        |> List.map (fun n ->
-                               VarNodeF.Register
-                                 { id = n; offset = 0l; width = 8l });
-                    };
-                };
-            attr = { reserved_stack; sp_diff; returns };
+            target = Cdirect { target; attr = { outputs; inputs } };
+            attr = { reserved_stack; sp_diff; returns = snd la };
           }
     | JT { target = Cind { target; _ }; attr = { reserved_stack; sp_diff } } ->
-        let returns =
-          snd la
-          |> List.map (fun n ->
-                 VarNodeF.Register { id = n; offset = 0l; width = 8l })
-        in
         JT
           {
             target = Cind { target };
-            attr = { reserved_stack; sp_diff; returns };
+            attr = { reserved_stack; sp_diff; returns = snd la };
           }
-    | JR { attr = () } ->
-        let retvs =
-          snd la
-          |> List.map (fun n ->
-                 VarNodeF.Register { id = n; offset = 0l; width = 8l })
-        in
-        JR { attr = retvs }
+    | JR { attr = () } -> JR { attr = snd la }
   in
 
   { jmp = njmp; loc = j.loc; mnem = j.mnem }

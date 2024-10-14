@@ -26,14 +26,20 @@ module Store =
     (Frame)
 
 module SCallTarget_Attr = struct
-  type t = { outputs : Common.RegId.t List.t; inputs : Value.t List.t }
+  type t = {
+    outputs : Common.RegId.t List.t;
+    inputs : (Common.RegId.t * Value.t) List.t;
+  }
 
   let eval (s : Store.t) (c : CallTarget.Attr.t) : (t, String.t) Result.t =
     let* inputs =
       List.fold_right
         (fun vn lst ->
-          let* v = Store.eval_vn s vn in
-          Result.map (fun lst -> v :: lst) lst)
+          let v =
+            Common.RegIdMap.find_opt vn (Store.get_regfile s)
+            |> Option.value ~default:(Value.undefined 1l)
+          in
+          Result.map (fun lst -> (vn, v) :: lst) lst)
         c.inputs (Ok [])
     in
     { outputs = c.outputs; inputs } |> Result.ok
@@ -57,15 +63,18 @@ module STailCall_Attr = struct
   type t = {
     reserved_stack : Int64.t;
     sp_diff : Int64.t;
-    returns : Value.t List.t;
+    returns : (Common.RegId.t * Value.t) List.t;
   }
 
   let eval (s : Store.t) (c : JTailCall.Attr.t) : (t, String.t) Result.t =
     let* returns =
       List.fold_right
         (fun vn lst ->
-          let* v = Store.eval_vn s vn in
-          Result.map (fun lst -> v :: lst) lst)
+          let v =
+            Common.RegIdMap.find_opt vn (Store.get_regfile s)
+            |> Option.value ~default:(Value.undefined 1l)
+          in
+          Result.map (fun lst -> (vn, v) :: lst) lst)
         c.returns (Ok [])
     in
     { reserved_stack = c.reserved_stack; sp_diff = c.sp_diff; returns }
@@ -80,14 +89,17 @@ module STailCall =
 module SRet =
   Common.SRetF.Make (VarNode) (JRet) (Value) (Store)
     (struct
-      type t = Value.t List.t
+      type t = (Common.RegId.t * Value.t) List.t
 
       let eval (s : Store.t) (c : JRet.Attr.t) : (t, String.t) Result.t =
         let* returns =
           List.fold_right
             (fun vn lst ->
-              let* v = Store.eval_vn s vn in
-              Result.map (fun lst -> v :: lst) lst)
+              let v =
+                Common.RegIdMap.find_opt vn (Store.get_regfile s)
+                |> Option.value ~default:(Value.undefined 1l)
+              in
+              Result.map (fun lst -> (vn, v) :: lst) lst)
             c (Ok [])
         in
         returns |> Result.ok
