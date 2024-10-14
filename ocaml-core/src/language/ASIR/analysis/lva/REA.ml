@@ -42,7 +42,10 @@ let default =
       RegIdSetD.Set
         (List.map (fun x -> RegId.Register x) caller_saved_regs
         |> RegIdSet.of_list);
-    dependent_regs = RegIdSetD.bot;
+    dependent_regs =
+      RegIdSetD.Set
+        (List.map (fun x -> RegId.Register x) caller_saved_regs
+        |> RegIdSet.of_list);
   }
 
 let compute_dr_assignment (a : Assignable.t) : RegIdSet.t =
