@@ -114,7 +114,9 @@ let step_ret (s : State.t) (p : Prog.t) ({ attr } : SRet.t)
       (fun x (o, v) ->
         let* rf = x in
         if List.exists (fun x -> RegId.compare o x = 0) outputs then
-          RegIdMap.add o v rf |> Result.ok
+          match v with
+          | Value.NonNum (Reg o) -> rf |> Result.ok
+          | _ -> RegIdMap.add o v rf |> Result.ok
         else "ret: output not match" |> Result.error)
       (Ok regs') values
     |> StopEvent.of_str_res
