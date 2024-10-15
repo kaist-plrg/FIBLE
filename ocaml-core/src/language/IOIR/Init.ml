@@ -19,13 +19,17 @@ let from_signature (p : Prog.t) (args : String.t List.t) (env : String.t List.t)
   {
     timestamp = 0L;
     sto =
-      Store.init_libc_glob
-        (Store.init_from_sig_main p.rom p.rspec
-           (Loc.of_addr a, 0L)
-           (Frame.empty (fst f.attr.sp_boundary)
-              (Int64.add (snd f.attr.sp_boundary) stack_size))
-           (Value.sp init_sp) args env stack_size)
-        p.objects 48l 56l;
+      ( Store.init_libc_glob
+          (Store.init_from_sig_main p.rom p.rspec
+             (Loc.of_addr a, 0L)
+             (Frame.empty (fst f.attr.sp_boundary)
+                (Int64.add (snd f.attr.sp_boundary) stack_size))
+             (Value.sp init_sp) args env stack_size)
+          p.objects 48l 56l
+      |> fun s ->
+        Store.add_reg s
+          { id = Register 522l; offset = 0l; width = 1l }
+          (Value.of_num (NumericValue.of_int64 0L 1l)) );
     cursor = { func = Loc.of_addr a; tick = 0L };
     cont = Cont.of_func_entry_loc p (Loc.of_addr a) |> Result.get_ok;
     stack = [];
@@ -48,13 +52,17 @@ let from_signature_libc (p : Prog.t) (args : String.t List.t)
   {
     timestamp = 0L;
     sto =
-      Store.init_libc_glob
-        (Store.init_from_sig_libc p.rom p.rspec
-           (Loc.of_addr libc_a, 0L)
-           (Frame.empty (fst f.attr.sp_boundary)
-              (Int64.add (snd f.attr.sp_boundary) stack_size))
-           (Value.sp init_sp) a args env stack_size)
-        p.objects 16l 48l;
+      ( Store.init_libc_glob
+          (Store.init_from_sig_libc p.rom p.rspec
+             (Loc.of_addr libc_a, 0L)
+             (Frame.empty (fst f.attr.sp_boundary)
+                (Int64.add (snd f.attr.sp_boundary) stack_size))
+             (Value.sp init_sp) a args env stack_size)
+          p.objects 16l 48l
+      |> fun s ->
+        Store.add_reg s
+          { id = Register 522l; offset = 0l; width = 1l }
+          (Value.of_num (NumericValue.of_int64 0L 1l)) );
     cursor = { func = Loc.of_addr libc_a; tick = 0L };
     cont = Cont.of_func_entry_loc p (Loc.of_addr libc_a) |> Result.get_ok;
     stack = [];

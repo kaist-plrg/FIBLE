@@ -32,6 +32,17 @@ let caller_saved_regs =
     4736l (* XMM4 *);
   ]
 
+let syscall_regs =
+  [
+    0l (* RAX *);
+    16l (* RDX *);
+    48l (* RSI *);
+    56l (* RDI *);
+    128l (* R8 *);
+    136l (* R9 *);
+    144l (* R10 *);
+  ]
+
 let default =
   {
     must_def_regs =
@@ -46,6 +57,15 @@ let default =
       RegIdSetD.Set
         (List.map (fun x -> RegId.Register x) caller_saved_regs
         |> RegIdSet.of_list);
+  }
+
+let syscall =
+  {
+    must_def_regs = RegIdSetD.Set (RegIdSet.singleton (Register 0l));
+    may_def_regs = RegIdSetD.Set (RegIdSet.singleton (Register 0l));
+    dependent_regs =
+      RegIdSetD.Set
+        (List.map (fun x -> RegId.Register x) syscall_regs |> RegIdSet.of_list);
   }
 
 let compute_dr_assignment (a : Assignable.t) : RegIdSet.t =
@@ -107,6 +127,7 @@ let compute_dd_inst (i : Inst.t) : astate =
         may_def_regs = RegIdSetD.bot;
         dependent_regs = RegIdSetD.bot;
       }
+  | Fifth _ -> syscall
   | _ ->
       {
         must_def_regs = RegIdSetD.bot;
