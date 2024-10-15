@@ -146,6 +146,7 @@ let compute_dd_jmp (j : Jmp.t) : astate =
         may_def_regs = RegIdSetD.bot;
         dependent_regs = RegIdSetD.Set (RegIdSet.singleton r.id);
       }
+  | JI Junimplemented -> default
   | _ ->
       {
         must_def_regs = RegIdSetD.bot;
