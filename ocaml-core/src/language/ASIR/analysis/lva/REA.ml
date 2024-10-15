@@ -25,6 +25,7 @@ let caller_saved_regs =
     144l (* R10 *);
     152l (* R11 *);
     272l (* FS *);
+    522l (* DF *);
     4608l (* XMM0 *);
     4640l (* XMM1 *);
     4672l (* XMM2 *);
