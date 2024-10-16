@@ -24,13 +24,19 @@ let eval (b : Bop.t) (lv : NumericValue.t) (rv : NumericValue.t)
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_equal: different bitwidth"
       else
-        NumericValue.of_z (if lv = rv then Z.one else Z.zero) outwidth
+        let* ln = NumericValue.value_z lv in
+        let* rn = NumericValue.value_z rv in
+        NumericValue.of_z (if Z.equal ln rn then Z.one else Z.zero) outwidth
         |> Result.ok
   | Bint_notequal ->
       if NumericValue.width lv <> NumericValue.width rv then
         Error "int_notequal: different bitwidth"
       else
-        NumericValue.of_z (if lv <> rv then Z.one else Z.zero) outwidth
+        let* ln = NumericValue.value_z lv in
+        let* rn = NumericValue.value_z rv in
+        NumericValue.of_z
+          (if not (Z.equal ln rn) then Z.one else Z.zero)
+          outwidth
         |> Result.ok
   | Bint_less ->
       if NumericValue.width lv <> NumericValue.width rv then
