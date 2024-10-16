@@ -25,6 +25,8 @@ let pp (fmt : Format.formatter) (v : t) =
 let pp_full (fmt : Format.formatter) (v : t_full) =
   Format.fprintf fmt "%a(%ld:%ld)" pp v.id v.offset v.width
 
+let pp_t_full = pp_full
+
 let compare (a : t) (b : t) =
   match (a, b) with
   | Register a, Register b -> Int32.compare a b

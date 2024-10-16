@@ -1,5 +1,7 @@
 module Make (Value : sig
   type t
+
+  val pp : Format.formatter -> t -> Unit.t
 end) =
 struct
   type value_t = Value.t
@@ -10,6 +12,7 @@ struct
     | Store of Value.t * Value.t
     | Special of String.t * (Value.t * Bytes.t) List.t * Interop.t List.t
     | Nop
+  [@@deriving show]
 
   let of_assign r v = Assign (r, v)
   let of_load r p v = Load (r, p, v)

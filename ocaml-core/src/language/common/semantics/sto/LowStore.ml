@@ -203,14 +203,18 @@ struct
       (args : String.t List.t) (envs : String.t List.t) (stack_size : Int64.t) :
       Memory.t * Int64.t * Int64.t * Int64.t =
     let mem_init = Memory.from_rom dmem in
-    let nmem, nsp, envptrs =
-      alloc_strings mem_init envs (Int64.add init_sp stack_size)
+    let init_sp =
+      Int64.sub
+        (Int64.logand init_sp 0xFFFFFFFFFFFFFFF0L)
+        8L (* ABI Alignment *)
     in
+    let sp_start = Int64.add init_sp stack_size in
+    let sp_final = Int64.add init_sp 8L in
+    let nmem, nsp, envptrs = alloc_strings mem_init envs sp_start in
     let nmem, nsp, argptrs = alloc_strings nmem args nsp in
     let nmem, nsp, envpptr = alloc_array nmem nsp envptrs in
     let nmem, nsp, argpptr = alloc_array nmem nsp argptrs in
-    let nsp = Int64.logand nsp 0xFFFFFFFFFFFFFFF0L (* ABI Alignment *) in
-    let nmem, nsp, _ = alloc_pointer nmem nsp 0xDEADBEEFL in
+    let nmem, nsp, _ = alloc_pointer nmem sp_final 0xDEADBEEFL in
     (nmem, nsp, argpptr, envpptr)
 
   let init_from_sig_libc (dmem : DMem.t) (rspec : int32 Int32Map.t)

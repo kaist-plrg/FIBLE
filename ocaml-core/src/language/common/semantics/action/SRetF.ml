@@ -21,10 +21,11 @@ end) (Store : sig
 end) (Attr : sig
   type t
 
+  val pp : Format.formatter -> t -> Unit.t
   val eval : Store.t -> JRet.Attr.t -> (t, String.t) Result.t
 end) =
 struct
-  type t = { attr : Attr.t }
+  type t = { attr : Attr.t } [@@deriving show]
 
   let get_attr { attr; _ } = attr
 

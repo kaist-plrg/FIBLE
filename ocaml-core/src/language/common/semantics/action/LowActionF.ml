@@ -1,5 +1,7 @@
 module Make (Value : sig
   type t
+
+  val pp : Format.formatter -> t -> Unit.t
 end) (StoreAction : sig
   type t
 
@@ -7,6 +9,7 @@ end) (StoreAction : sig
   val of_load : RegId.t_full -> Value.t -> Value.t -> t
   val of_store : Value.t -> Value.t -> t
   val nop : t
+  val pp : Format.formatter -> t -> Unit.t
 end) =
 struct
   module StoreAction = StoreAction
@@ -15,6 +18,7 @@ struct
     | StoreAction of StoreAction.t * Loc.t
     | Jmp of Loc.t
     | ExternCall of Loc.t
+  [@@deriving show]
 
   let jmp l = Jmp l
   let externcall l = ExternCall l

@@ -30,6 +30,7 @@ module SCallTarget_Attr = struct
     outputs : Common.RegId.t List.t;
     inputs : (Common.RegId.t * Value.t) List.t;
   }
+  [@@deriving show]
 
   let eval (s : Store.t) (c : CallTarget.Attr.t) : (t, String.t) Result.t =
     let* inputs =
@@ -53,7 +54,7 @@ module SCall =
   Common.SCallF.Make (VarNode) (CallTarget) (JCall) (Value) (Store)
     (SCallTarget)
     (struct
-      type t = JCall.Attr.t
+      type t = JCall.Attr.t [@@deriving show]
 
       let eval (s : Store.t) (c : JCall.Attr.t) : (t, String.t) Result.t =
         c |> Result.ok
@@ -65,6 +66,7 @@ module STailCall_Attr = struct
     sp_diff : Int64.t;
     returns : (Common.RegId.t * Value.t) List.t;
   }
+  [@@deriving show]
 
   let eval (s : Store.t) (c : JTailCall.Attr.t) : (t, String.t) Result.t =
     let* returns =
@@ -89,7 +91,7 @@ module STailCall =
 module SRet =
   Common.SRetF.Make (VarNode) (JRet) (Value) (Store)
     (struct
-      type t = (Common.RegId.t * Value.t) List.t
+      type t = (Common.RegId.t * Value.t) List.t [@@deriving show]
 
       let eval (s : Store.t) (c : JRet.Attr.t) : (t, String.t) Result.t =
         let* returns =

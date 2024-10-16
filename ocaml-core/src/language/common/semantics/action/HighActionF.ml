@@ -1,5 +1,7 @@
 module Make (Value : sig
   type t
+
+  val pp : Format.formatter -> t -> Unit.t
 end) (StoreAction : sig
   type t
 
@@ -7,12 +9,19 @@ end) (StoreAction : sig
   val of_load : RegId.t_full -> Value.t -> Value.t -> t
   val of_store : Value.t -> Value.t -> t
   val nop : t
+  val pp : Format.formatter -> t -> Unit.t
 end) (SCall : sig
   type t
+
+  val pp : Format.formatter -> t -> Unit.t
 end) (STailCall : sig
   type t
+
+  val pp : Format.formatter -> t -> Unit.t
 end) (SRet : sig
   type t
+
+  val pp : Format.formatter -> t -> Unit.t
 end) =
 struct
   module StoreAction = StoreAction
@@ -25,6 +34,7 @@ struct
     | Call of SCall.t
     | TailCall of STailCall.t
     | Ret of SRet.t
+  [@@deriving show]
 
   let of_store s lo = StoreAction (s, lo)
   let jmp l = Jmp l

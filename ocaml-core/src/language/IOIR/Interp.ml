@@ -221,6 +221,21 @@ let action (p : Prog.t) (s : State.t) (a : Action.t) :
   | TailCall st -> StopEvent.FailStop "unimplemented jump" |> Result.error
   | Ret sr -> action_JR p s sr
 
+let action_with_computed_syscall (p : Prog.t) (s : State.t)
+    (sides : (Value.t * bytes) List.t) (res : Interop.t) (lo : Loc.t Option.t) :
+    (State.t, StopEvent.t) Result.t =
+  let* sto = Store.build_sides s.sto sides |> StopEvent.of_str_res in
+  let* sto = Store.build_ret sto res |> StopEvent.of_str_res in
+  match (lo, s.cont) with
+  | None, { remaining = _ :: res; jmp } ->
+      Ok { s with sto; cont = { remaining = res; jmp } }
+  | Some l, _ ->
+      let* cont =
+        Cont.of_loc p (State.get_func_loc s) l |> StopEvent.of_str_res
+      in
+      Ok { s with sto; cont }
+  | _ -> StopEvent.FailStop "Not possible inst" |> Result.error
+
 let action_with_computed_extern (p : Prog.t) (s : State.t) (a : Action.t)
     (sides : ('a * Bytes.t) List.t) (retv : Interop.t) :
     (State.t, StopEvent.t) Result.t =
@@ -252,6 +267,9 @@ let action_with_computed_extern (p : Prog.t) (s : State.t) (a : Action.t)
 
 let rec interp (p : Prog.t) (s : State.t) : (State.t, StopEvent.t) Result.t =
   let* a =
+    if Loc.equal (State.get_cont s |> Cont.get_loc) (Loc.of_addr_seq (0x0L, 0))
+    then [%log info "interp: %a" State.pp s];
+
     step p s |> Fun.flip StopEvent.add_loc (Cont.get_loc (State.get_cont s))
   in
   let* s' =

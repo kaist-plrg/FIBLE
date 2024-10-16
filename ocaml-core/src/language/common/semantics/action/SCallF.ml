@@ -28,14 +28,17 @@ end) (Store : sig
 end) (SCallTarget : sig
   type t
 
+  val pp : Format.formatter -> t -> Unit.t
   val eval : Store.t -> CallTarget.t -> (t, String.t) Result.t
 end) (Attr : sig
   type t
 
+  val pp : Format.formatter -> t -> Unit.t
   val eval : Store.t -> JCall.Attr.t -> (t, String.t) Result.t
 end) =
 struct
   type t = { target : SCallTarget.t; fallthrough : Loc.t; attr : Attr.t }
+  [@@deriving show]
 
   let get_target { target; _ } = target
   let get_fallthrough { fallthrough; _ } = fallthrough

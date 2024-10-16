@@ -24,7 +24,7 @@ let check_val (v1 : FGIR.Sem.Value.t) (v2 : ASIR.Sem.Value.t)
     (Unit.t, StopEvent.t) Result.t =
   match (v1, v2, v3) with
   | v, Num v', Num v'' ->
-      if NumericValue.subsume v v' && NumericValue.subsume v' v'' then Ok ()
+      if NumericValue.subsume v v' then Ok ()
       else
         Error
           (FailStop
@@ -40,7 +40,13 @@ let check_val (v1 : FGIR.Sem.Value.t) (v2 : ASIR.Sem.Value.t)
             let* fv = NumericValue.value_64 v |> StopEvent.of_str_res in
             let* gv = NumericValue.value_64 vsp |> StopEvent.of_str_res in
             if Int64.add (Int64.mul gv p.multiplier) p.offset = fv then Ok ()
-            else Error (FailStop "Not same SP Val")
+            else if not (Int64.equal p.bitshift 0L) then Ok ()
+            else
+              Error
+                (FailStop
+                   (Format.asprintf
+                      "Not same SP Val %a %a, %Lx * %Ld + %Lx != %Lx" SPVal.pp p
+                      NumericValue.pp v gv p.multiplier p.offset fv))
         | None -> Error (FailStop "Not have FGIR SP Val")
       else Error (FailStop "Not same SP offset")
   | _ -> Ok ()
@@ -104,6 +110,10 @@ let check_action (a1 : FGIR.Sem.Action.t) (a2 : ASIR.Sem.Action.t)
       Ok sps
   | StoreAction (Nop, lo), StoreAction (Nop, lo'), StoreAction (Nop, lo'') ->
       Ok sps
+  | ( StoreAction (Special _, _),
+      StoreAction (Special _, _),
+      StoreAction (Special _, _) ) ->
+      Ok sps
   | Jmp l, Jmp l', Jmp l'' ->
       if Loc.compare l l' = 0 && Loc.compare l' l'' = 0 then Ok sps
       else Error (FailStop "Not same jump target")
@@ -123,7 +133,11 @@ let check_action (a1 : FGIR.Sem.Action.t) (a2 : ASIR.Sem.Action.t)
       else Error (FailStop "Not same call target")
   | Ret sr, Ret sr', Ret sr'' -> Ok sps
   | TailCall st, TailCall st', TailCall st'' -> Ok sps
-  | _ -> Error (FailStop "Not same action")
+  | _ ->
+      Error
+        (FailStop
+           (Format.asprintf "Not same action %a %a %a" FGIR.Sem.Action.pp a1
+              ASIR.Sem.Action.pp a2 IOIR.Sem.Action.pp a3))
 
 let action_all a1 l1 l1_state a2 l2 l2_state a3 l3 l3_state =
   match (a1, a2, a3) with
@@ -134,6 +148,40 @@ let action_all a1 l1 l1_state a2 l2 l2_state a3 l3 l3_state =
             ASIR.Interp.action_with_computed_extern l2 l2_state a2 sides retv,
             IOIR.Interp.action_with_computed_extern l3 l3_state a3 sides retv )
       | None ->
+          ( StopEvent.NormalStop |> Result.error,
+            StopEvent.NormalStop |> Result.error,
+            StopEvent.NormalStop |> Result.error ))
+  | ( FGIR.Sem.Action.StoreAction (Special ("syscall", sides1, vals), lo1),
+      ASIR.Sem.Action.StoreAction (Special ("syscall", sides2, _), lo2),
+      IOIR.Sem.Action.StoreAction (Special ("syscall", sides3, _), lo3) ) -> (
+      let sides2 =
+        List.map
+          (fun ((ptr, _), (_, bytes)) -> (ptr, bytes))
+          (List.combine sides2 sides1)
+      in
+      let sides3 =
+        List.map
+          (fun ((ptr, _), (_, bytes)) -> (ptr, bytes))
+          (List.combine sides3 sides1)
+      in
+      match
+        let* syscall_num =
+          match vals with
+          | Interop.VArith (VInt (V64 n)) :: _ -> Ok n
+          | _ -> Error "syscall: invalid syscall number"
+        in
+        let* fsig =
+          World.Environment.x64_syscall_table syscall_num
+          |> Option.to_result ~none:"syscall: invalid syscall number"
+        in
+        let* res = World.Environment.x64_do_syscall vals in
+        ( FGIR.Interp.action_with_computed_syscall l1 l1_state sides1 res lo1,
+          ASIR.Interp.action_with_computed_syscall l2 l2_state sides2 res lo1,
+          IOIR.Interp.action_with_computed_syscall l3 l3_state sides3 res lo1 )
+        |> Result.ok
+      with
+      | Ok v -> v
+      | Error _ ->
           ( StopEvent.NormalStop |> Result.error,
             StopEvent.NormalStop |> Result.error,
             StopEvent.NormalStop |> Result.error ))

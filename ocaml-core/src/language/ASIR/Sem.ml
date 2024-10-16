@@ -28,7 +28,7 @@ module Store =
 module SCallTarget =
   Common.SCallTargetF.Make (VarNode) (CallTarget) (Value) (Store)
     (struct
-      type t = Unit.t
+      type t = Unit.t [@@deriving show]
 
       let eval (s : Store.t) (c : CallTarget.Attr.t) : (t, String.t) Result.t =
         () |> Result.ok
@@ -38,7 +38,7 @@ module SCall =
   Common.SCallF.Make (VarNode) (CallTarget) (JCall) (Value) (Store)
     (SCallTarget)
     (struct
-      type t = JCall.Attr.t
+      type t = JCall.Attr.t [@@deriving show]
 
       let eval (s : Store.t) (c : JCall.Attr.t) : (t, String.t) Result.t =
         c |> Result.ok
@@ -48,7 +48,7 @@ module STailCall =
   Common.STailCallF.Make (VarNode) (CallTarget) (JTailCall) (Value) (Store)
     (SCallTarget)
     (struct
-      type t = JTailCall.Attr.t
+      type t = JTailCall.Attr.t [@@deriving show]
 
       let eval (s : Store.t) (c : JTailCall.Attr.t) : (t, String.t) Result.t =
         c |> Result.ok
@@ -57,7 +57,7 @@ module STailCall =
 module SRet =
   Common.SRetF.Make (VarNode) (JRet) (Value) (Store)
     (struct
-      type t = JRet.Attr.t
+      type t = JRet.Attr.t [@@deriving show]
 
       let eval (s : Store.t) (c : JRet.Attr.t) : (t, String.t) Result.t =
         c |> Result.ok
