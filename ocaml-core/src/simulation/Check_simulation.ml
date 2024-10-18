@@ -39,7 +39,13 @@ let check_val (v1 : FGIR.Sem.Value.t) (v2 : ASIR.Sem.Value.t)
         | Some vsp ->
             let* fv = NumericValue.value_64 v |> StopEvent.of_str_res in
             let* gv = NumericValue.value_64 vsp |> StopEvent.of_str_res in
-            if Int64.add (Int64.mul gv p.multiplier) p.offset = fv then Ok ()
+            if
+              Int64.equal
+                (Int64.cut_width
+                   (Int64.add (Int64.mul gv p.multiplier) p.offset)
+                   (NumericValue.width v))
+                fv
+            then Ok ()
             else if not (Int64.equal p.bitshift 0L) then Ok ()
             else
               Error
