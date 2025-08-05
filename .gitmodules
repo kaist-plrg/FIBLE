@@ -1,0 +1,6 @@
+[submodule "FIBLE-Dafny-Lib"]
+	path = FIBLE-Dafny-Lib
+	url = https://github.com/kaist-plrg/FIBLE-Dafny-Lib.git
+[submodule "FIBLE-Lean"]
+	path = FIBLE-Lean
+	url = https://github.com/kaist-plrg/FIBLE-Lean.git
