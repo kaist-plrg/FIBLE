@@ -8,7 +8,6 @@ depends: [
   "ppxlib"
   "zarith"
   "ocamlgraph"
-  "ocaml-lsp-server"
   "ocamlformat"
   "ctypes"
   "ctypes-foreign"
