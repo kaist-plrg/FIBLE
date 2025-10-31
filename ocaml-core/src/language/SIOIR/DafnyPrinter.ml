@@ -80,21 +80,21 @@ let print_dafny_assignment fmt (a : IOIR.Syn.IAssignment.t) : Unit.t =
 let print_dafny_sloadstore fmt (ls : IOIR.Syn.ISLoadStore.t) : Unit.t =
   match ls with
   | Sload { offset; output } ->
-      Format.fprintf fmt "%a := State.ISLoad(st, %Ld, %ld);" print_dafny_regid
+      Format.fprintf fmt "%a := st.ISLoad(%Ld, %ld);" print_dafny_regid
         output.id offset output.width
   | Sstore { offset; value } ->
-      Format.fprintf fmt "st := State.ISStore(st, %Ld, %a, %ld);" offset
+      Format.fprintf fmt "st.ISStore(%Ld, %a, %ld);" offset
         print_dafny_varnode value
         (Common.NumericVarNode.get_width value)
 
 let print_dafny_loadstore fmt (ls : IOIR.Syn.ILoadStore.t) : Unit.t =
   match ls with
   | Load { output; pointer; space } ->
-      Format.fprintf fmt "%a := State.ILoad(st, %a, %a, %ld);" print_dafny_regid
+      Format.fprintf fmt "%a := st.ILoad(%a, %a, %ld);" print_dafny_regid
         output.id print_dafny_varnode pointer print_dafny_varnode space
         output.width
   | Store { pointer; value; space } ->
-      Format.fprintf fmt "st := State.IStore(st, %a, %a, %a, %ld);"
+      Format.fprintf fmt "st.IStore(%a, %a, %a, %ld);"
         print_dafny_varnode pointer print_dafny_varnode value
         print_dafny_varnode space
         (Common.NumericVarNode.get_width value)
@@ -132,13 +132,13 @@ let rec print_dafny_stmt fmt (s : Stmt.t) : Unit.t =
       Format.fprintf fmt
         "@[<v 1>if Value.ExtractIsNonZero(%a) {@;%a@;} else {@;%a@;}@]"
         print_dafny_varnode cond print_dafny_stmt t print_dafny_stmt f
-  | Call c -> ICall.pp fmt c
-  | TailCall c -> ITailCall.pp fmt c
+  | Call c -> failwith "unimplemented_dafny_call"
+  | TailCall c -> failwith "unimplemented_dafny_tailcall"
   | Ret r -> print_dafny_return fmt r
   | LoadStore ls -> print_dafny_loadstore fmt ls
   | SLoadStore ls -> print_dafny_sloadstore fmt ls
   | Assignment a -> print_dafny_assignment fmt a
-  | Special s -> IOIR.Syn.ISpecial.pp fmt s
+  | Special s -> failwith "unimplemented_dafny_special"
 
 let print_dafny_decl fmt (r : Common.RegId.t) : Unit.t =
   Format.fprintf fmt "%a: Value.T" print_dafny_regid r
@@ -181,7 +181,6 @@ let print_dafny_func fmt (f : Func.t) : unit =
      %a@;\
      %a@;\
      %a@;\
-     st := st_i;@;\
      %a@;\
      }@]"
     (f.nameo
@@ -189,15 +188,13 @@ let print_dafny_func fmt (f : Func.t) : unit =
     (Format.pp_print_list
        ~pp_sep:(fun fmt _ -> Format.fprintf fmt ",@ ")
        (fun fmt r -> Format.fprintf fmt "%s" r))
-    ([ "st_i: State.T" ]
-    @ (f.attr.inputs
-      |> List.map (fun r -> Format.asprintf "%a" print_dafny_decl_input r)))
+    (f.attr.inputs
+      |> List.map (fun r -> Format.asprintf "%a" print_dafny_decl_input r))
     (Format.pp_print_list
        ~pp_sep:(fun fmt _ -> Format.fprintf fmt ",@ ")
        (fun fmt r -> Format.fprintf fmt "%s" r))
-    ([ "st: State.T" ]
-    @ (f.attr.outputs
-      |> List.map (fun r -> Format.asprintf "%a" print_dafny_decl r)))
+    (f.attr.outputs
+      |> List.map (fun r -> Format.asprintf "%a" print_dafny_decl r))
     print_dafny_decl_set
     (Common.RegIdSet.diff (Common.RegIdSet.union defSet inputSet) outputSet)
     print_dafny_copy_input inputSet print_dafny_assign_undef
@@ -205,6 +202,6 @@ let print_dafny_func fmt (f : Func.t) : unit =
     print_dafny_stmt f.body
 
 let print_dafny_prog fmt (p : Prog.t) : unit =
-  Format.fprintf fmt "@[<v 1>module Main {@;import Value@;import State@;%a@]@;}"
+  Format.fprintf fmt "@[<v 1>module Main.Procedure {@;import NumericValue@;import ConcreteValue@;import Value@;import State@;class Runtime {@; var st: State.T@; constructor (st: State.T) {@;  this.st := st;@;  }@;%a@]@;}"
     (Format.pp_print_list ~pp_sep:Format.pp_print_cut print_dafny_func)
     p.funcs
