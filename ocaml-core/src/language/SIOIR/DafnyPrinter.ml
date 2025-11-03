@@ -100,13 +100,14 @@ let print_dafny_loadstore fmt (ls : IOIR.Syn.ILoadStore.t) : Unit.t =
 
 let print_dafny_return fmt (r : IRet.t) : Unit.t = Format.fprintf fmt "return;"
 
-let print_dafny_call (p : Prog.t) fmt
-    (target : IOIR.Syn.CallTarget.t) : Unit.t =
+let print_dafny_call (p : Prog.t) fmt (target : IOIR.Syn.CallTarget.t) : Unit.t
+    =
   match target with
   | Cdirect { target; attr } -> (
       let fname_option =
         Prog.get_func_opt p target
         |> Fun.flip Option.bind (fun (f : Func.t) -> f.nameo)
+        |> Option.map String.make_identifier
       in
       match fname_option with
       | Some fname ->
@@ -125,8 +126,7 @@ let print_dafny_call (p : Prog.t) fmt
   | Cind { target } ->
       Format.fprintf fmt "st.CallInd(%a);" print_dafny_varnode target
 
-let print_dafny_stmt (p : Prog.t) :
-    Format.formatter -> Stmt.t -> Unit.t =
+let print_dafny_stmt (p : Prog.t) : Format.formatter -> Stmt.t -> Unit.t =
   let rec aux fmt (s : Stmt.t) : Unit.t =
     match s with
     | Nop INop -> ()
@@ -216,7 +216,8 @@ let print_dafny_func (prog : Prog.t) fmt (f : Func.t) : unit =
      %a@;\
      }@]"
     (f.nameo
-    |> Option.value ~default:(f.entry |> Common.Loc.get_addr |> Int64.show))
+    |> Option.value ~default:(f.entry |> Common.Loc.get_addr |> Int64.show)
+    |> String.make_identifier)
     (Format.pp_print_list
        ~pp_sep:(fun fmt _ -> Format.fprintf fmt ",@ ")
        (fun fmt r -> Format.fprintf fmt "%s" r))
@@ -245,7 +246,8 @@ let print_dafny_prog_in fmt (p : Prog.t) : unit =
     \ constructor (st: State.T) {@;\
     \  this.st := st;@;\
     \  }@;\
-     %a@]@;  }" print_dafny_prologue ()
+     %a@]@;\
+    \  }" print_dafny_prologue ()
     (Format.pp_print_list ~pp_sep:Format.pp_print_cut (print_dafny_func p))
     p.funcs
 
