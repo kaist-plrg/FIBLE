@@ -62,7 +62,7 @@ let print_dafny_varnode fmt (v : Common.NumericVarNode.t) : Unit.t =
   match v with
   | Register r -> print_dafny_regid fmt r.id
   | Const i -> Format.fprintf fmt "Value.Const(%Ld, %ld)" i.value i.width
-  | Ram (i, w) -> Format.fprintf fmt "unhandled_ram_%ld" w
+  | Ram (i, w) -> Format.fprintf fmt "Value.Unhandled_ram(%ld)" w
 
 let print_dafny_assignment fmt (a : IOIR.Syn.IAssignment.t) : Unit.t =
   Format.fprintf fmt "%a := " print_dafny_regid a.output.id;
