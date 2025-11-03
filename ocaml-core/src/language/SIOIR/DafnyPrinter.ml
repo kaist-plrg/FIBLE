@@ -83,8 +83,8 @@ let print_dafny_sloadstore fmt (ls : IOIR.Syn.ISLoadStore.t) : Unit.t =
       Format.fprintf fmt "%a := st.ISLoad(%Ld, %ld);" print_dafny_regid
         output.id offset output.width
   | Sstore { offset; value } ->
-      Format.fprintf fmt "st.ISStore(%Ld, %a, %ld);" offset
-        print_dafny_varnode value
+      Format.fprintf fmt "st.ISStore(%Ld, %a, %ld);" offset print_dafny_varnode
+        value
         (Common.NumericVarNode.get_width value)
 
 let print_dafny_loadstore fmt (ls : IOIR.Syn.ILoadStore.t) : Unit.t =
@@ -94,51 +94,83 @@ let print_dafny_loadstore fmt (ls : IOIR.Syn.ILoadStore.t) : Unit.t =
         output.id print_dafny_varnode pointer print_dafny_varnode space
         output.width
   | Store { pointer; value; space } ->
-      Format.fprintf fmt "st.IStore(%a, %a, %a, %ld);"
-        print_dafny_varnode pointer print_dafny_varnode value
-        print_dafny_varnode space
+      Format.fprintf fmt "st.IStore(%a, %a, %a, %ld);" print_dafny_varnode
+        pointer print_dafny_varnode value print_dafny_varnode space
         (Common.NumericVarNode.get_width value)
 
 let print_dafny_return fmt (r : IRet.t) : Unit.t = Format.fprintf fmt "return;"
 
-let rec print_dafny_stmt fmt (s : Stmt.t) : Unit.t =
-  match s with
-  | Nop INop -> ()
-  | Block { label; stmts } -> (
-      match label with
+let print_dafny_call (p : Prog.t) fmt
+    (target : IOIR.Syn.CallTarget.t) : Unit.t =
+  match target with
+  | Cdirect { target; attr } -> (
+      let fname_option =
+        Prog.get_func_opt p target
+        |> Fun.flip Option.bind (fun (f : Func.t) -> f.nameo)
+      in
+      match fname_option with
+      | Some fname ->
+          Format.fprintf fmt "%a := %s (%a);"
+            (Format.pp_print_list
+               ~pp_sep:(fun fmt _ -> Format.fprintf fmt ", ")
+               print_dafny_regid)
+            attr.outputs fname
+            (Format.pp_print_list
+               ~pp_sep:(fun fmt _ -> Format.fprintf fmt ", ")
+               print_dafny_regid)
+            attr.inputs
       | None ->
-          Format.fprintf fmt "@[<v 1>{@;%a@;}@]"
-            (Format.pp_print_list ~pp_sep:Format.pp_print_cut print_dafny_stmt)
-            stmts
-      | Some label ->
-          Format.fprintf fmt "@[<v 1>label %a: {@;%a@;}@]" print_dafny_label
-            label
-            (Format.pp_print_list ~pp_sep:Format.pp_print_cut print_dafny_stmt)
-            stmts)
-  | Loop { label; body } ->
-      Format.fprintf fmt "@[<v 1>label %a: while true {@;%a@;}@]"
-        print_dafny_label label
-        (Format.pp_print_list ~pp_sep:Format.pp_print_cut print_dafny_stmt)
-        body
-  | Break label -> Format.fprintf fmt "break %a;" print_dafny_label label
-  | Continue label -> Format.fprintf fmt "continue %a;" print_dafny_label label
-  | Switch { target; cases } ->
-      Format.fprintf fmt "@[<v 1>match %a {@;%a@;}@]" print_dafny_varnode target
-        (Format.pp_print_list ~pp_sep:Format.pp_print_cut
-           (fun fmt (idx, stmt) ->
-             Format.fprintf fmt "case %Ld => %a" idx print_dafny_stmt stmt))
-        cases
-  | IfElse (cond, t, f) ->
-      Format.fprintf fmt
-        "@[<v 1>if Value.ExtractIsNonZero(%a) {@;%a@;} else {@;%a@;}@]"
-        print_dafny_varnode cond print_dafny_stmt t print_dafny_stmt f
-  | Call c -> failwith "unimplemented_dafny_call"
-  | TailCall c -> failwith "unimplemented_dafny_tailcall"
-  | Ret r -> print_dafny_return fmt r
-  | LoadStore ls -> print_dafny_loadstore fmt ls
-  | SLoadStore ls -> print_dafny_sloadstore fmt ls
-  | Assignment a -> print_dafny_assignment fmt a
-  | Special s -> failwith "unimplemented_dafny_special"
+          Format.fprintf fmt "st.CallDirect(%a);" print_dafny_varnode
+            (Const { value = Common.Loc.get_addr target; width = 8l }))
+  | Cind { target } ->
+      Format.fprintf fmt "st.CallInd(%a);" print_dafny_varnode target
+
+let print_dafny_stmt (p : Prog.t) :
+    Format.formatter -> Stmt.t -> Unit.t =
+  let rec aux fmt (s : Stmt.t) : Unit.t =
+    match s with
+    | Nop INop -> ()
+    | Block { label; stmts } -> (
+        match label with
+        | None ->
+            Format.fprintf fmt "@[<v 1>{@;%a@;}@]"
+              (Format.pp_print_list ~pp_sep:Format.pp_print_cut aux)
+              stmts
+        | Some label ->
+            Format.fprintf fmt "@[<v 1>label %a: {@;%a@;}@]" print_dafny_label
+              label
+              (Format.pp_print_list ~pp_sep:Format.pp_print_cut aux)
+              stmts)
+    | Loop { label; body } ->
+        Format.fprintf fmt "@[<v 1>label %a: while true {@;%a@;}@]"
+          print_dafny_label label
+          (Format.pp_print_list ~pp_sep:Format.pp_print_cut aux)
+          body
+    | Break label -> Format.fprintf fmt "break %a;" print_dafny_label label
+    | Continue label ->
+        Format.fprintf fmt "continue %a;" print_dafny_label label
+    | Switch { target; cases } ->
+        Format.fprintf fmt "@[<v 1>match %a {@;%a@;}@]" print_dafny_varnode
+          target
+          (Format.pp_print_list ~pp_sep:Format.pp_print_cut
+             (fun fmt (idx, stmt) ->
+               Format.fprintf fmt "case %Ld => %a" idx aux stmt))
+          cases
+    | IfElse (cond, t, f) ->
+        Format.fprintf fmt
+          "@[<v 1>if Value.ExtractIsNonZero(%a) {@;%a@;} else {@;%a@;}@]"
+          print_dafny_varnode cond aux t aux f
+    | Call c -> print_dafny_call p fmt c.target
+    | TailCall c ->
+        print_dafny_call p fmt c.target;
+        Format.fprintf fmt "return;"
+    | Ret r -> print_dafny_return fmt r
+    | LoadStore ls -> print_dafny_loadstore fmt ls
+    | SLoadStore ls -> print_dafny_sloadstore fmt ls
+    | Assignment a -> print_dafny_assignment fmt a
+    | Special s -> Format.fprintf fmt "st.ISpecial(\"%s\");" s
+  in
+  aux
 
 let print_dafny_decl fmt (r : Common.RegId.t) : Unit.t =
   Format.fprintf fmt "%a: Value.T" print_dafny_regid r
@@ -172,7 +204,7 @@ let print_dafny_assign_undef fmt (undefs : Common.RegIdSet.t) : Unit.t =
          Format.fprintf fmt "%a := Value.Undefined(1);" print_dafny_regid r))
     (undefs |> Common.RegIdSet.elements)
 
-let print_dafny_func fmt (f : Func.t) : unit =
+let print_dafny_func (prog : Prog.t) fmt (f : Func.t) : unit =
   let inputSet = Common.RegIdSet.of_list f.attr.inputs in
   let defSet = f.body |> Stmt.collect_defs in
   let outputSet = Common.RegIdSet.of_list f.attr.outputs in
@@ -189,19 +221,34 @@ let print_dafny_func fmt (f : Func.t) : unit =
        ~pp_sep:(fun fmt _ -> Format.fprintf fmt ",@ ")
        (fun fmt r -> Format.fprintf fmt "%s" r))
     (f.attr.inputs
-      |> List.map (fun r -> Format.asprintf "%a" print_dafny_decl_input r))
+    |> List.map (fun r -> Format.asprintf "%a" print_dafny_decl_input r))
     (Format.pp_print_list
        ~pp_sep:(fun fmt _ -> Format.fprintf fmt ",@ ")
        (fun fmt r -> Format.fprintf fmt "%s" r))
     (f.attr.outputs
-      |> List.map (fun r -> Format.asprintf "%a" print_dafny_decl r))
+    |> List.map (fun r -> Format.asprintf "%a" print_dafny_decl r))
     print_dafny_decl_set
     (Common.RegIdSet.diff (Common.RegIdSet.union defSet inputSet) outputSet)
     print_dafny_copy_input inputSet print_dafny_assign_undef
     (Common.RegIdSet.diff (Common.RegIdSet.union defSet outputSet) inputSet)
-    print_dafny_stmt f.body
+    (print_dafny_stmt prog) f.body
 
-let print_dafny_prog fmt (p : Prog.t) : unit =
-  Format.fprintf fmt "@[<v 1>module Main.Procedure {@;import NumericValue@;import ConcreteValue@;import Value@;import State@;class Runtime {@; var st: State.T@; constructor (st: State.T) {@;  this.st := st;@;  }@;%a@]@;}"
-    (Format.pp_print_list ~pp_sep:Format.pp_print_cut print_dafny_func)
+let print_dafny_prologue fmt () : unit =
+  Format.fprintf fmt
+    "import NumericValue@;import ConcreteValue@;import Value@;import State"
+
+let print_dafny_prog_in fmt (p : Prog.t) : unit =
+  Format.fprintf fmt
+    "%a@;\
+     class Runtime {@;\
+    \ var st: State.T@;\
+    \ constructor (st: State.T) {@;\
+    \  this.st := st;@;\
+    \  }@;\
+     %a@]@;  }" print_dafny_prologue ()
+    (Format.pp_print_list ~pp_sep:Format.pp_print_cut (print_dafny_func p))
     p.funcs
+
+let print_dafny_prog fmt ((p, pname) : Prog.t * String.t) : unit =
+  Format.fprintf fmt "@[<v 1>module %s.Procedure {@;%a@;}" pname
+    print_dafny_prog_in p

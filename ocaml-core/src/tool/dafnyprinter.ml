@@ -39,10 +39,18 @@ let pp_list (pp_v : Format.formatter -> 'a -> unit) (fmt : Format.formatter)
 let pp_int64 (fmt : Format.formatter) (i : Int64.t) : unit =
   Format.fprintf fmt "%Ld" i
 
+
+let make_identifier (s : String.t) : String.t =
+  s |> String.to_seq |> Seq.filter (fun c ->
+      (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'))) |> String.of_seq |> String.capitalize_ascii
+  
 let print_dafny (dafny : SIOIR.Prog.t) (path : String.t) : Unit.t =
   let oc = open_out path in
   let fmt = Format.formatter_of_out_channel oc in
-  Format.fprintf fmt "%a@.%!" SIOIR.DafnyPrinter.print_dafny_prog dafny;
+  Format.fprintf fmt "%a@.%!" SIOIR.DafnyPrinter.print_dafny_prog
+    ( dafny,
+      Filename.basename path |> Filename.remove_extension
+      |> make_identifier );
   close_out oc
 
 let main () =
